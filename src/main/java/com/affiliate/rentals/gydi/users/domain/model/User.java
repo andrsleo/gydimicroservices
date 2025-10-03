@@ -34,6 +34,7 @@ public final class User {
     private final String name;
     private final Email email;
     private final String passwordHash;
+    private final String phoneNumber;
     private final Set<Role> roles;
     private final LocalDateTime createdAt;
 
@@ -49,6 +50,7 @@ public final class User {
         this.name = Objects.requireNonNull(builder.name, "Name cannot be null");
         this.email = Objects.requireNonNull(builder.email, "Email cannot be null");
         this.passwordHash = Objects.requireNonNull(builder.passwordHash, "Password hash cannot be null");
+        this.phoneNumber = builder.phoneNumber;
         this.roles = Collections.unmodifiableSet(new HashSet<>(builder.roles));
         this.createdAt = Objects.requireNonNullElseGet(builder.createdAt, LocalDateTime::now);
     }
@@ -87,6 +89,15 @@ public final class User {
      */
     public String passwordHash() {
         return passwordHash;
+    }
+
+    /**
+     * Returns the user's phone number.
+     *
+     * @return the phone number, may be {@code null}
+     */
+    public String phoneNumber() {
+        return phoneNumber;
     }
 
     /**
@@ -134,6 +145,7 @@ public final class User {
                 .name(this.name)
                 .email(this.email)
                 .passwordHash(this.passwordHash)
+                .phoneNumber(this.phoneNumber)
                 .roles(updatedRoles)
                 .createdAt(this.createdAt)
                 .build();
@@ -155,6 +167,7 @@ public final class User {
                 .name(this.name)
                 .email(this.email)
                 .passwordHash(this.passwordHash)
+                .phoneNumber(this.phoneNumber)
                 .roles(updatedRoles)
                 .createdAt(this.createdAt)
                 .build();
@@ -200,6 +213,7 @@ public final class User {
         private String name;
         private Email email;
         private String passwordHash;
+        private String phoneNumber;
         private Set<Role> roles = new HashSet<>();
         private LocalDateTime createdAt;
 
@@ -260,6 +274,17 @@ public final class User {
          */
         public Builder passwordHash(String passwordHash) {
             this.passwordHash = passwordHash;
+            return this;
+        }
+
+        /**
+         * Sets the user's phone number.
+         *
+         * @param phoneNumber the phone number
+         * @return this builder instance
+         */
+        public Builder phoneNumber(String phoneNumber) {
+            this.phoneNumber = phoneNumber;
             return this;
         }
 
