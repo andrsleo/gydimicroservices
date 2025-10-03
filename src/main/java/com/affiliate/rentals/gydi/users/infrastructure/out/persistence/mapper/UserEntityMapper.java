@@ -1,15 +1,17 @@
 package com.affiliate.rentals.gydi.users.infrastructure.out.persistence.mapper;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.mapstruct.Mapper;
+import org.mapstruct.Named;
+
 import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
 import com.affiliate.rentals.gydi.users.domain.model.RoleName;
 import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.RoleEntity;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.UserEntity;
-import org.mapstruct.*;
-
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * MapStruct mapper for converting between User domain model and UserEntity.
