@@ -6,6 +6,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Objects;
 import java.util.Set;
@@ -47,11 +48,43 @@ public class RoleEntity {
     private String name;
 
     /**
+     * Description of the role.
+     */
+    @Column(name = "description")
+    private String description;
+
+    /**
+     * Indicates if the role is active.
+     */
+    @Column(name = "is_active", nullable = false)
+    private Boolean isActive = true;
+
+    /**
+     * Display order for sorting roles in UI.
+     */
+    @Column(name = "display_order", nullable = false)
+    private Integer displayOrder = 0;
+
+    /**
+     * The timestamp when this role was created.
+     */
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    /**
      * The users that have this role.
      * This is the inverse side of the many-to-many relationship.
      */
     @ManyToMany(mappedBy = "roles")
     private Set<UserEntity> users = new HashSet<>();
+
+    /**
+     * Sets the creation timestamp before persisting.
+     */
+    @PrePersist
+    protected void onCreate() {
+        createdAt = LocalDateTime.now();
+    }
 
     /**
      * Constructs a RoleEntity with the specified name.
@@ -60,6 +93,8 @@ public class RoleEntity {
      */
     public RoleEntity(String name) {
         this.name = name;
+        this.isActive = true;
+        this.displayOrder = 0;
     }
 
     /**
@@ -71,6 +106,8 @@ public class RoleEntity {
     public RoleEntity(Long id, String name) {
         this.id = id;
         this.name = name;
+        this.isActive = true;
+        this.displayOrder = 0;
     }
 
     @Override
@@ -88,6 +125,6 @@ public class RoleEntity {
 
     @Override
     public String toString() {
-        return "RoleEntity{id=%d, name='%s'}".formatted(id, name);
+        return "RoleEntity{id=%d, name='%s', displayOrder=%d}".formatted(id, name, displayOrder);
     }
 }
