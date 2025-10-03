@@ -23,6 +23,7 @@ CREATE TABLE users.roles (
     name VARCHAR(50) UNIQUE NOT NULL,
     description TEXT,
     is_active BOOLEAN DEFAULT true NOT NULL,
+    display_order INT DEFAULT 0 NOT NULL,
     created_at TIMESTAMP DEFAULT NOW() NOT NULL,
     CONSTRAINT role_name_upper CHECK (name = UPPER(name))
 );

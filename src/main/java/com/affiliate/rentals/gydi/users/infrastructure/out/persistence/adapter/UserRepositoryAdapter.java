@@ -1,8 +1,6 @@
 package com.affiliate.rentals.gydi.users.infrastructure.out.persistence.adapter;
 
 import com.affiliate.rentals.gydi.users.domain.model.Email;
-import com.affiliate.rentals.gydi.users.domain.model.Role;
-import com.affiliate.rentals.gydi.users.domain.model.RoleName;
 import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.RoleEntity;
