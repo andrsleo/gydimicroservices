@@ -1,5 +1,5 @@
 service-name/
-├─ src/main/java/com/gydi/<service>
+├─ src/main/java/com/affiliate/rentals/gydi/<service>
 │  ├─ domain                 // Entidades, value objects, reglas de negocio puras
 │  │   ├─ model
 │  │   ├─ repository         // Puertos (interfaces) -> ej: PropertyRepositoryPort
@@ -10,7 +10,7 @@ service-name/
 │  │   ├─ usecase            // Use cases (ej: CreateProperty, GetPropertyCatalog)
 │  │   └─ mapper             // Mapeos entre domain <-> dto
 │  │
-│  ├─ adapters               // Adaptadores (infraestructura)
+│  ├─ infraestructure        // Adaptadores (infraestructura)
 │  │   ├─ in                 // Controladores REST, gRPC, listeners
 │  │   │    └─ rest
 │  │   └─ out                // Implementaciones de puertos (BD, clients)
