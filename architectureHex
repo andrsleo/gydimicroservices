@@ -1,0 +1,24 @@
+service-name/
+├─ src/main/java/com/gydi/<service>
+│  ├─ domain                 // Entidades, value objects, reglas de negocio puras
+│  │   ├─ model
+│  │   ├─ repository         // Puertos (interfaces) -> ej: PropertyRepositoryPort
+│  │   └─ service            // Lógica de dominio pura (si aplica)
+│  │
+│  ├─ application            // Casos de uso / orquestadores (servicios de aplicación)
+│  │   ├─ dto                // DTOs inmutables (record)
+│  │   ├─ usecase            // Use cases (ej: CreateProperty, GetPropertyCatalog)
+│  │   └─ mapper             // Mapeos entre domain <-> dto
+│  │
+│  ├─ adapters               // Adaptadores (infraestructura)
+│  │   ├─ in                 // Controladores REST, gRPC, listeners
+│  │   │    └─ rest
+│  │   └─ out                // Implementaciones de puertos (BD, clients)
+│  │        ├─ persistence   // Spring Data JPA repos, entities (DB)
+│  │        └─ client        // RestTemplate/Feign clients, event producers
+│  │
+│  └─ config                 // Config beans, OpenAPI config, security, executor
+│
+├─ src/main/resources
+│   └─ application.yml
+└─ src/test/java/...
