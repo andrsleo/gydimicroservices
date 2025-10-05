@@ -3,6 +3,7 @@ package com.affiliate.rentals.gydi.users.application.usecase;
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
+import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
 import com.affiliate.rentals.gydi.users.domain.model.RoleName;
 import com.affiliate.rentals.gydi.users.domain.model.User;
@@ -38,12 +39,12 @@ public class UpdateUserUseCase {
      * @param id the user ID to update
      * @param request the update user request data
      * @return the updated user as a UserResponse
-     * @throws IllegalArgumentException if the user is not found
+     * @throws UserNotFoundException if the user is not found
      */
     @Transactional
     public UserResponse execute(Long id, UpdateUserRequest request) {
         User existingUser = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with ID: " + id));
+                .orElseThrow(() -> UserNotFoundException.withId(id));
 
         Set<Role> roles = request.roleNames() != null && !request.roleNames().isEmpty()
                 ? request.roleNames().stream()

@@ -2,6 +2,7 @@ package com.affiliate.rentals.gydi.users.application.usecase;
 
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
+import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
 import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
 import org.springframework.stereotype.Service;
@@ -46,12 +47,12 @@ public class GetUserByIdUseCase {
      *
      * @param id the unique identifier of the user to retrieve
      * @return the user as a UserResponse DTO
-     * @throws IllegalArgumentException if no user is found with the given ID
+     * @throws UserNotFoundException if no user is found with the given ID
      */
     @Transactional(readOnly = true)
     public UserResponse execute(Long id) {
         User user = userRepository.findById(id)
-                .orElseThrow(() -> new IllegalArgumentException("User not found with id: " + id));
+                .orElseThrow(() -> UserNotFoundException.withId(id));
 
         return mapper.toResponse(user);
     }

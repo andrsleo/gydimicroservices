@@ -3,6 +3,7 @@ package com.affiliate.rentals.gydi.users.application.usecase;
 import com.affiliate.rentals.gydi.users.application.dto.CreateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
+import com.affiliate.rentals.gydi.users.domain.exception.UserAlreadyExistsException;
 import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
 import com.affiliate.rentals.gydi.users.domain.model.RoleName;
@@ -41,14 +42,14 @@ public class CreateUserUseCase {
      *
      * @param request the create user request data
      * @return the created user as a UserResponse
-     * @throws IllegalArgumentException if the email already exists
+     * @throws UserAlreadyExistsException if the email already exists
      */
     @Transactional
     public UserResponse execute(CreateUserRequest request) {
         Email email = Email.of(request.email());
 
         if (userRepository.existsByEmail(email)) {
-            throw new IllegalArgumentException("Email already exists: " + request.email());
+            throw UserAlreadyExistsException.withEmail(request.email());
         }
 
         String encodedPassword = passwordEncoder.encode(request.password());

@@ -1,5 +1,6 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -40,12 +41,12 @@ public class DeleteUserUseCase {
      * If the user doesn't exist, an exception is thrown.</p>
      *
      * @param id the unique identifier of the user to delete
-     * @throws IllegalArgumentException if no user is found with the given ID
+     * @throws UserNotFoundException if no user is found with the given ID
      */
     @Transactional
     public void execute(Long id) {
         if (!userRepository.findById(id).isPresent()) {
-            throw new IllegalArgumentException("User not found with id: " + id);
+            throw UserNotFoundException.withId(id);
         }
 
         userRepository.deleteById(id);
