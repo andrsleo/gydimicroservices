@@ -1,5 +1,6 @@
 package com.affiliate.rentals.gydi.users.infrastructure.in.rest.controller;
 
+import com.affiliate.rentals.gydi.shared.exception.ApiErrorResponses;
 import com.affiliate.rentals.gydi.users.application.dto.CreateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
@@ -9,7 +10,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
@@ -77,14 +77,9 @@ public class UserController {
      */
     @PostMapping
     @Operation(summary = "Create a new user", description = "Registers a new user in the system with the provided information")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "201", description = "User created successfully",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input data",
-                    content = @Content),
-            @ApiResponse(responseCode = "409", description = "Email already exists",
-                    content = @Content)
-    })
+    @ApiResponse(responseCode = "201", description = "User created successfully",
+            content = @Content(schema = @Schema(implementation = UserResponse.class)))
+    @ApiErrorResponses.Create
     public ResponseEntity<UserResponse> createUser(
             @Valid @RequestBody CreateUserRequest request
     ) {
@@ -100,12 +95,9 @@ public class UserController {
      */
     @GetMapping("/{id}")
     @Operation(summary = "Get user by ID", description = "Retrieves a specific user by their unique identifier")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "User found",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))),
-            @ApiResponse(responseCode = "404", description = "User not found",
-                    content = @Content)
-    })
+    @ApiResponse(responseCode = "200", description = "User found",
+            content = @Content(schema = @Schema(implementation = UserResponse.class)))
+    @ApiErrorResponses.GetOrDelete
     public ResponseEntity<UserResponse> getUserById(
             @Parameter(description = "User ID", required = true)
             @PathVariable Long id
@@ -121,10 +113,8 @@ public class UserController {
      */
     @GetMapping
     @Operation(summary = "Get all users", description = "Retrieves a list of all users in the system")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Users retrieved successfully",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class)))
-    })
+    @ApiResponse(responseCode = "200", description = "Users retrieved successfully",
+            content = @Content(schema = @Schema(implementation = UserResponse.class)))
     public ResponseEntity<List<UserResponse>> getAllUsers() {
         List<UserResponse> response = getAllUsersUseCase.execute();
         return ResponseEntity.ok(response);
@@ -139,14 +129,9 @@ public class UserController {
      */
     @PutMapping("/{id}")
     @Operation(summary = "Update user", description = "Updates an existing user's information")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "User updated successfully",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))),
-            @ApiResponse(responseCode = "400", description = "Invalid input data",
-                    content = @Content),
-            @ApiResponse(responseCode = "404", description = "User not found",
-                    content = @Content)
-    })
+    @ApiResponse(responseCode = "200", description = "User updated successfully",
+            content = @Content(schema = @Schema(implementation = UserResponse.class)))
+    @ApiErrorResponses.Update
     public ResponseEntity<UserResponse> updateUser(
             @Parameter(description = "User ID", required = true)
             @PathVariable Long id,
@@ -164,12 +149,8 @@ public class UserController {
      */
     @DeleteMapping("/{id}")
     @Operation(summary = "Delete user", description = "Deletes a user from the system")
-    @ApiResponses(value = {
-            @ApiResponse(responseCode = "204", description = "User deleted successfully",
-                    content = @Content),
-            @ApiResponse(responseCode = "404", description = "User not found",
-                    content = @Content)
-    })
+    @ApiResponse(responseCode = "204", description = "User deleted successfully")
+    @ApiErrorResponses.GetOrDelete
     public ResponseEntity<Void> deleteUser(
             @Parameter(description = "User ID", required = true)
             @PathVariable Long id
