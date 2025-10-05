@@ -5,6 +5,7 @@ import com.affiliate.rentals.gydi.users.application.dto.AuthResponse;
 import com.affiliate.rentals.gydi.users.application.dto.LoginRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
+import com.affiliate.rentals.gydi.users.domain.exception.InvalidCredentialsException;
 import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
@@ -76,22 +77,22 @@ public class AuthenticateUserUseCase {
      * <ol>
      *   <li>Validates the email format and finds the user</li>
      *   <li>Verifies the provided password against the stored hash</li>
-     *   <li>Returns an AuthResponse with user information and token placeholder</li>
+     *   <li>Generates JWT token and returns AuthResponse</li>
      * </ol>
      *
      * @param request the login request containing email and password
-     * @return an AuthResponse with user information and token (token generation to be implemented)
-     * @throws IllegalArgumentException if the email doesn't exist or password is invalid
+     * @return an AuthResponse with user information and JWT token
+     * @throws InvalidCredentialsException if the email doesn't exist or password is invalid
      */
     @Transactional(readOnly = true)
     public AuthResponse execute(LoginRequest request) {
         Email email = Email.of(request.email());
 
         User user = userRepository.findByEmail(email)
-                .orElseThrow(() -> new IllegalArgumentException("Invalid email or password"));
+                .orElseThrow(InvalidCredentialsException::new);
 
         if (!passwordEncoder.matches(request.password(), user.passwordHash())) {
-            throw new IllegalArgumentException("Invalid email or password");
+            throw new InvalidCredentialsException();
         }
 
         UserResponse userResponse = mapper.toResponse(user);
