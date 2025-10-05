@@ -1,5 +1,6 @@
 package com.affiliate.rentals.gydi.users.infrastructure.in.rest.controller;
 
+import com.affiliate.rentals.gydi.shared.exception.ApiErrorResponses;
 import com.affiliate.rentals.gydi.users.application.dto.AuthResponse;
 import com.affiliate.rentals.gydi.users.application.dto.LoginRequest;
 import com.affiliate.rentals.gydi.users.application.usecase.AuthenticateUserUseCase;
@@ -7,7 +8,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
@@ -81,23 +81,13 @@ public class AuthController {
             summary = "Login user",
             description = "Authenticates a user with email and password, returning a JWT token for subsequent requests"
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Authentication successful",
-                    content = @Content(schema = @Schema(implementation = AuthResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "Invalid input data",
-                    content = @Content
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Invalid credentials",
-                    content = @Content
-            )
-    })
+    @ApiResponse(
+            responseCode = "200",
+            description = "Authentication successful",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class))
+    )
+    @ApiErrorResponses.BadRequest
+    @ApiErrorResponses.Unauthorized
     public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
         AuthResponse response = authenticateUserUseCase.execute(request);
         return ResponseEntity.ok(response);
@@ -117,13 +107,10 @@ public class AuthController {
             summary = "Logout user",
             description = "Logs out the current user (token invalidation to be implemented)"
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Logout successful",
-                    content = @Content
-            )
-    })
+    @ApiResponse(
+            responseCode = "200",
+            description = "Logout successful"
+    )
     public ResponseEntity<Void> logout() {
         // Token invalidation logic will be implemented with security configuration
         // For stateless JWT, this is typically handled client-side by removing the token
@@ -143,23 +130,16 @@ public class AuthController {
             summary = "Refresh token",
             description = "Obtains a new JWT token using a refresh token (to be implemented)"
     )
-    @ApiResponses(value = {
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "Token refreshed successfully",
-                    content = @Content(schema = @Schema(implementation = AuthResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "Invalid refresh token",
-                    content = @Content
-            ),
-            @ApiResponse(
-                    responseCode = "501",
-                    description = "Not implemented",
-                    content = @Content
-            )
-    })
+    @ApiResponse(
+            responseCode = "200",
+            description = "Token refreshed successfully",
+            content = @Content(schema = @Schema(implementation = AuthResponse.class))
+    )
+    @ApiResponse(
+            responseCode = "501",
+            description = "Not implemented"
+    )
+    @ApiErrorResponses.Unauthorized
     public ResponseEntity<AuthResponse> refresh() {
         // Refresh token logic will be implemented with security configuration
         return ResponseEntity.status(501).build();

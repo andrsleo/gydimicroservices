@@ -1,5 +1,8 @@
 package com.affiliate.rentals.gydi.users.domain.exception;
 
+import com.affiliate.rentals.gydi.shared.exception.HttpStatusMapping;
+import org.springframework.http.HttpStatus;
+
 /**
  * Exception thrown when authentication fails due to invalid credentials.
  *
@@ -12,6 +15,7 @@ package com.affiliate.rentals.gydi.users.domain.exception;
  *
  * @author GYDI Development Team
  */
+@HttpStatusMapping(status = HttpStatus.UNAUTHORIZED, errorType = "Invalid Credentials")
 public final class InvalidCredentialsException extends DomainException {
 
     private static final String DEFAULT_MESSAGE = "Invalid email or password";

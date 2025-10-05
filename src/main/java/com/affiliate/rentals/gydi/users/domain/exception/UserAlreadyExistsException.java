@@ -1,5 +1,8 @@
 package com.affiliate.rentals.gydi.users.domain.exception;
 
+import com.affiliate.rentals.gydi.shared.exception.HttpStatusMapping;
+import org.springframework.http.HttpStatus;
+
 /**
  * Exception thrown when attempting to create a user that already exists.
  *
@@ -9,6 +12,7 @@ package com.affiliate.rentals.gydi.users.domain.exception;
  *
  * @author GYDI Development Team
  */
+@HttpStatusMapping(status = HttpStatus.CONFLICT, errorType = "User Already Exists")
 public final class UserAlreadyExistsException extends DomainException {
 
     private static final String DEFAULT_MESSAGE = "User already exists";

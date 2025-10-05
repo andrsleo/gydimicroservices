@@ -1,5 +1,8 @@
 package com.affiliate.rentals.gydi.users.domain.exception;
 
+import com.affiliate.rentals.gydi.shared.exception.HttpStatusMapping;
+import org.springframework.http.HttpStatus;
+
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,6 +19,7 @@ import java.util.List;
  *
  * @author GYDI Development Team
  */
+@HttpStatusMapping(status = HttpStatus.BAD_REQUEST, errorType = "Invalid User Data")
 public final class InvalidUserDataException extends DomainException {
 
     private static final String DEFAULT_MESSAGE = "Invalid user data";
