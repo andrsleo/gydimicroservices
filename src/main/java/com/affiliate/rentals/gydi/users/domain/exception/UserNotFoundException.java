@@ -1,5 +1,8 @@
 package com.affiliate.rentals.gydi.users.domain.exception;
 
+import com.affiliate.rentals.gydi.shared.exception.HttpStatusMapping;
+import org.springframework.http.HttpStatus;
+
 /**
  * Exception thrown when a requested user cannot be found.
  *
@@ -9,6 +12,7 @@ package com.affiliate.rentals.gydi.users.domain.exception;
  *
  * @author GYDI Development Team
  */
+@HttpStatusMapping(status = HttpStatus.NOT_FOUND, errorType = "User Not Found")
 public final class UserNotFoundException extends DomainException {
 
     private static final String DEFAULT_MESSAGE = "User not found";

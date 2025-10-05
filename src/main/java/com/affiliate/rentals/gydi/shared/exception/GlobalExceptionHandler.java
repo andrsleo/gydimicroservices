@@ -41,14 +41,16 @@ public class GlobalExceptionHandler {
     private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
 
     /**
-     * Handles all domain-level exceptions from the users context.
+     * Handles all domain-level exceptions using annotation-based HTTP status mapping.
      *
-     * <p>Uses Java 21's pattern matching for switch with sealed classes
-     * to provide exhaustive handling of all domain exception types.</p>
+     * <p>This method uses reflection to dynamically extract HTTP status and error type
+     * from the {@link HttpStatusMapping} annotation on exception classes. This approach
+     * eliminates the need for explicit switch statements and allows new exception types
+     * to be added without modifying this handler.</p>
      *
      * @param ex      the domain exception
      * @param request the HTTP request
-     * @return an appropriate error response based on exception type
+     * @return an appropriate error response based on the exception's annotation
      */
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ErrorResponse> handleDomainException(
@@ -57,54 +59,40 @@ public class GlobalExceptionHandler {
     ) {
         logger.warn("Domain exception: {}", ex.getMessage());
 
-        // Pattern matching for switch with sealed classes (Java 21)
-        return switch (ex) {
-            case UserNotFoundException e -> buildResponse(
-                    HttpStatus.NOT_FOUND,
-                    "User Not Found",
-                    e.getMessage(),
+        // Extract HTTP status and error type from annotation
+        HttpStatusMapping mapping = ex.getClass().getAnnotation(HttpStatusMapping.class);
+
+        if (mapping == null) {
+            logger.error("Domain exception {} is missing @HttpStatusMapping annotation", ex.getClass().getSimpleName());
+            return buildResponse(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Internal Error",
+                    "An unexpected error occurred",
                     request.getRequestURI()
             );
+        }
 
-            case UserAlreadyExistsException e -> buildResponse(
-                    HttpStatus.CONFLICT,
-                    "User Already Exists",
-                    e.getMessage(),
-                    request.getRequestURI()
-            );
+        HttpStatus status = mapping.status();
+        String errorType = mapping.errorType();
 
-            case InvalidCredentialsException e -> buildResponse(
-                    HttpStatus.UNAUTHORIZED,
-                    "Invalid Credentials",
-                    e.getMessage(),
-                    request.getRequestURI()
-            );
+        // Handle special case for InvalidUserDataException with multiple errors
+        if (ex instanceof InvalidUserDataException dataException && dataException.hasMultipleErrors()) {
+            List<ErrorResponse.FieldError> fieldErrors = dataException.getErrors().stream()
+                    .map(error -> ErrorResponse.FieldError.of("user", error))
+                    .toList();
 
-            case InvalidUserDataException e -> {
-                if (e.hasMultipleErrors()) {
-                    List<ErrorResponse.FieldError> fieldErrors = e.getErrors().stream()
-                            .map(error -> ErrorResponse.FieldError.of("user", error))
-                            .toList();
+            return ResponseEntity
+                    .status(status)
+                    .body(ErrorResponse.of(
+                            status.value(),
+                            errorType,
+                            ex.getMessage(),
+                            request.getRequestURI(),
+                            fieldErrors
+                    ));
+        }
 
-                    yield ResponseEntity
-                            .status(HttpStatus.BAD_REQUEST)
-                            .body(ErrorResponse.of(
-                                    HttpStatus.BAD_REQUEST.value(),
-                                    "Invalid User Data",
-                                    e.getMessage(),
-                                    request.getRequestURI(),
-                                    fieldErrors
-                            ));
-                }
-
-                yield buildResponse(
-                        HttpStatus.BAD_REQUEST,
-                        "Invalid User Data",
-                        e.getMessage(),
-                        request.getRequestURI()
-                );
-            }
-        };
+        return buildResponse(status, errorType, ex.getMessage(), request.getRequestURI());
     }
 
     /**
