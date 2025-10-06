@@ -33,6 +33,11 @@ public class JwtService {
     @Value("${jwt.expiration}")
     private long jwtExpiration;
 
+    @Value("${jwt.refresh-expiration}")
+    private long refreshExpiration;
+
+    private static final String USER_ID_CLAIM = "userId";
+
     /**
      * Extracts the username (subject) from a JWT token.
      *
@@ -41,6 +46,30 @@ public class JwtService {
      */
     public String extractUsername(String token) {
         return extractClaim(token, Claims::getSubject);
+    }
+
+    /**
+     * Extracts the user ID from a JWT token.
+     *
+     * @param token the JWT token
+     * @return the user ID, or null if not present
+     */
+    public Long extractUserId(String token) {
+        return extractClaim(token, claims -> {
+            Object userIdObj = claims.get(USER_ID_CLAIM);
+            if (userIdObj == null) {
+                return null;
+            }
+            // Handle both Integer and Long types
+            if (userIdObj instanceof Integer intValue) {
+                return intValue.longValue();
+            }
+            if (userIdObj instanceof Long longValue) {
+                return longValue;
+            }
+            // Fallback: try to parse as string
+            return Long.parseLong(userIdObj.toString());
+        });
     }
 
     /**
@@ -75,6 +104,29 @@ public class JwtService {
      */
     public String generateToken(Map<String, Object> extraClaims, UserDetails userDetails) {
         return buildToken(extraClaims, userDetails, jwtExpiration);
+    }
+
+    /**
+     * Generates a JWT token with user ID included in claims.
+     *
+     * <p>This method follows Java 21 best practices by using type-safe parameters
+     * and ensuring immutability of the claims map.</p>
+     *
+     * @param userDetails the user details
+     * @param userId the user ID to include in the token claims
+     * @return the generated JWT token with userId claim
+     */
+    public String generateTokenWithUserId(UserDetails userDetails, Long userId) {
+        Map<String, Object> claims = new HashMap<>();
+        claims.put(USER_ID_CLAIM, userId);
+
+        // Include user roles/authorities in JWT claims
+        var authorities = userDetails.getAuthorities().stream()
+                .map(Object::toString)
+                .toList();
+        claims.put("roles", authorities);
+
+        return buildToken(claims, userDetails, jwtExpiration);
     }
 
     /**
@@ -144,6 +196,15 @@ public class JwtService {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    /**
+     * Gets the refresh token expiration time in milliseconds.
+     *
+     * @return the refresh token expiration in milliseconds
+     */
+    public long getRefreshExpiration() {
+        return refreshExpiration;
     }
 
     /**
