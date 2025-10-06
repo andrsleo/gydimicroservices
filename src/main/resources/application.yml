@@ -5,6 +5,12 @@ spring:
   application:
     name: gydi-rentals
 
+  # Disable MongoDB autoconfiguration
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+
   # ============================================
   # PostgreSQL Database Configuration
   # ============================================
@@ -57,7 +63,8 @@ server:
 # ============================================
 jwt:
   secret: ***REMOVED***
-  expiration: 86400000
+  expiration: 86400000 # 24 hours in milliseconds
+  refresh-expiration: 604800000 # 7 days in milliseconds
 
 # ============================================
 # Logging Configuration
