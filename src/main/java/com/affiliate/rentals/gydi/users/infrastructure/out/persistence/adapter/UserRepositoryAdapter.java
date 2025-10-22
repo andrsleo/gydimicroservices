@@ -1,20 +1,21 @@
 package com.affiliate.rentals.gydi.users.infrastructure.out.persistence.adapter;
 
+import java.util.List;
+import java.util.Optional;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.RoleEntity;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.UserEntity;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.mapper.UserEntityMapper;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.repository.RoleJpaRepository;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.repository.UserJpaRepository;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Adapter implementation of the UserRepository port using JPA.
@@ -35,7 +36,7 @@ import java.util.stream.Collectors;
  * @see UserEntityMapper
  */
 @Component
-public class UserRepositoryAdapter implements UserRepository {
+public class UserRepositoryAdapter implements UserRepositoryPort {
 
     private final UserJpaRepository userJpaRepository;
     private final RoleJpaRepository roleJpaRepository;

@@ -1,21 +1,5 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
-import com.affiliate.rentals.gydi.users.application.dto.CreateUserProfileRequest;
-import com.affiliate.rentals.gydi.users.application.dto.UserProfileResponse;
-import com.affiliate.rentals.gydi.users.application.mapper.UserProfileDtoMapper;
-import com.affiliate.rentals.gydi.users.domain.exception.UserAlreadyExistsException;
-import com.affiliate.rentals.gydi.users.domain.model.Gender;
-import com.affiliate.rentals.gydi.users.domain.model.ProfileVisibility;
-import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
-import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -23,8 +7,26 @@ import java.util.UUID;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
+import com.affiliate.rentals.gydi.users.application.dto.CreateUserProfileRequest;
+import com.affiliate.rentals.gydi.users.application.dto.UserProfileResponse;
+import com.affiliate.rentals.gydi.users.application.mapper.UserProfileDtoMapper;
+import com.affiliate.rentals.gydi.users.domain.exception.UserAlreadyExistsException;
+import com.affiliate.rentals.gydi.users.domain.model.Gender;
+import com.affiliate.rentals.gydi.users.domain.model.ProfileVisibility;
+import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
+import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort;
 
 /**
  * Unit tests for {@link CreateUserProfileUseCase}.
@@ -42,7 +44,7 @@ import static org.mockito.Mockito.*;
 class CreateUserProfileUseCaseTest {
 
     @Mock
-    private UserProfileRepository profileRepository;
+    private UserProfileRepositoryPort profileRepository;
 
     @Mock
     private UserProfileDtoMapper mapper;

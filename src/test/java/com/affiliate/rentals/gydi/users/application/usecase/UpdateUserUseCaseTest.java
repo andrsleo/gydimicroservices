@@ -1,5 +1,25 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
@@ -7,24 +27,7 @@ import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
 import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
 import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.*;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 
 /**
  * Unit tests for {@link UpdateUserUseCase}.
@@ -39,7 +42,7 @@ import static org.mockito.Mockito.*;
 class UpdateUserUseCaseTest {
 
     @Mock
-    private UserRepository userRepository;
+    private UserRepositoryPort userRepository;
 
     @Mock
     private UserDtoMapper mapper;

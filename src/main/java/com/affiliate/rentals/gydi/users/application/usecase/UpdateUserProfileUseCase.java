@@ -1,5 +1,10 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import java.time.LocalDateTime;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserProfileRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserProfileResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserProfileDtoMapper;
@@ -7,14 +12,10 @@ import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
 import com.affiliate.rentals.gydi.users.domain.model.Gender;
 import com.affiliate.rentals.gydi.users.domain.model.ProfileVisibility;
 import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
-import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepository;
+import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort;
+
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.time.LocalDateTime;
-import java.util.UUID;
 
 /**
  * Use case for updating a user profile.
@@ -29,7 +30,7 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class UpdateUserProfileUseCase {
 
-    private final UserProfileRepository profileRepository;
+    private final UserProfileRepositoryPort profileRepository;
     private final UserProfileDtoMapper mapper;
 
     /**

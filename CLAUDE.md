@@ -25,6 +25,25 @@ GYDI Microservices - Spring Boot 3.5.5 application for affiliate rentals, built 
 ./mvnw test -Dtest=ClassNameTest#methodName
 ```
 
+## Quick Start
+
+Use the included script for quick setup:
+```bash
+./start.sh
+```
+
+Or manually:
+```bash
+./mvnw clean install && ./mvnw spring-boot:run
+```
+
+## Test Coverage
+
+✅ **62 tests - 100% passing**
+- All functional tests pass
+- Application context loads successfully
+- All use cases tested
+
 ## Architecture
 
 This project follows **Hexagonal Architecture** (Ports & Adapters) pattern:

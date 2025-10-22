@@ -1,5 +1,10 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.shared.security.JwtService;
 import com.affiliate.rentals.gydi.users.application.dto.AuthResponse;
 import com.affiliate.rentals.gydi.users.application.dto.RefreshTokenRequest;
@@ -9,12 +14,9 @@ import com.affiliate.rentals.gydi.users.domain.exception.InvalidRefreshTokenExce
 import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
 import com.affiliate.rentals.gydi.users.domain.model.RefreshToken;
 import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepository;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepositoryPort;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
+
 
 /**
  * Use case for refreshing JWT access tokens using a refresh token.
@@ -27,15 +29,15 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class RefreshTokenUseCase {
 
-    private final RefreshTokenRepository refreshTokenRepository;
-    private final UserRepository userRepository;
+    private final RefreshTokenRepositoryPort refreshTokenRepository;
+    private final UserRepositoryPort userRepository;
     private final JwtService jwtService;
     private final UserDetailsService userDetailsService;
     private final UserDtoMapper mapper;
 
     public RefreshTokenUseCase(
-            RefreshTokenRepository refreshTokenRepository,
-            UserRepository userRepository,
+            RefreshTokenRepositoryPort refreshTokenRepository,
+            UserRepositoryPort userRepository,
             JwtService jwtService,
             UserDetailsService userDetailsService,
             UserDtoMapper mapper

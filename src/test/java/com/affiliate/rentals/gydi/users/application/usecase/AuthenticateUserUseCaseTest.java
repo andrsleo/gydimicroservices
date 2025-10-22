@@ -1,5 +1,30 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import java.time.LocalDateTime;
+import java.util.Optional;
+import java.util.Set;
+
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.DisplayName;
+import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.argThat;
+import org.mockito.InjectMocks;
+import org.mockito.Mock;
+import static org.mockito.Mockito.inOrder;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.when;
+import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+
 import com.affiliate.rentals.gydi.shared.security.JwtService;
 import com.affiliate.rentals.gydi.users.application.dto.AuthResponse;
 import com.affiliate.rentals.gydi.users.application.dto.LoginRequest;
@@ -10,30 +35,9 @@ import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.RefreshToken;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
 import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepository;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
+import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepositoryPort;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
-import org.junit.jupiter.api.BeforeEach;
-import org.junit.jupiter.api.DisplayName;
-import org.junit.jupiter.api.Test;
-import org.junit.jupiter.api.extension.ExtendWith;
-import org.mockito.ArgumentCaptor;
-import org.mockito.InjectMocks;
-import org.mockito.Mock;
-import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-
-import java.time.LocalDateTime;
-import java.util.Optional;
-import java.util.Set;
-
-import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.anyLong;
-import static org.mockito.ArgumentMatchers.anyString;
-import static org.mockito.Mockito.*;
 
 /**
  * Unit tests for {@link AuthenticateUserUseCase}.
@@ -48,10 +52,10 @@ import static org.mockito.Mockito.*;
 class AuthenticateUserUseCaseTest {
 
     @Mock
-    private UserRepository userRepository;
+    private UserRepositoryPort userRepository;
 
     @Mock
-    private RefreshTokenRepository refreshTokenRepository;
+    private RefreshTokenRepositoryPort refreshTokenRepository;
 
     @Mock
     private PasswordEncoder passwordEncoder;

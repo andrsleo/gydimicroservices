@@ -1,16 +1,17 @@
 package com.affiliate.rentals.gydi.users.infrastructure.out.persistence.adapter;
 
-import com.affiliate.rentals.gydi.users.domain.model.RefreshToken;
-import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepository;
-import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.mapper.RefreshTokenEntityMapper;
-import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.repository.RefreshTokenJpaRepository;
-import org.springframework.stereotype.Component;
-import org.springframework.transaction.annotation.Transactional;
-
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
+
+import com.affiliate.rentals.gydi.users.domain.model.RefreshToken;
+import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepositoryPort;
+import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.mapper.RefreshTokenEntityMapper;
+import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.repository.RefreshTokenJpaRepository;
 
 /**
  * Adapter implementation of RefreshTokenRepository port.
@@ -21,7 +22,7 @@ import java.util.stream.Collectors;
  * @author GYDI Development Team
  */
 @Component
-public class RefreshTokenRepositoryAdapter implements RefreshTokenRepository {
+public class RefreshTokenRepositoryAdapter implements RefreshTokenRepositoryPort {
 
     private final RefreshTokenJpaRepository jpaRepository;
     private final RefreshTokenEntityMapper mapper;
