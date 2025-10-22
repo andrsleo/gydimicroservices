@@ -13,7 +13,7 @@ import java.util.Optional;
  *
  * @author GYDI Development Team
  */
-public interface RefreshTokenRepository {
+public interface RefreshTokenRepositoryPort {
 
     /**
      * Saves a refresh token.

@@ -19,7 +19,7 @@ import java.util.Optional;
  * @author GYDI Development Team
  * @see User
  */
-public interface UserRepository {
+public interface UserRepositoryPort {
 
     /**
      * Persists a new user or updates an existing one.

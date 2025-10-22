@@ -9,7 +9,7 @@ import org.springframework.scheduling.annotation.EnableScheduling;
 @SpringBootApplication(exclude = {
 		MongoAutoConfiguration.class,
 		MongoDataAutoConfiguration.class
-})
+}, scanBasePackages = "com.affiliate.rentals.gydi")
 @EnableScheduling
 public class GydiApplication {
 

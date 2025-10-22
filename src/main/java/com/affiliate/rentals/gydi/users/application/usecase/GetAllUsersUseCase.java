@@ -1,12 +1,13 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
-import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
-import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
+import java.util.List;
+
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.List;
+import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
+import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 
 /**
  * Use case for retrieving all users in the system.
@@ -27,7 +28,7 @@ import java.util.List;
 @Service
 public class GetAllUsersUseCase {
 
-    private final UserRepository userRepository;
+    private final UserRepositoryPort userRepository;
     private final UserDtoMapper mapper;
 
     /**
@@ -36,7 +37,7 @@ public class GetAllUsersUseCase {
      * @param userRepository the repository for user persistence operations
      * @param mapper the mapper for converting between domain and DTO objects
      */
-    public GetAllUsersUseCase(UserRepository userRepository, UserDtoMapper mapper) {
+    public GetAllUsersUseCase(UserRepositoryPort userRepository, UserDtoMapper mapper) {
         this.userRepository = userRepository;
         this.mapper = mapper;
     }

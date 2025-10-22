@@ -1,5 +1,11 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.users.application.dto.CreateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
@@ -8,13 +14,8 @@ import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
 import com.affiliate.rentals.gydi.users.domain.model.RoleName;
 import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Set;
-import java.util.stream.Collectors;
 
 /**
  * Use case for creating a new user.
@@ -27,11 +28,11 @@ import java.util.stream.Collectors;
 @Service
 public class CreateUserUseCase {
 
-    private final UserRepository userRepository;
+    private final UserRepositoryPort userRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserDtoMapper mapper;
 
-    public CreateUserUseCase(UserRepository userRepository, PasswordEncoder passwordEncoder, UserDtoMapper mapper) {
+    public CreateUserUseCase(UserRepositoryPort userRepository, PasswordEncoder passwordEncoder, UserDtoMapper mapper) {
         this.userRepository = userRepository;
         this.passwordEncoder = passwordEncoder;
         this.mapper = mapper;

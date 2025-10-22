@@ -1,5 +1,11 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import java.util.Set;
+import java.util.stream.Collectors;
+
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
@@ -7,12 +13,7 @@ import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
 import com.affiliate.rentals.gydi.users.domain.model.RoleName;
 import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
-
-import java.util.Set;
-import java.util.stream.Collectors;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 
 /**
  * Use case for updating an existing user.
@@ -25,10 +26,10 @@ import java.util.stream.Collectors;
 @Service
 public class UpdateUserUseCase {
 
-    private final UserRepository userRepository;
+    private final UserRepositoryPort userRepository;
     private final UserDtoMapper mapper;
 
-    public UpdateUserUseCase(UserRepository userRepository, UserDtoMapper mapper) {
+    public UpdateUserUseCase(UserRepositoryPort userRepository, UserDtoMapper mapper) {
         this.userRepository = userRepository;
         this.mapper = mapper;
     }

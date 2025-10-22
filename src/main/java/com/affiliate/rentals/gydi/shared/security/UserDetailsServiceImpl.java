@@ -1,8 +1,8 @@
 package com.affiliate.rentals.gydi.shared.security;
 
-import com.affiliate.rentals.gydi.users.domain.model.Email;
-import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
+import java.util.Set;
+import java.util.stream.Collectors;
+
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -10,8 +10,9 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
 import org.springframework.stereotype.Service;
 
-import java.util.Set;
-import java.util.stream.Collectors;
+import com.affiliate.rentals.gydi.users.domain.model.Email;
+import com.affiliate.rentals.gydi.users.domain.model.User;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 
 /**
  * Custom UserDetailsService implementation for Spring Security.
@@ -24,9 +25,9 @@ import java.util.stream.Collectors;
 @Service
 public class UserDetailsServiceImpl implements UserDetailsService {
 
-    private final UserRepository userRepository;
+    private final UserRepositoryPort userRepository;
 
-    public UserDetailsServiceImpl(UserRepository userRepository) {
+    public UserDetailsServiceImpl(UserRepositoryPort userRepository) {
         this.userRepository = userRepository;
     }
 

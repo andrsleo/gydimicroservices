@@ -1,15 +1,17 @@
 package com.affiliate.rentals.gydi.users.infrastructure.out.persistence.adapter;
 
-import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
-import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepository;
-import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.mapper.UserProfileEntityMapper;
-import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.repository.JpaUserProfileRepository;
-import lombok.RequiredArgsConstructor;
+import java.util.Optional;
+import java.util.UUID;
+
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.Optional;
-import java.util.UUID;
+import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
+import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort;
+import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.mapper.UserProfileEntityMapper;
+import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.repository.JpaUserProfileRepository;
+
+import lombok.RequiredArgsConstructor;
 
 /**
  * Adapter implementation of UserProfileRepository port.
@@ -24,7 +26,7 @@ import java.util.UUID;
  */
 @Component
 @RequiredArgsConstructor
-public class UserProfileRepositoryAdapter implements UserProfileRepository {
+public class UserProfileRepositoryAdapter implements UserProfileRepositoryPort {
 
     private final JpaUserProfileRepository jpaRepository;
     private final UserProfileEntityMapper mapper;

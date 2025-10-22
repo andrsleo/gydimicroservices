@@ -1,5 +1,10 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.security.core.userdetails.UserDetailsService;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.shared.security.JwtService;
 import com.affiliate.rentals.gydi.users.application.dto.AuthResponse;
 import com.affiliate.rentals.gydi.users.application.dto.LoginRequest;
@@ -9,13 +14,9 @@ import com.affiliate.rentals.gydi.users.domain.exception.InvalidCredentialsExcep
 import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.RefreshToken;
 import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepository;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
+import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepositoryPort;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
-import org.springframework.security.core.userdetails.UserDetails;
-import org.springframework.security.core.userdetails.UserDetailsService;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
 /**
  * Use case for authenticating a user with email and password.
@@ -43,8 +44,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class AuthenticateUserUseCase {
 
-    private final UserRepository userRepository;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final UserRepositoryPort userRepository;
+    private final RefreshTokenRepositoryPort refreshTokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserDtoMapper mapper;
     private final JwtService jwtService;
@@ -61,8 +62,8 @@ public class AuthenticateUserUseCase {
      * @param userDetailsService the service for loading user details
      */
     public AuthenticateUserUseCase(
-            UserRepository userRepository,
-            RefreshTokenRepository refreshTokenRepository,
+            UserRepositoryPort userRepository,
+            RefreshTokenRepositoryPort refreshTokenRepository,
             PasswordEncoder passwordEncoder,
             UserDtoMapper mapper,
             JwtService jwtService,

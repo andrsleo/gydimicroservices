@@ -1,9 +1,10 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
-import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 
 /**
  * Use case for deleting a user by their unique identifier.
@@ -23,14 +24,14 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class DeleteUserUseCase {
 
-    private final UserRepository userRepository;
+    private final UserRepositoryPort userRepository;
 
     /**
      * Constructs a new DeleteUserUseCase with required dependencies.
      *
      * @param userRepository the repository for user persistence operations
      */
-    public DeleteUserUseCase(UserRepository userRepository) {
+    public DeleteUserUseCase(UserRepositoryPort userRepository) {
         this.userRepository = userRepository;
     }
 

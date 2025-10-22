@@ -15,7 +15,7 @@ import java.util.UUID;
  * @author GYDI Development Team
  * @see UserProfile
  */
-public interface UserProfileRepository {
+public interface UserProfileRepositoryPort {
 
     /**
      * Persists a new user profile or updates an existing one.

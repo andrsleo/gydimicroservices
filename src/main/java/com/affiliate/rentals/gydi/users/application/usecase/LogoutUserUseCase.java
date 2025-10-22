@@ -1,11 +1,13 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
-import com.affiliate.rentals.gydi.shared.security.TokenBlacklistService;
-import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepository;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import com.affiliate.rentals.gydi.shared.security.TokenBlacklistService;
+import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepositoryPort;
+
 
 /**
  * Use case for logging out a user.
@@ -21,11 +23,11 @@ public class LogoutUserUseCase {
     private static final Logger logger = LoggerFactory.getLogger(LogoutUserUseCase.class);
 
     private final TokenBlacklistService tokenBlacklistService;
-    private final RefreshTokenRepository refreshTokenRepository;
+    private final RefreshTokenRepositoryPort refreshTokenRepository;
 
     public LogoutUserUseCase(
             TokenBlacklistService tokenBlacklistService,
-            RefreshTokenRepository refreshTokenRepository
+            RefreshTokenRepositoryPort refreshTokenRepository
     ) {
         this.tokenBlacklistService = tokenBlacklistService;
         this.refreshTokenRepository = refreshTokenRepository;

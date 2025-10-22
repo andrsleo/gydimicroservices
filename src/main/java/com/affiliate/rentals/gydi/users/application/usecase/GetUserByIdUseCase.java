@@ -1,12 +1,13 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
 import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
 import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepository;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 
 /**
  * Use case for retrieving a user by their unique identifier.
@@ -28,7 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 public class GetUserByIdUseCase {
 
-    private final UserRepository userRepository;
+    private final UserRepositoryPort userRepository;
     private final UserDtoMapper mapper;
 
     /**
@@ -37,7 +38,7 @@ public class GetUserByIdUseCase {
      * @param userRepository the repository for user persistence operations
      * @param mapper the mapper for converting between domain andDTO objects
      */
-    public GetUserByIdUseCase(UserRepository userRepository, UserDtoMapper mapper) {
+    public GetUserByIdUseCase(UserRepositoryPort userRepository, UserDtoMapper mapper) {
         this.userRepository = userRepository;
         this.mapper = mapper;
     }
