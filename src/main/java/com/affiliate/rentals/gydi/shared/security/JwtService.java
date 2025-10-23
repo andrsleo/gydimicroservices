@@ -7,6 +7,8 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.stereotype.Service;
 
+import com.affiliate.rentals.gydi.users.domain.model.User;
+
 import javax.crypto.SecretKey;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
@@ -37,6 +39,11 @@ public class JwtService {
     private long refreshExpiration;
 
     private static final String USER_ID_CLAIM = "userId";
+    private static final String SUBSCRIPTION_PLAN_CLAIM = "subscriptionPlan";
+    private static final String CAN_PUBLISH_CLAIM = "canPublish";
+    private static final String CAN_REFER_CLAIM = "canRefer";
+    private static final String CAN_RENT_CLAIM = "canRent";
+    private static final String ACCOUNT_VERIFIED_CLAIM = "accountVerified";
 
     /**
      * Extracts the username (subject) from a JWT token.
@@ -70,6 +77,56 @@ public class JwtService {
             // Fallback: try to parse as string
             return Long.parseLong(userIdObj.toString());
         });
+    }
+
+    /**
+     * Extracts the subscription plan from a JWT token.
+     *
+     * @param token the JWT token
+     * @return the subscription plan name, or null if not present
+     */
+    public String extractSubscriptionPlan(String token) {
+        return extractClaim(token, claims -> (String) claims.get(SUBSCRIPTION_PLAN_CLAIM));
+    }
+
+    /**
+     * Extracts the canPublish capability from a JWT token.
+     *
+     * @param token the JWT token
+     * @return true if user can publish, false otherwise
+     */
+    public Boolean extractCanPublish(String token) {
+        return extractClaim(token, claims -> (Boolean) claims.get(CAN_PUBLISH_CLAIM));
+    }
+
+    /**
+     * Extracts the canRefer capability from a JWT token.
+     *
+     * @param token the JWT token
+     * @return true if user can refer, false otherwise
+     */
+    public Boolean extractCanRefer(String token) {
+        return extractClaim(token, claims -> (Boolean) claims.get(CAN_REFER_CLAIM));
+    }
+
+    /**
+     * Extracts the canRent capability from a JWT token.
+     *
+     * @param token the JWT token
+     * @return true if user can rent, false otherwise
+     */
+    public Boolean extractCanRent(String token) {
+        return extractClaim(token, claims -> (Boolean) claims.get(CAN_RENT_CLAIM));
+    }
+
+    /**
+     * Extracts the account verification status from a JWT token.
+     *
+     * @param token the JWT token
+     * @return true if account is verified, false otherwise
+     */
+    public Boolean extractAccountVerified(String token) {
+        return extractClaim(token, claims -> (Boolean) claims.get(ACCOUNT_VERIFIED_CLAIM));
     }
 
     /**
@@ -115,7 +172,9 @@ public class JwtService {
      * @param userDetails the user details
      * @param userId the user ID to include in the token claims
      * @return the generated JWT token with userId claim
+     * @deprecated Use {@link #generateTokenWithUserData(UserDetails, User)} instead
      */
+    @Deprecated(since = "2.0", forRemoval = false)
     public String generateTokenWithUserId(UserDetails userDetails, Long userId) {
         Map<String, Object> claims = new HashMap<>();
         claims.put(USER_ID_CLAIM, userId);
@@ -125,6 +184,46 @@ public class JwtService {
                 .map(Object::toString)
                 .toList();
         claims.put("roles", authorities);
+
+        return buildToken(claims, userDetails, jwtExpiration);
+    }
+
+    /**
+     * Generates a JWT token with complete user data including permissions and capabilities.
+     *
+     * <p>This method creates a comprehensive JWT token that includes:</p>
+     * <ul>
+     *   <li>User ID and roles</li>
+     *   <li>Subscription plan (FREE, PRO, ELITE)</li>
+     *   <li>User capabilities (canPublish, canRefer, canRent)</li>
+     *   <li>Account verification status</li>
+     * </ul>
+     *
+     * <p>This allows the frontend to make permission decisions without additional API calls,
+     * while still validating critical operations on the backend.</p>
+     *
+     * @param userDetails the Spring Security user details
+     * @param user the domain user model with complete information
+     * @return the generated JWT token with all user data claims
+     */
+    public String generateTokenWithUserData(UserDetails userDetails, User user) {
+        Map<String, Object> claims = new HashMap<>();
+
+        // Basic user information
+        claims.put(USER_ID_CLAIM, user.id());
+
+        // Include user roles/authorities in JWT claims
+        var authorities = userDetails.getAuthorities().stream()
+                .map(Object::toString)
+                .toList();
+        claims.put("roles", authorities);
+
+        // Subscription and permissions information
+        claims.put(SUBSCRIPTION_PLAN_CLAIM, user.activePlan().name());
+        claims.put(CAN_PUBLISH_CLAIM, user.capabilities().canPublish());
+        claims.put(CAN_REFER_CLAIM, user.capabilities().canRefer());
+        claims.put(CAN_RENT_CLAIM, user.capabilities().canRent());
+        claims.put(ACCOUNT_VERIFIED_CLAIM, user.isAccountVerified());
 
         return buildToken(claims, userDetails, jwtExpiration);
     }

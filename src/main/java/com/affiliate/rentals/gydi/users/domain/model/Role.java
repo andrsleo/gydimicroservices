@@ -45,21 +45,12 @@ public record Role(Long id, RoleName name) {
     }
 
     /**
-     * Factory method to create an OWNER role without an ID.
+     * Factory method to create a USER role without an ID.
      *
-     * @return a new OWNER Role instance
+     * @return a new USER Role instance
      */
-    public static Role owner() {
-        return new Role(null, RoleName.OWNER);
-    }
-
-    /**
-     * Factory method to create a GUEST role without an ID.
-     *
-     * @return a new GUEST Role instance
-     */
-    public static Role guest() {
-        return new Role(null, RoleName.GUEST);
+    public static Role user() {
+        return new Role(null, RoleName.USER);
     }
 
     /**
@@ -72,21 +63,12 @@ public record Role(Long id, RoleName name) {
     }
 
     /**
-     * Checks if this role is an OWNER role.
+     * Checks if this role is a USER role.
      *
-     * @return {@code true} if this role is OWNER, {@code false} otherwise
+     * @return {@code true} if this role is USER, {@code false} otherwise
      */
-    public boolean isOwner() {
-        return RoleName.OWNER.equals(this.name);
-    }
-
-    /**
-     * Checks if this role is a GUEST role.
-     *
-     * @return {@code true} if this role is GUEST, {@code false} otherwise
-     */
-    public boolean isGuest() {
-        return RoleName.GUEST.equals(this.name);
+    public boolean isUser() {
+        return RoleName.USER.equals(this.name);
     }
 
     /**
@@ -96,5 +78,15 @@ public record Role(Long id, RoleName name) {
      */
     public boolean isAdmin() {
         return RoleName.ADMIN.equals(this.name);
+    }
+
+    /**
+     * Checks if this role has system-level access.
+     * Currently, only ADMIN has system-level access.
+     *
+     * @return {@code true} if this role has system access, {@code false} otherwise
+     */
+    public boolean hasSystemAccess() {
+        return isAdmin();
     }
 }

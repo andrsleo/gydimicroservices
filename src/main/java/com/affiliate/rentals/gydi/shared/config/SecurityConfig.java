@@ -16,6 +16,11 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.web.cors.CorsConfiguration;
+import org.springframework.web.cors.CorsConfigurationSource;
+import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+
+import java.util.Arrays;
 
 /**
  * Spring Security configuration for the application.
@@ -50,6 +55,7 @@ public class SecurityConfig {
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
                 .csrf(AbstractHttpConfigurer::disable)
+                .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
@@ -94,5 +100,51 @@ public class SecurityConfig {
     @Bean
     public PasswordEncoder passwordEncoder() {
         return new BCryptPasswordEncoder(10);
+    }
+
+    /**
+     * Configures CORS (Cross-Origin Resource Sharing) for the application.
+     *
+     * <p>This configuration allows the Next.js frontend running on localhost:3000
+     * to make requests to this backend API running on localhost:8080.</p>
+     *
+     * <p><strong>Production Note:</strong> Update allowed origins for production deployment.
+     * Do not use "*" in production as it allows any origin to access your API.</p>
+     *
+     * @return CorsConfigurationSource configured for frontend integration
+     */
+    @Bean
+    public CorsConfigurationSource corsConfigurationSource() {
+        CorsConfiguration configuration = new CorsConfiguration();
+
+        // Allow frontend origin (localhost:3000 for development)
+        // TODO: Update this for production deployment
+        configuration.setAllowedOrigins(Arrays.asList(
+                "http://localhost:3000",
+                "http://127.0.0.1:3000"
+        ));
+
+        // Allow all HTTP methods (GET, POST, PUT, DELETE, PATCH, OPTIONS)
+        configuration.setAllowedMethods(Arrays.asList(
+                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
+        ));
+
+        // Allow all headers
+        configuration.setAllowedHeaders(Arrays.asList("*"));
+
+        // Allow credentials (cookies, authorization headers)
+        configuration.setAllowCredentials(true);
+
+        // Expose authorization header to frontend
+        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+
+        // Cache preflight response for 1 hour
+        configuration.setMaxAge(3600L);
+
+        // Apply configuration to all paths
+        UrlBasedCorsConfigurationSource source = new UrlBasedCorsConfigurationSource();
+        source.registerCorsConfiguration("/**", configuration);
+
+        return source;
     }
 }

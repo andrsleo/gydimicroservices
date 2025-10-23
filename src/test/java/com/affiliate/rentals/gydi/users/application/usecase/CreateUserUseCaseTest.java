@@ -69,7 +69,7 @@ class CreateUserUseCaseTest {
                 "SecurePassword123",
                 "John Doe",
                 "+1234567890",
-                Set.of("GUEST")
+                Set.of("USER")
         );
 
         savedUser = User.builder()
@@ -78,7 +78,7 @@ class CreateUserUseCaseTest {
                 .passwordHash("$2a$10$encodedPassword")
                 .name("John Doe")
                 .phoneNumber("+1234567890")
-                .roles(Set.of(Role.guest()))
+                .roles(Set.of(Role.user()))
                 .build();
 
         expectedResponse = new UserResponse(
@@ -86,7 +86,7 @@ class CreateUserUseCaseTest {
                 "john.doe@example.com",
                 "John Doe",
                 "+1234567890",
-                Set.of("GUEST"),
+                Set.of("USER"),
                 LocalDateTime.now()
         );
     }
@@ -109,7 +109,7 @@ class CreateUserUseCaseTest {
         assertThat(result.email()).isEqualTo("john.doe@example.com");
         assertThat(result.name()).isEqualTo("John Doe");
         assertThat(result.phoneNumber()).isEqualTo("+1234567890");
-        assertThat(result.roleNames()).containsExactly("GUEST");
+        assertThat(result.roleNames()).containsExactly("USER");
 
         verify(userRepository).existsByEmail(any(Email.class));
         verify(passwordEncoder).encode("SecurePassword123");
@@ -135,8 +135,8 @@ class CreateUserUseCaseTest {
     }
 
     @Test
-    @DisplayName("Should create user with GUEST role when no roles provided")
-    void shouldCreateUserWithDefaultGuestRole() {
+        @DisplayName("Should create user with default USER role when no roles provided")
+        void shouldCreateUserWithDefaultGuestRole() {
         // Arrange
         CreateUserRequest requestWithoutRoles = new CreateUserRequest(
                 "jane.doe@example.com",
@@ -152,7 +152,7 @@ class CreateUserUseCaseTest {
                 .passwordHash("$2a$10$encodedPassword")
                 .name("Jane Doe")
                 .phoneNumber("+1987654321")
-                .roles(Set.of(Role.guest()))
+                .roles(Set.of(Role.user()))
                 .build();
 
         UserResponse response = new UserResponse(
@@ -160,7 +160,7 @@ class CreateUserUseCaseTest {
                 "jane.doe@example.com",
                 "Jane Doe",
                 "+1987654321",
-                Set.of("GUEST"),
+                Set.of("USER"),
                 LocalDateTime.now()
         );
 
@@ -174,7 +174,7 @@ class CreateUserUseCaseTest {
 
         // Assert
         assertThat(result).isNotNull();
-        assertThat(result.roleNames()).containsExactly("GUEST");
+        assertThat(result.roleNames()).containsExactly("USER");
 
         verify(userRepository).existsByEmail(any(Email.class));
         verify(passwordEncoder).encode("Password123");
@@ -190,7 +190,7 @@ class CreateUserUseCaseTest {
                 "AdminPass123",
                 "Admin User",
                 "+1111111111",
-                Set.of("ADMIN", "GUEST")
+                Set.of("USER")
         );
 
         User adminUser = User.builder()
@@ -201,7 +201,7 @@ class CreateUserUseCaseTest {
                 .phoneNumber("+1111111111")
                 .roles(Set.of(
                         new Role(1L, RoleName.fromValue("ADMIN")),
-                        new Role(2L, RoleName.fromValue("GUEST"))
+                        new Role(2L, RoleName.fromValue("USER"))
                 ))
                 .build();
 
@@ -210,7 +210,7 @@ class CreateUserUseCaseTest {
                 "admin@example.com",
                 "Admin User",
                 "+1111111111",
-                Set.of("ADMIN", "GUEST"),
+                Set.of("ADMIN", "USER"),
                 LocalDateTime.now()
         );
 
@@ -224,7 +224,7 @@ class CreateUserUseCaseTest {
 
         // Assert
         assertThat(result).isNotNull();
-        assertThat(result.roleNames()).containsExactlyInAnyOrder("ADMIN", "GUEST");
+        assertThat(result.roleNames()).containsExactlyInAnyOrder("ADMIN", "USER");
 
         verify(userRepository).save(any(User.class));
     }
@@ -241,7 +241,7 @@ class CreateUserUseCaseTest {
                 rawPassword,
                 "Test User",
                 "+1234567890",
-                Set.of("GUEST")
+                Set.of("USER")
         );
 
         when(userRepository.existsByEmail(any(Email.class))).thenReturn(false);

@@ -92,25 +92,25 @@ class AuthenticateUserUseCaseTest {
                 .passwordHash("$2a$10$encodedPassword")
                 .name("John Doe")
                 .phoneNumber("+1234567890")
-                .roles(Set.of(Role.guest()))
+                .roles(Set.of(Role.user()))
                 .build();
 
         validLoginRequest = new LoginRequest(VALID_EMAIL, VALID_PASSWORD);
 
-        userResponse = new UserResponse(
+    userResponse = new UserResponse(
                 USER_ID,
                 VALID_EMAIL,
                 "John Doe",
                 "+1234567890",
-                Set.of("GUEST"),
+        Set.of("USER"),
                 LocalDateTime.now()
         );
 
-        userDetails = org.springframework.security.core.userdetails.User.builder()
-                .username(VALID_EMAIL)
-                .password("$2a$10$encodedPassword")
-                .authorities("ROLE_GUEST")
-                .build();
+    userDetails = org.springframework.security.core.userdetails.User.builder()
+        .username(VALID_EMAIL)
+        .password("$2a$10$encodedPassword")
+        .authorities("ROLE_USER")
+        .build();
 
         refreshToken = RefreshToken.create(USER_ID, REFRESH_EXPIRATION);
     }
@@ -123,7 +123,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches(VALID_PASSWORD, "$2a$10$encodedPassword")).thenReturn(true);
         when(mapper.toResponse(existingUser)).thenReturn(userResponse);
         when(userDetailsService.loadUserByUsername(VALID_EMAIL)).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(userDetails, USER_ID)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(userDetails, existingUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -141,7 +141,7 @@ class AuthenticateUserUseCaseTest {
         verify(userRepository).findByEmail(any(Email.class));
         verify(passwordEncoder).matches(VALID_PASSWORD, "$2a$10$encodedPassword");
         verify(userDetailsService).loadUserByUsername(VALID_EMAIL);
-        verify(jwtService).generateTokenWithUserId(userDetails, USER_ID);
+        verify(jwtService).generateTokenWithUserData(userDetails, existingUser);
         verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
 
@@ -158,7 +158,7 @@ class AuthenticateUserUseCaseTest {
 
         verify(userRepository).findByEmail(any(Email.class));
         verify(passwordEncoder, never()).matches(anyString(), anyString());
-        verify(jwtService, never()).generateTokenWithUserId(any(), anyLong());
+        verify(jwtService, never()).generateTokenWithUserData(any(), any());
         verify(refreshTokenRepository, never()).save(any());
     }
 
@@ -177,7 +177,7 @@ class AuthenticateUserUseCaseTest {
 
         verify(userRepository).findByEmail(any(Email.class));
         verify(passwordEncoder).matches(INVALID_PASSWORD, "$2a$10$encodedPassword");
-        verify(jwtService, never()).generateTokenWithUserId(any(), anyLong());
+        verify(jwtService, never()).generateTokenWithUserData(any(), any());
         verify(refreshTokenRepository, never()).save(any());
     }
 
@@ -189,7 +189,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches(VALID_PASSWORD, "$2a$10$encodedPassword")).thenReturn(true);
         when(mapper.toResponse(existingUser)).thenReturn(userResponse);
         when(userDetailsService.loadUserByUsername(VALID_EMAIL)).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(userDetails, USER_ID)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(userDetails, existingUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -197,7 +197,7 @@ class AuthenticateUserUseCaseTest {
         authenticateUserUseCase.execute(validLoginRequest);
 
         // Assert
-        verify(jwtService).generateTokenWithUserId(userDetails, USER_ID);
+        verify(jwtService).generateTokenWithUserData(userDetails, existingUser);
         verify(userDetailsService).loadUserByUsername(VALID_EMAIL);
     }
 
@@ -209,7 +209,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches(VALID_PASSWORD, "$2a$10$encodedPassword")).thenReturn(true);
         when(mapper.toResponse(existingUser)).thenReturn(userResponse);
         when(userDetailsService.loadUserByUsername(VALID_EMAIL)).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(userDetails, USER_ID)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(userDetails, existingUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -261,7 +261,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches("AdminPass123", "$2a$10$adminPassword")).thenReturn(true);
         when(mapper.toResponse(adminUser)).thenReturn(adminResponse);
         when(userDetailsService.loadUserByUsername("admin@example.com")).thenReturn(adminUserDetails);
-        when(jwtService.generateTokenWithUserId(adminUserDetails, 2L)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(adminUserDetails, adminUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -271,7 +271,7 @@ class AuthenticateUserUseCaseTest {
         // Assert
         assertThat(result).isNotNull();
         assertThat(result.user().roleNames()).containsExactly("ADMIN");
-        verify(jwtService).generateTokenWithUserId(adminUserDetails, 2L);
+        verify(jwtService).generateTokenWithUserData(adminUserDetails, adminUser);
     }
 
     @Test
@@ -284,7 +284,7 @@ class AuthenticateUserUseCaseTest {
                 .passwordHash("$2a$10$multiPassword")
                 .name("Multi Role User")
                 .phoneNumber("+2222222222")
-                .roles(Set.of(Role.admin(), Role.guest()))
+                .roles(Set.of(Role.admin(), Role.user()))
                 .build();
 
         LoginRequest multiRoleRequest = new LoginRequest("multi@example.com", "MultiPass123");
@@ -294,15 +294,15 @@ class AuthenticateUserUseCaseTest {
                 "multi@example.com",
                 "Multi Role User",
                 "+2222222222",
-                Set.of("ADMIN", "GUEST"),
+        Set.of("ADMIN", "USER"),
                 LocalDateTime.now()
         );
 
         when(userRepository.findByEmail(any(Email.class))).thenReturn(Optional.of(multiRoleUser));
         when(passwordEncoder.matches("MultiPass123", "$2a$10$multiPassword")).thenReturn(true);
-        when(mapper.toResponse(multiRoleUser)).thenReturn(multiRoleResponse);
+    when(mapper.toResponse(multiRoleUser)).thenReturn(multiRoleResponse);
         when(userDetailsService.loadUserByUsername("multi@example.com")).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(any(), anyLong())).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(any(), any())).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -310,8 +310,8 @@ class AuthenticateUserUseCaseTest {
         AuthResponse result = authenticateUserUseCase.execute(multiRoleRequest);
 
         // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.user().roleNames()).containsExactlyInAnyOrder("ADMIN", "GUEST");
+    assertThat(result).isNotNull();
+    assertThat(result.user().roleNames()).containsExactlyInAnyOrder("ADMIN", "USER");
     }
 
     @Test
@@ -322,7 +322,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches(VALID_PASSWORD, "$2a$10$encodedPassword")).thenReturn(true);
         when(mapper.toResponse(existingUser)).thenReturn(userResponse);
         when(userDetailsService.loadUserByUsername(VALID_EMAIL)).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(userDetails, USER_ID)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(userDetails, existingUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -341,7 +341,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches(VALID_PASSWORD, "$2a$10$encodedPassword")).thenReturn(true);
         when(mapper.toResponse(existingUser)).thenReturn(userResponse);
         when(userDetailsService.loadUserByUsername(VALID_EMAIL)).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(userDetails, USER_ID)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(userDetails, existingUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -361,7 +361,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches(VALID_PASSWORD, "$2a$10$encodedPassword")).thenReturn(true);
         when(mapper.toResponse(existingUser)).thenReturn(userResponse);
         when(userDetailsService.loadUserByUsername(VALID_EMAIL)).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(userDetails, USER_ID)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(userDetails, existingUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -380,7 +380,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches(VALID_PASSWORD, "$2a$10$encodedPassword")).thenReturn(true);
         when(mapper.toResponse(existingUser)).thenReturn(userResponse);
         when(userDetailsService.loadUserByUsername(VALID_EMAIL)).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(userDetails, USER_ID)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(userDetails, existingUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -393,7 +393,7 @@ class AuthenticateUserUseCaseTest {
         inOrder.verify(passwordEncoder).matches(VALID_PASSWORD, "$2a$10$encodedPassword");
         inOrder.verify(mapper).toResponse(existingUser);
         inOrder.verify(userDetailsService).loadUserByUsername(VALID_EMAIL);
-        inOrder.verify(jwtService).generateTokenWithUserId(userDetails, USER_ID);
+        inOrder.verify(jwtService).generateTokenWithUserData(userDetails, existingUser);
         inOrder.verify(jwtService).getRefreshExpiration();
         inOrder.verify(refreshTokenRepository).save(any(RefreshToken.class));
     }
@@ -406,7 +406,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches(VALID_PASSWORD, "$2a$10$encodedPassword")).thenReturn(true);
         when(mapper.toResponse(existingUser)).thenReturn(userResponse);
         when(userDetailsService.loadUserByUsername(VALID_EMAIL)).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(userDetails, USER_ID)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(userDetails, existingUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 
@@ -426,7 +426,7 @@ class AuthenticateUserUseCaseTest {
         when(passwordEncoder.matches(VALID_PASSWORD, "$2a$10$encodedPassword")).thenReturn(true);
         when(mapper.toResponse(existingUser)).thenReturn(userResponse);
         when(userDetailsService.loadUserByUsername(VALID_EMAIL)).thenReturn(userDetails);
-        when(jwtService.generateTokenWithUserId(userDetails, USER_ID)).thenReturn(ACCESS_TOKEN);
+        when(jwtService.generateTokenWithUserData(userDetails, existingUser)).thenReturn(ACCESS_TOKEN);
         when(jwtService.getRefreshExpiration()).thenReturn(REFRESH_EXPIRATION);
         when(refreshTokenRepository.save(any(RefreshToken.class))).thenReturn(refreshToken);
 

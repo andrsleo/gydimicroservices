@@ -1,39 +1,45 @@
 package com.affiliate.rentals.gydi.users.domain.model;
 
 /**
- * Enumeration of role names in the rental system.
+ * Enumeration of role names in the GYDI platform.
  *
  * <p>This enum provides type safety and compile-time validation for role names.
- * It supports three primary roles:</p>
+ * It supports two primary roles:</p>
  * <ul>
- *   <li>{@code OWNER} - Property owners who can list and manage rental properties</li>
- *   <li>{@code GUEST} - Users who can book and review properties</li>
- *   <li>{@code ADMIN} - System administrators with elevated privileges</li>
+ *   <li>{@code USER} - Base unified role for all authenticated users (property owners, referrers, renters)</li>
+ *   <li>{@code ADMIN} - System administrators with full access and elevated privileges</li>
+ * </ul>
+ *
+ * <p>Note: The USER role is unified and combines capabilities of property owners,
+ * referrers, and renters. Access to specific features is determined by:</p>
+ * <ul>
+ *   <li>Subscription plan (FREE, PRO, ELITE)</li>
+ *   <li>User capabilities (canPublish, canRefer, canRent)</li>
+ *   <li>Account verification status</li>
  * </ul>
  *
  * <p>Example usage:</p>
  * <pre>{@code
- * RoleName roleName = RoleName.OWNER;
+ * RoleName roleName = RoleName.USER;
  * String value = roleName.getValue();
- * RoleName parsed = RoleName.fromValue("GUEST");
+ * RoleName parsed = RoleName.fromValue("ADMIN");
  * }</pre>
  *
  * @author GYDI Development Team
  * @see Role
+ * @see SubscriptionPlan
+ * @see UserCapabilities
  */
 public enum RoleName {
     /**
-     * Role for property owners who can list and manage rental properties.
+     * Unified role for all regular users of the platform.
+     * Capabilities are determined by subscription plan and user capabilities.
      */
-    OWNER("OWNER"),
+    USER("USER"),
 
     /**
-     * Role for guests who can book and review properties.
-     */
-    GUEST("GUEST"),
-
-    /**
-     * Role for system administrators with elevated privileges.
+     * Role for system administrators with complete access.
+     * Admins bypass all subscription limits and capability checks.
      */
     ADMIN("ADMIN");
 
