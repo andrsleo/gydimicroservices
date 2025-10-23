@@ -36,6 +36,9 @@ public final class User {
     private final String passwordHash;
     private final String phoneNumber;
     private final Set<Role> roles;
+    private final SubscriptionPlan activePlan;
+    private final UserCapabilities capabilities;
+    private final boolean accountVerified;
     private final LocalDateTime createdAt;
 
     /**
@@ -52,6 +55,9 @@ public final class User {
         this.passwordHash = Objects.requireNonNull(builder.passwordHash, "Password hash cannot be null");
         this.phoneNumber = builder.phoneNumber;
         this.roles = Collections.unmodifiableSet(new HashSet<>(builder.roles));
+        this.activePlan = Objects.requireNonNullElse(builder.activePlan, SubscriptionPlan.FREE);
+        this.capabilities = Objects.requireNonNullElse(builder.capabilities, UserCapabilities.defaultCapabilities());
+        this.accountVerified = builder.accountVerified;
         this.createdAt = Objects.requireNonNullElseGet(builder.createdAt, LocalDateTime::now);
     }
 
@@ -119,6 +125,33 @@ public final class User {
     }
 
     /**
+     * Returns the user's active subscription plan.
+     *
+     * @return the active subscription plan, never {@code null}
+     */
+    public SubscriptionPlan activePlan() {
+        return activePlan;
+    }
+
+    /**
+     * Returns the user's capabilities.
+     *
+     * @return the user capabilities, never {@code null}
+     */
+    public UserCapabilities capabilities() {
+        return capabilities;
+    }
+
+    /**
+     * Returns whether the user's account is verified.
+     *
+     * @return {@code true} if account is verified, {@code false} otherwise
+     */
+    public boolean isAccountVerified() {
+        return accountVerified;
+    }
+
+    /**
      * Checks if the user has a specific role.
      *
      * @param roleName the role name to check
@@ -127,6 +160,15 @@ public final class User {
     public boolean hasRole(RoleName roleName) {
         return roles.stream()
                 .anyMatch(role -> role.name().equals(roleName));
+    }
+
+    /**
+     * Checks if the user is an admin.
+     *
+     * @return {@code true} if user has ADMIN role, {@code false} otherwise
+     */
+    public boolean isAdmin() {
+        return hasRole(RoleName.ADMIN);
     }
 
     /**
@@ -215,6 +257,9 @@ public final class User {
         private String passwordHash;
         private String phoneNumber;
         private Set<Role> roles = new HashSet<>();
+        private SubscriptionPlan activePlan;
+        private UserCapabilities capabilities;
+        private boolean accountVerified;
         private LocalDateTime createdAt;
 
         private Builder() {
@@ -307,6 +352,39 @@ public final class User {
          */
         public Builder addRole(Role role) {
             this.roles.add(role);
+            return this;
+        }
+
+        /**
+         * Sets the user's active subscription plan.
+         *
+         * @param activePlan the subscription plan
+         * @return this builder instance
+         */
+        public Builder activePlan(SubscriptionPlan activePlan) {
+            this.activePlan = activePlan;
+            return this;
+        }
+
+        /**
+         * Sets the user's capabilities.
+         *
+         * @param capabilities the user capabilities
+         * @return this builder instance
+         */
+        public Builder capabilities(UserCapabilities capabilities) {
+            this.capabilities = capabilities;
+            return this;
+        }
+
+        /**
+         * Sets whether the user's account is verified.
+         *
+         * @param accountVerified the verification status
+         * @return this builder instance
+         */
+        public Builder accountVerified(boolean accountVerified) {
+            this.accountVerified = accountVerified;
             return this;
         }
 

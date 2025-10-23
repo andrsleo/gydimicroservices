@@ -69,6 +69,44 @@ public class UserEntity {
     private String phoneNumber;
 
     /**
+     * The user's active subscription plan.
+     * Determines commission rates and resource limits.
+     * Defaults to FREE.
+     */
+    @Enumerated(EnumType.STRING)
+    @Column(name = "active_plan", nullable = false, length = 20)
+    private SubscriptionPlanEntity activePlan = SubscriptionPlanEntity.FREE;
+
+    /**
+     * Flag indicating if the user can publish properties.
+     * Defaults to true.
+     */
+    @Column(name = "can_publish", nullable = false)
+    private Boolean canPublish = true;
+
+    /**
+     * Flag indicating if the user can generate referral links.
+     * Defaults to true.
+     */
+    @Column(name = "can_refer", nullable = false)
+    private Boolean canRefer = true;
+
+    /**
+     * Flag indicating if the user can rent/book properties.
+     * Defaults to true.
+     */
+    @Column(name = "can_rent", nullable = false)
+    private Boolean canRent = true;
+
+    /**
+     * Flag indicating if the user's account is verified.
+     * Some features require verification (e.g., publishing, referrals).
+     * Defaults to false.
+     */
+    @Column(name = "account_verified", nullable = false)
+    private Boolean accountVerified = false;
+
+    /**
      * The roles assigned to this user.
      * This is the owning side of the many-to-many relationship.
      */

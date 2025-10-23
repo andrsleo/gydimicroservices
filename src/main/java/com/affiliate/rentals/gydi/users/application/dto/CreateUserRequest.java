@@ -1,10 +1,10 @@
 package com.affiliate.rentals.gydi.users.application.dto;
 
+import java.util.Set;
+
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
-
-import java.util.Set;
 
 /**
  * DTO for creating a new user.

@@ -17,7 +17,8 @@ public sealed abstract class DomainException extends RuntimeException
                 UserAlreadyExistsException,
                 InvalidCredentialsException,
                 InvalidUserDataException,
-                InvalidRefreshTokenException {
+                InvalidRefreshTokenException,
+                PermissionDeniedException {
 
     /**
      * Constructs a new domain exception with the specified detail message.

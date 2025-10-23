@@ -60,7 +60,7 @@ public class CreateUserUseCase {
                 .map(RoleName::fromValue)
                 .map(roleName -> new Role(null, roleName))
                 .collect(Collectors.toSet())
-                : Set.of(Role.guest());
+                : Set.of(Role.user());
 
         User user = User.builder()
                 .email(email)

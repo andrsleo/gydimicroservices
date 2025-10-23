@@ -76,9 +76,9 @@ public class RefreshTokenUseCase {
         User user = userRepository.findById(refreshToken.getUserId())
                 .orElseThrow(() -> UserNotFoundException.withId(refreshToken.getUserId()));
 
-        // Generate new access token with userId claim
+        // Generate new access token with complete user data (permissions, capabilities, subscription)
         UserDetails userDetails = userDetailsService.loadUserByUsername(user.email().address());
-        String newAccessToken = jwtService.generateTokenWithUserId(userDetails, user.id());
+        String newAccessToken = jwtService.generateTokenWithUserData(userDetails, user);
 
         // Map user to response DTO
         UserResponse userResponse = mapper.toResponse(user);

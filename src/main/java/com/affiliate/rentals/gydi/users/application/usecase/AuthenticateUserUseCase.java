@@ -105,9 +105,9 @@ public class AuthenticateUserUseCase {
 
         UserResponse userResponse = mapper.toResponse(user);
 
-        // Generate JWT access token with userId claim for authenticated user
+        // Generate JWT access token with complete user data (permissions, capabilities, subscription)
         UserDetails userDetails = userDetailsService.loadUserByUsername(request.email());
-        String accessToken = jwtService.generateTokenWithUserId(userDetails, user.id());
+        String accessToken = jwtService.generateTokenWithUserData(userDetails, user);
 
         // Create and save refresh token
         RefreshToken refreshToken = RefreshToken.create(user.id(), jwtService.getRefreshExpiration());

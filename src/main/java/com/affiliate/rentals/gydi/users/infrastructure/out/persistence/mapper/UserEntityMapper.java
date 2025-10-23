@@ -5,11 +5,9 @@ import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
 
-import com.affiliate.rentals.gydi.users.domain.model.Email;
-import com.affiliate.rentals.gydi.users.domain.model.Role;
-import com.affiliate.rentals.gydi.users.domain.model.RoleName;
-import com.affiliate.rentals.gydi.users.domain.model.User;
+import com.affiliate.rentals.gydi.users.domain.model.*;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.RoleEntity;
+import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.SubscriptionPlanEntity;
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.UserEntity;
 
 /**
@@ -45,6 +43,21 @@ public class UserEntityMapper {
         entity.setPhoneNumber(user.phoneNumber());
         entity.setCreatedAt(user.createdAt());
 
+        // Map subscription plan
+        if (user.activePlan() != null) {
+            entity.setActivePlan(SubscriptionPlanEntity.valueOf(user.activePlan().name()));
+        }
+
+        // Map capabilities
+        if (user.capabilities() != null) {
+            entity.setCanPublish(user.capabilities().canPublish());
+            entity.setCanRefer(user.capabilities().canRefer());
+            entity.setCanRent(user.capabilities().canRent());
+        }
+
+        // Map account verification
+        entity.setAccountVerified(user.isAccountVerified());
+
         // Map roles
         if (user.roles() != null) {
             Set<RoleEntity> roleEntities = user.roles().stream()
@@ -78,6 +91,18 @@ public class UserEntityMapper {
                 .collect(Collectors.toSet());
         }
 
+        // Map subscription plan
+        SubscriptionPlan activePlan = entity.getActivePlan() != null
+            ? SubscriptionPlan.valueOf(entity.getActivePlan().name())
+            : SubscriptionPlan.FREE;
+
+        // Map capabilities
+        UserCapabilities capabilities = UserCapabilities.of(
+            entity.getCanPublish() != null ? entity.getCanPublish() : true,
+            entity.getCanRefer() != null ? entity.getCanRefer() : true,
+            entity.getCanRent() != null ? entity.getCanRent() : true
+        );
+
         return User.builder()
                 .id(entity.getId())
                 .name(entity.getName())
@@ -85,6 +110,9 @@ public class UserEntityMapper {
                 .passwordHash(entity.getPasswordHash())
                 .phoneNumber(entity.getPhoneNumber())
                 .roles(roles)
+                .activePlan(activePlan)
+                .capabilities(capabilities)
+                .accountVerified(entity.getAccountVerified() != null ? entity.getAccountVerified() : false)
                 .createdAt(entity.getCreatedAt())
                 .build();
     }

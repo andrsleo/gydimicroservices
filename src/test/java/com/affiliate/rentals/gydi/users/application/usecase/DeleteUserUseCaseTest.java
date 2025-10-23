@@ -58,7 +58,7 @@ class DeleteUserUseCaseTest {
                 .passwordHash("$2a$10$encodedPassword")
                 .name("John Doe")
                 .phoneNumber("+1234567890")
-                .roles(Set.of(Role.guest()))
+                .roles(Set.of(Role.user()))
                 .build();
     }
 
@@ -118,7 +118,7 @@ class DeleteUserUseCaseTest {
                 .passwordHash("password")
                 .name("Test User")
                 .phoneNumber("+1234567890")
-                .roles(Set.of(Role.guest()))
+                .roles(Set.of(Role.user()))
                 .build();
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
@@ -141,7 +141,7 @@ class DeleteUserUseCaseTest {
                 .passwordHash("password")
                 .name("Admin User")
                 .phoneNumber("+1111111111")
-                .roles(Set.of(Role.admin(), Role.guest()))
+                .roles(Set.of(Role.admin(), Role.user()))
                 .build();
 
         when(userRepository.findById(2L)).thenReturn(Optional.of(adminUser));

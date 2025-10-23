@@ -55,21 +55,21 @@ class GetUserByIdUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        existingUser = User.builder()
+    existingUser = User.builder()
                 .id(EXISTING_USER_ID)
                 .email(Email.of("john.doe@example.com"))
                 .passwordHash("$2a$10$encodedPassword")
                 .name("John Doe")
                 .phoneNumber("+1234567890")
-                .roles(Set.of(Role.guest()))
+        .roles(Set.of(Role.user()))
                 .build();
 
-        expectedResponse = new UserResponse(
+    expectedResponse = new UserResponse(
                 EXISTING_USER_ID,
                 "john.doe@example.com",
                 "John Doe",
                 "+1234567890",
-                Set.of("GUEST"),
+        Set.of("USER"),
                 LocalDateTime.now()
         );
     }
@@ -85,12 +85,12 @@ class GetUserByIdUseCaseTest {
         UserResponse result = getUserByIdUseCase.execute(EXISTING_USER_ID);
 
         // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.id()).isEqualTo(EXISTING_USER_ID);
-        assertThat(result.email()).isEqualTo("john.doe@example.com");
-        assertThat(result.name()).isEqualTo("John Doe");
-        assertThat(result.phoneNumber()).isEqualTo("+1234567890");
-        assertThat(result.roleNames()).containsExactly("GUEST");
+    assertThat(result).isNotNull();
+    assertThat(result.id()).isEqualTo(EXISTING_USER_ID);
+    assertThat(result.email()).isEqualTo("john.doe@example.com");
+    assertThat(result.name()).isEqualTo("John Doe");
+    assertThat(result.phoneNumber()).isEqualTo("+1234567890");
+    assertThat(result.roleNames()).containsExactly("USER");
 
         verify(userRepository).findById(EXISTING_USER_ID);
         verify(mapper).toResponse(existingUser);
@@ -121,15 +121,15 @@ class GetUserByIdUseCaseTest {
                 .passwordHash("$2a$10$encodedPassword")
                 .name("Admin User")
                 .phoneNumber("+1111111111")
-                .roles(Set.of(Role.admin(), Role.guest()))
+                .roles(Set.of(Role.admin(), Role.user()))
                 .build();
 
-        UserResponse adminResponse = new UserResponse(
+    UserResponse adminResponse = new UserResponse(
                 2L,
                 "admin@example.com",
                 "Admin User",
                 "+1111111111",
-                Set.of("ADMIN", "GUEST"),
+        Set.of("ADMIN", "USER"),
                 LocalDateTime.now()
         );
 
@@ -140,9 +140,9 @@ class GetUserByIdUseCaseTest {
         UserResponse result = getUserByIdUseCase.execute(2L);
 
         // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.id()).isEqualTo(2L);
-        assertThat(result.roleNames()).containsExactlyInAnyOrder("ADMIN", "GUEST");
+    assertThat(result).isNotNull();
+    assertThat(result.id()).isEqualTo(2L);
+    assertThat(result.roleNames()).containsExactlyInAnyOrder("ADMIN", "USER");
 
         verify(userRepository).findById(2L);
         verify(mapper).toResponse(adminUser);
@@ -173,7 +173,7 @@ class GetUserByIdUseCaseTest {
                 .passwordHash("password")
                 .name("Test User")
                 .phoneNumber("+1234567890")
-                .roles(Set.of(Role.guest()))
+                .roles(Set.of(Role.user()))
                 .build();
 
         UserResponse response = new UserResponse(

@@ -57,21 +57,21 @@ class GetAllUsersUseCaseTest {
     @BeforeEach
     void setUp() {
         // Setup user 1
-        user1 = User.builder()
+    user1 = User.builder()
                 .id(1L)
                 .email(Email.of("john.doe@example.com"))
                 .passwordHash("$2a$10$encodedPassword1")
                 .name("John Doe")
                 .phoneNumber("+1234567890")
-                .roles(Set.of(Role.guest()))
+        .roles(Set.of(Role.user()))
                 .build();
 
-        userResponse1 = new UserResponse(
+    userResponse1 = new UserResponse(
                 1L,
                 "john.doe@example.com",
                 "John Doe",
                 "+1234567890",
-                Set.of("GUEST"),
+        Set.of("USER"),
                 LocalDateTime.now()
         );
 
@@ -101,15 +101,15 @@ class GetAllUsersUseCaseTest {
                 .passwordHash("$2a$10$encodedPassword3")
                 .name("Bob Wilson")
                 .phoneNumber("+1555555555")
-                .roles(Set.of(Role.admin(), Role.guest()))
+            .roles(Set.of(Role.admin(), Role.user()))
                 .build();
 
-        userResponse3 = new UserResponse(
+    userResponse3 = new UserResponse(
                 3L,
                 "bob.wilson@example.com",
                 "Bob Wilson",
                 "+1555555555",
-                Set.of("ADMIN", "GUEST"),
+        Set.of("ADMIN", "USER"),
                 LocalDateTime.now()
         );
     }
@@ -235,13 +235,13 @@ class GetAllUsersUseCaseTest {
     @DisplayName("Should handle users with different role combinations")
     void shouldHandleUsersWithDifferentRoleCombinations() {
         // Arrange
-        User guestUser = User.builder()
+    User guestUser = User.builder()
                 .id(10L)
                 .email(Email.of("guest@example.com"))
                 .passwordHash("password")
                 .name("Guest User")
                 .phoneNumber("+1000000000")
-                .roles(Set.of(Role.guest()))
+        .roles(Set.of(Role.user()))
                 .build();
 
         User adminUser = User.builder()
@@ -253,18 +253,18 @@ class GetAllUsersUseCaseTest {
                 .roles(Set.of(Role.admin()))
                 .build();
 
-        User mixedUser = User.builder()
+    User mixedUser = User.builder()
                 .id(30L)
                 .email(Email.of("mixed@example.com"))
                 .passwordHash("password")
                 .name("Mixed User")
                 .phoneNumber("+3000000000")
-                .roles(Set.of(Role.admin(), Role.guest()))
+        .roles(Set.of(Role.admin(), Role.user()))
                 .build();
 
-        UserResponse guestResponse = new UserResponse(10L, "guest@example.com", "Guest User", "+1000000000", Set.of("GUEST"), LocalDateTime.now());
-        UserResponse adminResponse = new UserResponse(20L, "admin@example.com", "Admin User", "+2000000000", Set.of("ADMIN"), LocalDateTime.now());
-        UserResponse mixedResponse = new UserResponse(30L, "mixed@example.com", "Mixed User", "+3000000000", Set.of("ADMIN", "GUEST"), LocalDateTime.now());
+    UserResponse guestResponse = new UserResponse(10L, "guest@example.com", "Guest User", "+1000000000", Set.of("USER"), LocalDateTime.now());
+    UserResponse adminResponse = new UserResponse(20L, "admin@example.com", "Admin User", "+2000000000", Set.of("ADMIN"), LocalDateTime.now());
+    UserResponse mixedResponse = new UserResponse(30L, "mixed@example.com", "Mixed User", "+3000000000", Set.of("ADMIN", "USER"), LocalDateTime.now());
 
         when(userRepository.findAll()).thenReturn(List.of(guestUser, adminUser, mixedUser));
         when(mapper.toResponse(guestUser)).thenReturn(guestResponse);
@@ -277,9 +277,9 @@ class GetAllUsersUseCaseTest {
         // Assert
         assertThat(result).isNotNull();
         assertThat(result).hasSize(3);
-        assertThat(result.get(0).roleNames()).containsExactly("GUEST");
-        assertThat(result.get(1).roleNames()).containsExactly("ADMIN");
-        assertThat(result.get(2).roleNames()).containsExactlyInAnyOrder("ADMIN", "GUEST");
+    assertThat(result.get(0).roleNames()).containsExactly("USER");
+    assertThat(result.get(1).roleNames()).containsExactly("ADMIN");
+    assertThat(result.get(2).roleNames()).containsExactlyInAnyOrder("ADMIN", "USER");
 
         verify(userRepository).findAll();
         verify(mapper).toResponse(guestUser);

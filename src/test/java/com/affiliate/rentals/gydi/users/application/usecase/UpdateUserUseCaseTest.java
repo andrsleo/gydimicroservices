@@ -65,7 +65,7 @@ class UpdateUserUseCaseTest {
                 .passwordHash("$2a$10$encodedPassword")
                 .name("John Doe")
                 .phoneNumber("+1234567890")
-                .roles(Set.of(Role.guest()))
+                .roles(Set.of(Role.user()))
                 .build();
 
         updateRequest = new UpdateUserRequest(
@@ -196,7 +196,7 @@ class UpdateUserUseCaseTest {
                 "john.doe@example.com",
                 "New Name Only",
                 null,
-                Set.of("GUEST"),
+                Set.of("USER"),
                 LocalDateTime.now()
         );
 
@@ -210,7 +210,7 @@ class UpdateUserUseCaseTest {
         // Assert
         assertThat(result).isNotNull();
         assertThat(result.name()).isEqualTo("New Name Only");
-        assertThat(result.roleNames()).containsExactly("GUEST"); // Preserved from existing
+        assertThat(result.roleNames()).containsExactly("USER"); // Preserved from existing
 
         ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
         verify(userRepository).save(userCaptor.capture());
@@ -276,7 +276,7 @@ class UpdateUserUseCaseTest {
         UpdateUserRequest multiRoleRequest = new UpdateUserRequest(
                 "Admin User",
                 "+1234567890",
-                Set.of("ADMIN", "GUEST")
+                Set.of("ADMIN", "USER")
         );
 
         User userWithMultipleRoles = User.builder()
@@ -285,7 +285,7 @@ class UpdateUserUseCaseTest {
                 .passwordHash("$2a$10$encodedPassword")
                 .name("Admin User")
                 .phoneNumber("+1234567890")
-                .roles(Set.of(Role.admin(), Role.guest()))
+                .roles(Set.of(Role.admin(), Role.user()))
                 .build();
 
         UserResponse multiRoleResponse = new UserResponse(
@@ -293,7 +293,7 @@ class UpdateUserUseCaseTest {
                 "john.doe@example.com",
                 "Admin User",
                 "+1234567890",
-                Set.of("ADMIN", "GUEST"),
+                Set.of("ADMIN", "USER"),
                 LocalDateTime.now()
         );
 
@@ -306,7 +306,7 @@ class UpdateUserUseCaseTest {
 
         // Assert
         assertThat(result).isNotNull();
-        assertThat(result.roleNames()).containsExactlyInAnyOrder("ADMIN", "GUEST");
+        assertThat(result.roleNames()).containsExactlyInAnyOrder("ADMIN", "USER");
 
         verify(userRepository).save(any(User.class));
     }
