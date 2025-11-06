@@ -1,0 +1,30 @@
+# ============================================
+# DEVELOPMENT PROFILE
+# ============================================
+# Variables de entorno requeridas:
+# - GMAIL_USERNAME
+# - GMAIL_APP_PASSWORD
+# ============================================
+
+spring:
+  mail:
+    host: smtp.gmail.com
+    port: 587
+    username: ${GMAIL_USERNAME:alvargasrod@gmail.com}
+    password: ${GMAIL_APP_PASSWORD:eaintlhnzrcxqbis}
+    properties:
+      mail:
+        smtp:
+          auth: true
+          starttls:
+            enable: true
+            required: true
+    test-connection: false
+
+logging:
+  level:
+    root: INFO
+    com.affiliate.rentals.gydi: DEBUG
+    org.springframework.security: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE

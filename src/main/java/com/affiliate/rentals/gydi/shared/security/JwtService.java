@@ -307,6 +307,50 @@ public class JwtService {
     }
 
     /**
+     * Extracts the user ID from the JWT token in the current request.
+     *
+     * @param request the HTTP servlet request
+     * @return the user ID from the JWT token
+     * @throws IllegalStateException if no valid JWT token is found
+     */
+    public Long extractUserIdFromRequest(jakarta.servlet.http.HttpServletRequest request) {
+        String token = extractTokenFromRequest(request);
+        if (token == null) {
+            throw new IllegalStateException("No JWT token found in request");
+        }
+        Long userId = extractUserId(token);
+        if (userId == null) {
+            throw new IllegalStateException("No userId claim found in JWT token");
+        }
+        return userId;
+    }
+
+    /**
+     * Extracts the JWT token from the request (Authorization header or cookie).
+     *
+     * @param request the HTTP servlet request
+     * @return the JWT token, or null if not found
+     */
+    private String extractTokenFromRequest(jakarta.servlet.http.HttpServletRequest request) {
+        // Try cookie first
+        if (request.getCookies() != null) {
+            for (jakarta.servlet.http.Cookie cookie : request.getCookies()) {
+                if ("access_token".equals(cookie.getName())) {
+                    return cookie.getValue();
+                }
+            }
+        }
+
+        // Try Authorization header
+        String authHeader = request.getHeader("Authorization");
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+            return authHeader.substring(7);
+        }
+
+        return null;
+    }
+
+    /**
      * Gets the signing key for JWT operations.
      *
      * @return the secret key

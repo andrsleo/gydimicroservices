@@ -5,6 +5,10 @@ spring:
   application:
     name: gydi-rentals
 
+  # Set default profile to 'dev' for development
+  profiles:
+    active: dev
+
   # Disable MongoDB autoconfiguration
   autoconfigure:
     exclude:
@@ -49,6 +53,20 @@ spring:
   data:
     mongodb:
       uri: mongodb://localhost:27017/gydi_rentals
+
+  # ============================================
+  # Spring Mail Configuration (Gmail SMTP for Development)
+  # ============================================
+  # Mail configuration is profile-specific (see application-dev.yml, application-prod.yml)
+
+  # ============================================
+  # File Upload Configuration
+  # ============================================
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 500MB
+      max-request-size: 550MB
 
 # ============================================
 # Server Configuration
@@ -100,3 +118,41 @@ management:
   endpoint:
     health:
       show-details: when-authorized
+
+# ============================================
+# AWS Configuration
+# ============================================
+aws:
+  # Amazon SES for Email
+  ses:
+    region: ${AWS_REGION:us-east-1}
+    from-email: ${AWS_SES_FROM_EMAIL:noreply@gydi.com}
+    access-key: ${AWS_ACCESS_KEY_ID}
+    secret-key: ${AWS_SECRET_ACCESS_KEY}
+
+  # Amazon S3 for File Storage (Production only)
+  s3:
+    bucket-name: ${AWS_S3_BUCKET_NAME:gydi-profile-images}
+    region: ${AWS_S3_REGION:us-east-1}
+    access-key: ${AWS_ACCESS_KEY_ID}
+    secret-key: ${AWS_SECRET_ACCESS_KEY}
+    base-url: ${AWS_S3_BASE_URL:https://gydi-profile-images.s3.amazonaws.com}
+
+# ============================================
+# Storage Configuration (Development)
+# ============================================
+storage:
+  local:
+    directory: ./uploads
+    base-url: http://localhost:8080/uploads
+
+# ============================================
+# Password Reset Configuration
+# ============================================
+app:
+  password-reset:
+    token-expiration-minutes: 60
+    rate-limit-requests: 3
+    rate-limit-window-hours: 1
+    frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  dev-email-recipient: alvargasrod@gmail.com
