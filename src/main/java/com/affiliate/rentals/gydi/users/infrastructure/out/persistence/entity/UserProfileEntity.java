@@ -49,6 +49,18 @@ public class UserProfileEntity {
     private Long userId;
 
     /**
+     * The user's first name.
+     */
+    @Column(name = "first_name", length = 100)
+    private String firstName;
+
+    /**
+     * The user's last name.
+     */
+    @Column(name = "last_name", length = 100)
+    private String lastName;
+
+    /**
      * The user's date of birth.
      */
     @Column(name = "date_of_birth")
@@ -67,16 +79,34 @@ public class UserProfileEntity {
     private String bio;
 
     /**
-     * ISO 3166-1 alpha-3 country code.
+     * The user's phone number in E.164 format.
      */
-    @Column(name = "country_code", length = 3)
-    private String countryCode;
+    @Column(name = "phone_number", length = 20)
+    private String phoneNumber;
 
     /**
-     * IANA timezone identifier (e.g., "America/New_York").
+     * Full country name (e.g., "United States", "Spain").
      */
-    @Column(name = "timezone", length = 50)
-    private String timezone;
+    @Column(name = "country", length = 100)
+    private String country;
+
+    /**
+     * The user's city of residence.
+     */
+    @Column(name = "city", length = 100)
+    private String city;
+
+    /**
+     * The user's street address.
+     */
+    @Column(name = "address", length = 500)
+    private String address;
+
+    /**
+     * The user's postal/ZIP code.
+     */
+    @Column(name = "postal_code", length = 20)
+    private String postalCode;
 
     /**
      * ISO 639-1 language code (e.g., "en", "es").
@@ -85,16 +115,16 @@ public class UserProfileEntity {
     private String preferredLanguage;
 
     /**
-     * URL to the user's avatar image.
-     */
-    @Column(name = "avatar_url", length = 500)
-    private String avatarUrl;
-
-    /**
      * URL to the user's cover image.
      */
     @Column(name = "cover_image_url", length = 500)
     private String coverImageUrl;
+
+    /**
+     * URL to the user's personal or business website.
+     */
+    @Column(name = "website_url", length = 500)
+    private String websiteUrl;
 
     /**
      * Social media links stored as JSONB.

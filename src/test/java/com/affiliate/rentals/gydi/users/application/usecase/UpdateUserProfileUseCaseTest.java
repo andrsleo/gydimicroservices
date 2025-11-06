@@ -61,13 +61,19 @@ class UpdateUserProfileUseCaseTest {
         existingProfile = UserProfile.builder()
                 .id(profileId)
                 .userId(userId)
+                .firstName("John")
+                .lastName("Doe")
                 .dateOfBirth(LocalDate.of(1990, 1, 15))
                 .gender(Gender.MALE)
                 .bio("Original bio")
-                .countryCode("USA")
-                .timezone("America/New_York")
+                .phoneNumber("+15551234567")
+                .country("United States")
+                .city("New York")
+                .address("123 Main St")
+                .postalCode("10001")
                 .preferredLanguage("en")
-                .avatarUrl("https://example.com/old-avatar.jpg")
+                .coverImageUrl("https://example.com/cover.jpg")
+                .websiteUrl("https://johndoe.com")
                 .profileVisibility(ProfileVisibility.PUBLIC)
                 .emailNotificationsEnabled(true)
                 .smsNotificationsEnabled(false)
@@ -83,32 +89,27 @@ class UpdateUserProfileUseCaseTest {
     void shouldUpdateProfileWithPartialData() {
         // Arrange
         var updateRequest = new UpdateUserProfileRequest(
-                null, // don't update dateOfBirth
-                null, // don't update gender
+                null, null, // don't update names
+                null, null, // don't update dateOfBirth, gender
                 "Updated bio", // update bio
-                null,
-                null,
-                null,
-                "https://example.com/new-avatar.jpg", // update avatar
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+                null, null, null, null, null, // don't update contact
+                null, null, null, // don't update images/links
+                null, null, null, null, null // don't update preferences/notifications
         );
 
         var updatedProfile = UserProfile.builder()
                 .from(existingProfile)
                 .bio("Updated bio")
-                .avatarUrl("https://example.com/new-avatar.jpg")
                 .updatedAt(LocalDateTime.now())
                 .build();
 
         var response = new UserProfileResponse(
-                profileId, userId, existingProfile.dateOfBirth(), "male",
-                "Updated bio", "USA", "America/New_York", "en",
-                "https://example.com/new-avatar.jpg", null,
+                profileId, userId,
+                "John", "Doe",
+                existingProfile.dateOfBirth(), "male",
+                "Updated bio",
+                "+15551234567", "United States", "New York", "123 Main St", "10001",
+                "en", "https://example.com/cover.jpg", "https://johndoe.com",
                 Map.of("twitter", "@oldhandle"), Map.of("theme", "light"),
                 "public", true, false, Map.of(),
                 existingProfile.createdAt(), LocalDateTime.now()
@@ -124,7 +125,6 @@ class UpdateUserProfileUseCaseTest {
         // Assert
         assertThat(result).isNotNull();
         assertThat(result.bio()).isEqualTo("Updated bio");
-        assertThat(result.avatarUrl()).isEqualTo("https://example.com/new-avatar.jpg");
         assertThat(result.gender()).isEqualTo("male"); // unchanged
 
         verify(profileRepository).findByUserId(userId);
@@ -136,8 +136,10 @@ class UpdateUserProfileUseCaseTest {
     void shouldThrowExceptionWhenProfileNotFound() {
         // Arrange
         var updateRequest = new UpdateUserProfileRequest(
-                null, null, "New bio", null, null, null, null,
-                null, null, null, null, null, null
+                null, null, null, null, "New bio",
+                null, null, null, null, null,
+                null, null, null,
+                null, null, null, null, null
         );
 
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.empty());
@@ -156,32 +158,33 @@ class UpdateUserProfileUseCaseTest {
     void shouldUpdateAllFieldsWhenProvided() {
         // Arrange
         var updateRequest = new UpdateUserProfileRequest(
-                LocalDate.of(1995, 5, 20),
-                "female",
+                "Jane", "Smith",
+                LocalDate.of(1995, 5, 20), "female",
                 "Completely new bio",
-                "CAN",
-                "America/Toronto",
-                "fr",
-                "https://example.com/new-avatar.jpg",
-                "https://example.com/new-cover.jpg",
+                "+14165551234", "Canada", "Toronto", "456 Elm St", "M5H 2N2",
+                "fr", "https://example.com/new-cover.jpg", "https://janesmith.ca",
                 Map.of("linkedin", "newprofile"),
                 Map.of("theme", "dark"),
                 "private",
-                false,
-                true
+                false, true
         );
 
         var updatedProfile = UserProfile.builder()
                 .id(profileId)
                 .userId(userId)
+                .firstName("Jane")
+                .lastName("Smith")
                 .dateOfBirth(LocalDate.of(1995, 5, 20))
                 .gender(Gender.FEMALE)
                 .bio("Completely new bio")
-                .countryCode("CAN")
-                .timezone("America/Toronto")
+                .phoneNumber("+14165551234")
+                .country("Canada")
+                .city("Toronto")
+                .address("456 Elm St")
+                .postalCode("M5H 2N2")
                 .preferredLanguage("fr")
-                .avatarUrl("https://example.com/new-avatar.jpg")
                 .coverImageUrl("https://example.com/new-cover.jpg")
+                .websiteUrl("https://janesmith.ca")
                 .socialLinks(Map.of("linkedin", "newprofile"))
                 .preferences(Map.of("theme", "dark"))
                 .profileVisibility(ProfileVisibility.PRIVATE)
@@ -192,9 +195,12 @@ class UpdateUserProfileUseCaseTest {
                 .build();
 
         var response = new UserProfileResponse(
-                profileId, userId, LocalDate.of(1995, 5, 20), "female",
-                "Completely new bio", "CAN", "America/Toronto", "fr",
-                "https://example.com/new-avatar.jpg", "https://example.com/new-cover.jpg",
+                profileId, userId,
+                "Jane", "Smith",
+                LocalDate.of(1995, 5, 20), "female",
+                "Completely new bio",
+                "+14165551234", "Canada", "Toronto", "456 Elm St", "M5H 2N2",
+                "fr", "https://example.com/new-cover.jpg", "https://janesmith.ca",
                 Map.of("linkedin", "newprofile"), Map.of("theme", "dark"),
                 "private", false, true, Map.of(),
                 existingProfile.createdAt(), LocalDateTime.now()
@@ -209,6 +215,8 @@ class UpdateUserProfileUseCaseTest {
 
         // Assert
         assertThat(result).isNotNull();
+        assertThat(result.firstName()).isEqualTo("Jane");
+        assertThat(result.lastName()).isEqualTo("Smith");
         assertThat(result.dateOfBirth()).isEqualTo(LocalDate.of(1995, 5, 20));
         assertThat(result.gender()).isEqualTo("female");
         assertThat(result.bio()).isEqualTo("Completely new bio");
@@ -222,18 +230,24 @@ class UpdateUserProfileUseCaseTest {
     void shouldPreserveExistingValuesWhenNull() {
         // Arrange - all fields null (shouldn't change anything except updatedAt)
         var updateRequest = new UpdateUserProfileRequest(
-                null, null, null, null, null, null, null,
-                null, null, null, null, null, null
+                null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null,
+                null, null, null, null, null
         );
 
         when(profileRepository.findByUserId(userId)).thenReturn(Optional.of(existingProfile));
         when(profileRepository.save(any(UserProfile.class))).thenReturn(existingProfile);
         when(mapper.toResponse(any(UserProfile.class))).thenReturn(
                 new UserProfileResponse(
-                        profileId, userId, existingProfile.dateOfBirth(), "male",
-                        existingProfile.bio(), existingProfile.countryCode(),
-                        existingProfile.timezone(), existingProfile.preferredLanguage(),
-                        existingProfile.avatarUrl(), existingProfile.coverImageUrl(),
+                        profileId, userId,
+                        existingProfile.firstName(), existingProfile.lastName(),
+                        existingProfile.dateOfBirth(), "male",
+                        existingProfile.bio(),
+                        existingProfile.phoneNumber(), existingProfile.country(),
+                        existingProfile.city(), existingProfile.address(), existingProfile.postalCode(),
+                        existingProfile.preferredLanguage(),
+                        existingProfile.coverImageUrl(), existingProfile.websiteUrl(),
                         existingProfile.socialLinks(), existingProfile.preferences(),
                         "public", existingProfile.emailNotificationsEnabled(),
                         existingProfile.smsNotificationsEnabled(), Map.of(),
@@ -248,7 +262,7 @@ class UpdateUserProfileUseCaseTest {
         assertThat(result).isNotNull();
         assertThat(result.bio()).isEqualTo("Original bio");
         assertThat(result.gender()).isEqualTo("male");
-        assertThat(result.avatarUrl()).isEqualTo("https://example.com/old-avatar.jpg");
+        assertThat(result.firstName()).isEqualTo("John");
 
         verify(profileRepository).save(any(UserProfile.class));
     }
@@ -264,7 +278,9 @@ class UpdateUserProfileUseCaseTest {
         );
 
         var updateRequest = new UpdateUserProfileRequest(
-                null, null, null, null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null,
                 newSocialLinks, // only update social links
                 null, null, null, null
         );
@@ -279,10 +295,14 @@ class UpdateUserProfileUseCaseTest {
         when(profileRepository.save(any(UserProfile.class))).thenReturn(updatedProfile);
         when(mapper.toResponse(any(UserProfile.class))).thenReturn(
                 new UserProfileResponse(
-                        profileId, userId, existingProfile.dateOfBirth(), "male",
-                        existingProfile.bio(), existingProfile.countryCode(),
-                        existingProfile.timezone(), existingProfile.preferredLanguage(),
-                        existingProfile.avatarUrl(), existingProfile.coverImageUrl(),
+                        profileId, userId,
+                        existingProfile.firstName(), existingProfile.lastName(),
+                        existingProfile.dateOfBirth(), "male",
+                        existingProfile.bio(),
+                        existingProfile.phoneNumber(), existingProfile.country(),
+                        existingProfile.city(), existingProfile.address(), existingProfile.postalCode(),
+                        existingProfile.preferredLanguage(),
+                        existingProfile.coverImageUrl(), existingProfile.websiteUrl(),
                         newSocialLinks, existingProfile.preferences(),
                         "public", true, false, Map.of(),
                         existingProfile.createdAt(), LocalDateTime.now()
@@ -305,7 +325,10 @@ class UpdateUserProfileUseCaseTest {
     void shouldUpdateNotificationPreferences() {
         // Arrange
         var updateRequest = new UpdateUserProfileRequest(
-                null, null, null, null, null, null, null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null, null, null,
+                null, null, null,
+                null, null, null,
                 false, // disable email notifications
                 true   // enable SMS notifications
         );
@@ -321,10 +344,14 @@ class UpdateUserProfileUseCaseTest {
         when(profileRepository.save(any(UserProfile.class))).thenReturn(updatedProfile);
         when(mapper.toResponse(any(UserProfile.class))).thenReturn(
                 new UserProfileResponse(
-                        profileId, userId, existingProfile.dateOfBirth(), "male",
-                        existingProfile.bio(), existingProfile.countryCode(),
-                        existingProfile.timezone(), existingProfile.preferredLanguage(),
-                        existingProfile.avatarUrl(), existingProfile.coverImageUrl(),
+                        profileId, userId,
+                        existingProfile.firstName(), existingProfile.lastName(),
+                        existingProfile.dateOfBirth(), "male",
+                        existingProfile.bio(),
+                        existingProfile.phoneNumber(), existingProfile.country(),
+                        existingProfile.city(), existingProfile.address(), existingProfile.postalCode(),
+                        existingProfile.preferredLanguage(),
+                        existingProfile.coverImageUrl(), existingProfile.websiteUrl(),
                         existingProfile.socialLinks(), existingProfile.preferences(),
                         "public", false, true, Map.of(),
                         existingProfile.createdAt(), LocalDateTime.now()

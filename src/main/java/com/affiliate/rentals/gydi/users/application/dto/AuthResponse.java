@@ -1,5 +1,7 @@
 package com.affiliate.rentals.gydi.users.application.dto;
 
+import lombok.Builder;
+
 /**
  * DTO for authentication response containing JWT tokens.
  *
@@ -12,6 +14,7 @@ package com.affiliate.rentals.gydi.users.application.dto;
  * @param user the authenticated user's information
  * @author GYDI Development Team
  */
+@Builder
 public record AuthResponse(
         String token,
         String refreshToken,

@@ -63,8 +63,17 @@ public class SecurityConfig {
                         .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/error").permitAll()
 
+                        // Static files (uploads) - allow public access for development
+                        .requestMatchers("/uploads/**").permitAll()
+
                         // User registration endpoint
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
+
+                        // User profile endpoints - authenticated users can access their own profiles
+                        .requestMatchers(HttpMethod.GET, "/api/v1/users/profiles/**").authenticated()
+                        .requestMatchers(HttpMethod.PATCH, "/api/v1/users/profiles/**").authenticated()
+                        .requestMatchers(HttpMethod.POST, "/api/v1/users/profiles").authenticated()
+                        .requestMatchers(HttpMethod.DELETE, "/api/v1/users/profiles/**").authenticated()
 
                         // Admin-only endpoints
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("ADMIN")

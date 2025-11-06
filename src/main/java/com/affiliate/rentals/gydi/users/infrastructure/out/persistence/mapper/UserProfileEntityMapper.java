@@ -32,14 +32,19 @@ public class UserProfileEntityMapper {
         var entity = new UserProfileEntity();
         entity.setId(profile.id());
         entity.setUserId(profile.userId());
+        entity.setFirstName(emptyToNull(profile.firstName()));
+        entity.setLastName(emptyToNull(profile.lastName()));
         entity.setDateOfBirth(profile.dateOfBirth());
         entity.setGender(mapGenderToString(profile.gender()));
-        entity.setBio(profile.bio());
-        entity.setCountryCode(profile.countryCode());
-        entity.setTimezone(profile.timezone());
-        entity.setPreferredLanguage(profile.preferredLanguage());
-        entity.setAvatarUrl(profile.avatarUrl());
-        entity.setCoverImageUrl(profile.coverImageUrl());
+        entity.setBio(emptyToNull(profile.bio()));
+        entity.setPhoneNumber(emptyToNull(profile.phoneNumber()));
+        entity.setCountry(emptyToNull(profile.country()));
+        entity.setCity(emptyToNull(profile.city()));
+        entity.setAddress(emptyToNull(profile.address()));
+        entity.setPostalCode(emptyToNull(profile.postalCode()));
+        entity.setPreferredLanguage(emptyToNull(profile.preferredLanguage()));
+        entity.setCoverImageUrl(emptyToNull(profile.coverImageUrl()));
+        entity.setWebsiteUrl(emptyToNull(profile.websiteUrl()));
         entity.setSocialLinks(profile.socialLinks());
         entity.setPreferences(profile.preferences());
         entity.setProfileVisibility(mapVisibilityToString(profile.profileVisibility()));
@@ -66,14 +71,19 @@ public class UserProfileEntityMapper {
         return UserProfile.builder()
                 .id(entity.getId())
                 .userId(entity.getUserId())
+                .firstName(entity.getFirstName())
+                .lastName(entity.getLastName())
                 .dateOfBirth(entity.getDateOfBirth())
                 .gender(mapStringToGender(entity.getGender()))
                 .bio(entity.getBio())
-                .countryCode(entity.getCountryCode())
-                .timezone(entity.getTimezone())
+                .phoneNumber(entity.getPhoneNumber())
+                .country(entity.getCountry())
+                .city(entity.getCity())
+                .address(entity.getAddress())
+                .postalCode(entity.getPostalCode())
                 .preferredLanguage(entity.getPreferredLanguage())
-                .avatarUrl(entity.getAvatarUrl())
                 .coverImageUrl(entity.getCoverImageUrl())
+                .websiteUrl(entity.getWebsiteUrl())
                 .socialLinks(entity.getSocialLinks())
                 .preferences(entity.getPreferences())
                 .profileVisibility(mapStringToVisibility(entity.getProfileVisibility()))
@@ -123,5 +133,19 @@ public class UserProfileEntityMapper {
      */
     private ProfileVisibility mapStringToVisibility(String visibility) {
         return ProfileVisibility.fromString(visibility);
+    }
+
+    /**
+     * Converts empty strings to null to comply with database check constraints.
+     *
+     * <p>This is necessary because database constraints like check_website_url_format
+     * only allow NULL or valid URLs (starting with http://), but frontend forms may
+     * send empty strings which violate the constraint.</p>
+     *
+     * @param value the string value
+     * @return null if the string is null or empty/blank, otherwise the original value
+     */
+    private String emptyToNull(String value) {
+        return (value == null || value.isBlank()) ? null : value;
     }
 }

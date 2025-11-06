@@ -8,6 +8,13 @@ import com.affiliate.rentals.gydi.users.application.dto.RefreshTokenRequest;
 import com.affiliate.rentals.gydi.users.application.usecase.AuthenticateUserUseCase;
 import com.affiliate.rentals.gydi.users.application.usecase.LogoutUserUseCase;
 import com.affiliate.rentals.gydi.users.application.usecase.RefreshTokenUseCase;
+import com.affiliate.rentals.gydi.users.application.usecase.RequestPasswordResetUseCase;
+import com.affiliate.rentals.gydi.users.application.usecase.ValidateResetTokenUseCase;
+import com.affiliate.rentals.gydi.users.application.usecase.ResetPasswordUseCase;
+import com.affiliate.rentals.gydi.users.application.dto.ForgotPasswordRequest;
+import com.affiliate.rentals.gydi.users.application.dto.PasswordResetResponse;
+import com.affiliate.rentals.gydi.users.application.dto.ResetPasswordRequest;
+import com.affiliate.rentals.gydi.users.application.dto.ValidateTokenResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -65,6 +72,9 @@ public class AuthController {
     private final AuthenticateUserUseCase authenticateUserUseCase;
     private final LogoutUserUseCase logoutUserUseCase;
     private final RefreshTokenUseCase refreshTokenUseCase;
+    private final RequestPasswordResetUseCase requestPasswordResetUseCase;
+    private final ValidateResetTokenUseCase validateResetTokenUseCase;
+    private final ResetPasswordUseCase resetPasswordUseCase;
     private final JwtService jwtService;
 
     /**
@@ -75,17 +85,26 @@ public class AuthController {
      * @param authenticateUserUseCase the use case for user authentication
      * @param logoutUserUseCase the use case for user logout
      * @param refreshTokenUseCase the use case for token refresh
+     * @param requestPasswordResetUseCase the use case for requesting password reset
+     * @param validateResetTokenUseCase the use case for validating reset tokens
+     * @param resetPasswordUseCase the use case for resetting password
      * @param jwtService the JWT service for token operations
      */
     public AuthController(
             AuthenticateUserUseCase authenticateUserUseCase,
             LogoutUserUseCase logoutUserUseCase,
             RefreshTokenUseCase refreshTokenUseCase,
+            RequestPasswordResetUseCase requestPasswordResetUseCase,
+            ValidateResetTokenUseCase validateResetTokenUseCase,
+            ResetPasswordUseCase resetPasswordUseCase,
             JwtService jwtService
     ) {
         this.authenticateUserUseCase = authenticateUserUseCase;
         this.logoutUserUseCase = logoutUserUseCase;
         this.refreshTokenUseCase = refreshTokenUseCase;
+        this.requestPasswordResetUseCase = requestPasswordResetUseCase;
+        this.validateResetTokenUseCase = validateResetTokenUseCase;
+        this.resetPasswordUseCase = resetPasswordUseCase;
         this.jwtService = jwtService;
     }
 
@@ -102,7 +121,7 @@ public class AuthController {
     @PostMapping("/login")
     @Operation(
             summary = "Login user",
-            description = "Authenticates a user with email and password, returning a JWT token for subsequent requests"
+            description = "Authenticates a user with email and password. In production, sets httpOnly cookie. In development, returns token in body."
     )
     @ApiResponse(
             responseCode = "200",
@@ -111,9 +130,65 @@ public class AuthController {
     )
     @ApiErrorResponses.BadRequest
     @ApiErrorResponses.Unauthorized
-    public ResponseEntity<AuthResponse> login(@Valid @RequestBody LoginRequest request) {
+    public ResponseEntity<AuthResponse> login(
+            @Valid @RequestBody LoginRequest request,
+            jakarta.servlet.http.HttpServletResponse httpResponse
+    ) {
         AuthResponse response = authenticateUserUseCase.execute(request);
-        return ResponseEntity.ok(response);
+
+        // SECURITY: In production, set httpOnly cookie (XSS-proof)
+        // In development, return token in body (cross-origin workaround for localhost)
+        String environment = System.getProperty("spring.profiles.active", "dev");
+        boolean isProduction = "prod".equals(environment) || "production".equals(environment);
+
+        if (isProduction) {
+            // Production: Set httpOnly cookies
+            setAuthCookies(httpResponse, response.token(), response.refreshToken());
+
+            // Return response WITHOUT tokens in body (security)
+            return ResponseEntity.ok(AuthResponse.builder()
+                    .token(null) // Don't expose in body
+                    .refreshToken(null) // Don't expose in body
+                    .tokenType("Bearer")
+                    .user(response.user())
+                    .build());
+        } else {
+            // Development: Return tokens in body (for Authorization header)
+            return ResponseEntity.ok(response);
+        }
+    }
+
+    /**
+     * Sets authentication cookies (httpOnly for security).
+     *
+     * @param response the HTTP response
+     * @param accessToken the JWT access token
+     * @param refreshToken the refresh token
+     */
+    private void setAuthCookies(
+            jakarta.servlet.http.HttpServletResponse response,
+            String accessToken,
+            String refreshToken
+    ) {
+        // Access token cookie
+        jakarta.servlet.http.Cookie accessCookie = new jakarta.servlet.http.Cookie("access_token", accessToken);
+        accessCookie.setHttpOnly(true);
+        accessCookie.setSecure(true); // HTTPS only in production
+        accessCookie.setPath("/");
+        accessCookie.setMaxAge(24 * 60 * 60); // 24 hours
+        accessCookie.setAttribute("SameSite", "Strict");
+        response.addCookie(accessCookie);
+
+        // Refresh token cookie
+        if (refreshToken != null) {
+            jakarta.servlet.http.Cookie refreshCookie = new jakarta.servlet.http.Cookie("refresh_token", refreshToken);
+            refreshCookie.setHttpOnly(true);
+            refreshCookie.setSecure(true); // HTTPS only in production
+            refreshCookie.setPath("/");
+            refreshCookie.setMaxAge(7 * 24 * 60 * 60); // 7 days
+            refreshCookie.setAttribute("SameSite", "Strict");
+            response.addCookie(refreshCookie);
+        }
     }
 
     /**
@@ -231,6 +306,54 @@ public class AuthController {
     @ApiErrorResponses.Unauthorized
     public ResponseEntity<AuthResponse> refresh(@Valid @RequestBody RefreshTokenRequest request) {
         AuthResponse response = refreshTokenUseCase.execute(request);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Requests a password reset for the given email address.
+     */
+    @PostMapping("/forgot-password")
+    @Operation(
+            summary = "Request password reset",
+            description = "Sends a password reset email if the address exists (generic response for security)"
+    )
+    @ApiResponse(responseCode = "200", description = "Reset email sent (or email doesn't exist)")
+    @ApiErrorResponses.BadRequest
+    public ResponseEntity<PasswordResetResponse> forgotPassword(
+            @Valid @RequestBody ForgotPasswordRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest
+    ) {
+        String ipAddress = httpRequest.getRemoteAddr();
+        PasswordResetResponse response = requestPasswordResetUseCase.execute(request, ipAddress);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Validates a password reset token.
+     */
+    @GetMapping("/reset-password/validate/{token}")
+    @Operation(
+            summary = "Validate reset token",
+            description = "Checks if a password reset token is valid and not expired"
+    )
+    @ApiResponse(responseCode = "200", description = "Token validation result")
+    public ResponseEntity<ValidateTokenResponse> validateResetToken(@PathVariable String token) {
+        ValidateTokenResponse response = validateResetTokenUseCase.execute(token);
+        return ResponseEntity.ok(response);
+    }
+
+    /**
+     * Resets the user's password using a valid token.
+     */
+    @PostMapping("/reset-password")
+    @Operation(
+            summary = "Reset password",
+            description = "Resets the user's password using a valid reset token"
+    )
+    @ApiResponse(responseCode = "200", description = "Password reset successfully")
+    @ApiErrorResponses.BadRequest
+    public ResponseEntity<PasswordResetResponse> resetPassword(@Valid @RequestBody ResetPasswordRequest request) {
+        PasswordResetResponse response = resetPasswordUseCase.execute(request);
         return ResponseEntity.ok(response);
     }
 }

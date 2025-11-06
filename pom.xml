@@ -140,6 +140,39 @@
             <scope>provided</scope>
         </dependency>
 
+        <!-- AWS SDK v2 for SES (Email Service) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>ses</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+
+        <!-- AWS SDK v2 for S3 (File Storage) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>s3</artifactId>
+            <version>2.20.0</version>
+        </dependency>
+
+        <!-- Spring Boot Mail (Gmail SMTP for development) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
+        </dependency>
+
+        <!-- Bucket4j for Rate Limiting -->
+        <dependency>
+            <groupId>com.github.vladimir-bukhtoyarov</groupId>
+            <artifactId>bucket4j-core</artifactId>
+            <version>7.6.0</version>
+        </dependency>
+
+        <!-- Thymeleaf for Email Templates -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+
     </dependencies>
 
     <build>

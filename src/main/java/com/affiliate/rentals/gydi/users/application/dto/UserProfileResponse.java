@@ -13,14 +13,19 @@ import java.util.UUID;
  *
  * @param id the profile's unique identifier
  * @param userId the associated user's ID
+ * @param firstName user's first name
+ * @param lastName user's last name
  * @param dateOfBirth the user's date of birth
  * @param gender the user's gender
  * @param bio the user's bio/description
- * @param countryCode ISO 3166-1 alpha-3 country code
- * @param timezone IANA timezone identifier
+ * @param phoneNumber user's phone number
+ * @param country full country name
+ * @param city user's city
+ * @param address user's street address
+ * @param postalCode user's postal/ZIP code
  * @param preferredLanguage ISO 639-1 language code
- * @param avatarUrl URL to user's avatar image
  * @param coverImageUrl URL to user's cover image
+ * @param websiteUrl URL to user's personal/business website
  * @param socialLinks map of social media platform to URL/handle
  * @param preferences user preferences as key-value map
  * @param profileVisibility profile visibility level
@@ -34,14 +39,19 @@ import java.util.UUID;
 public record UserProfileResponse(
         UUID id,
         Long userId,
+        String firstName,
+        String lastName,
         LocalDate dateOfBirth,
         String gender,
         String bio,
-        String countryCode,
-        String timezone,
+        String phoneNumber,
+        String country,
+        String city,
+        String address,
+        String postalCode,
         String preferredLanguage,
-        String avatarUrl,
         String coverImageUrl,
+        String websiteUrl,
         Map<String, String> socialLinks,
         Map<String, Object> preferences,
         String profileVisibility,
