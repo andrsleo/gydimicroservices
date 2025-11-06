@@ -33,14 +33,19 @@ public final class UserProfile {
 
     private final UUID id;
     private final Long userId;
+    private final String firstName;
+    private final String lastName;
     private final LocalDate dateOfBirth;
     private final Gender gender;
     private final String bio;
-    private final String countryCode;
-    private final String timezone;
+    private final String phoneNumber;
+    private final String country;
+    private final String city;
+    private final String address;
+    private final String postalCode;
     private final String preferredLanguage;
-    private final String avatarUrl;
     private final String coverImageUrl;
+    private final String websiteUrl;
     private final Map<String, String> socialLinks;
     private final Map<String, Object> preferences;
     private final ProfileVisibility profileVisibility;
@@ -58,14 +63,19 @@ public final class UserProfile {
     private UserProfile(Builder builder) {
         this.id = builder.id;
         this.userId = Objects.requireNonNull(builder.userId, "User ID cannot be null");
+        this.firstName = builder.firstName;
+        this.lastName = builder.lastName;
         this.dateOfBirth = builder.dateOfBirth;
         this.gender = builder.gender;
         this.bio = builder.bio;
-        this.countryCode = builder.countryCode;
-        this.timezone = Objects.requireNonNullElse(builder.timezone, "UTC");
+        this.phoneNumber = builder.phoneNumber;
+        this.country = builder.country;
+        this.city = builder.city;
+        this.address = builder.address;
+        this.postalCode = builder.postalCode;
         this.preferredLanguage = Objects.requireNonNullElse(builder.preferredLanguage, "en");
-        this.avatarUrl = builder.avatarUrl;
         this.coverImageUrl = builder.coverImageUrl;
+        this.websiteUrl = builder.websiteUrl;
         this.socialLinks = builder.socialLinks != null ? Map.copyOf(builder.socialLinks) : Map.of();
         this.preferences = builder.preferences != null ? Map.copyOf(builder.preferences) : Map.of();
         this.profileVisibility = Objects.requireNonNullElse(builder.profileVisibility, ProfileVisibility.PUBLIC);
@@ -97,6 +107,14 @@ public final class UserProfile {
         return userId;
     }
 
+    public String firstName() {
+        return firstName;
+    }
+
+    public String lastName() {
+        return lastName;
+    }
+
     public LocalDate dateOfBirth() {
         return dateOfBirth;
     }
@@ -109,24 +127,36 @@ public final class UserProfile {
         return bio;
     }
 
-    public String countryCode() {
-        return countryCode;
+    public String phoneNumber() {
+        return phoneNumber;
     }
 
-    public String timezone() {
-        return timezone;
+    public String country() {
+        return country;
+    }
+
+    public String city() {
+        return city;
+    }
+
+    public String address() {
+        return address;
+    }
+
+    public String postalCode() {
+        return postalCode;
     }
 
     public String preferredLanguage() {
         return preferredLanguage;
     }
 
-    public String avatarUrl() {
-        return avatarUrl;
-    }
-
     public String coverImageUrl() {
         return coverImageUrl;
+    }
+
+    public String websiteUrl() {
+        return websiteUrl;
     }
 
     public Map<String, String> socialLinks() {
@@ -176,20 +206,6 @@ public final class UserProfile {
     }
 
     /**
-     * Creates a new UserProfile with updated avatar URL.
-     *
-     * @param newAvatarUrl the new avatar URL
-     * @return a new UserProfile instance with updated avatar
-     */
-    public UserProfile withAvatarUrl(String newAvatarUrl) {
-        return builder()
-                .from(this)
-                .avatarUrl(newAvatarUrl)
-                .updatedAt(LocalDateTime.now())
-                .build();
-    }
-
-    /**
      * Creates a new UserProfile with updated preferences.
      *
      * @param newPreferences the new preferences map
@@ -232,14 +248,19 @@ public final class UserProfile {
     public static final class Builder {
         private UUID id;
         private Long userId;
+        private String firstName;
+        private String lastName;
         private LocalDate dateOfBirth;
         private Gender gender;
         private String bio;
-        private String countryCode;
-        private String timezone;
+        private String phoneNumber;
+        private String country;
+        private String city;
+        private String address;
+        private String postalCode;
         private String preferredLanguage;
-        private String avatarUrl;
         private String coverImageUrl;
+        private String websiteUrl;
         private Map<String, String> socialLinks;
         private Map<String, Object> preferences;
         private ProfileVisibility profileVisibility;
@@ -262,6 +283,16 @@ public final class UserProfile {
             return this;
         }
 
+        public Builder firstName(String firstName) {
+            this.firstName = firstName;
+            return this;
+        }
+
+        public Builder lastName(String lastName) {
+            this.lastName = lastName;
+            return this;
+        }
+
         public Builder dateOfBirth(LocalDate dateOfBirth) {
             this.dateOfBirth = dateOfBirth;
             return this;
@@ -277,13 +308,28 @@ public final class UserProfile {
             return this;
         }
 
-        public Builder countryCode(String countryCode) {
-            this.countryCode = countryCode;
+        public Builder phoneNumber(String phoneNumber) {
+            this.phoneNumber = phoneNumber;
             return this;
         }
 
-        public Builder timezone(String timezone) {
-            this.timezone = timezone;
+        public Builder country(String country) {
+            this.country = country;
+            return this;
+        }
+
+        public Builder city(String city) {
+            this.city = city;
+            return this;
+        }
+
+        public Builder address(String address) {
+            this.address = address;
+            return this;
+        }
+
+        public Builder postalCode(String postalCode) {
+            this.postalCode = postalCode;
             return this;
         }
 
@@ -292,13 +338,13 @@ public final class UserProfile {
             return this;
         }
 
-        public Builder avatarUrl(String avatarUrl) {
-            this.avatarUrl = avatarUrl;
+        public Builder coverImageUrl(String coverImageUrl) {
+            this.coverImageUrl = coverImageUrl;
             return this;
         }
 
-        public Builder coverImageUrl(String coverImageUrl) {
-            this.coverImageUrl = coverImageUrl;
+        public Builder websiteUrl(String websiteUrl) {
+            this.websiteUrl = websiteUrl;
             return this;
         }
 
@@ -351,14 +397,19 @@ public final class UserProfile {
         public Builder from(UserProfile profile) {
             this.id = profile.id;
             this.userId = profile.userId;
+            this.firstName = profile.firstName;
+            this.lastName = profile.lastName;
             this.dateOfBirth = profile.dateOfBirth;
             this.gender = profile.gender;
             this.bio = profile.bio;
-            this.countryCode = profile.countryCode;
-            this.timezone = profile.timezone;
+            this.phoneNumber = profile.phoneNumber;
+            this.country = profile.country;
+            this.city = profile.city;
+            this.address = profile.address;
+            this.postalCode = profile.postalCode;
             this.preferredLanguage = profile.preferredLanguage;
-            this.avatarUrl = profile.avatarUrl;
             this.coverImageUrl = profile.coverImageUrl;
+            this.websiteUrl = profile.websiteUrl;
             this.socialLinks = profile.socialLinks;
             this.preferences = profile.preferences;
             this.profileVisibility = profile.profileVisibility;

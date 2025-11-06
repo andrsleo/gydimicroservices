@@ -14,7 +14,9 @@ import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
 import com.affiliate.rentals.gydi.users.domain.model.RoleName;
 import com.affiliate.rentals.gydi.users.domain.model.User;
+import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
+import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
 
 /**
@@ -29,11 +31,18 @@ import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
 public class CreateUserUseCase {
 
     private final UserRepositoryPort userRepository;
+    private final UserProfileRepositoryPort userProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserDtoMapper mapper;
 
-    public CreateUserUseCase(UserRepositoryPort userRepository, PasswordEncoder passwordEncoder, UserDtoMapper mapper) {
+    public CreateUserUseCase(
+            UserRepositoryPort userRepository,
+            UserProfileRepositoryPort userProfileRepository,
+            PasswordEncoder passwordEncoder,
+            UserDtoMapper mapper
+    ) {
         this.userRepository = userRepository;
+        this.userProfileRepository = userProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.mapper = mapper;
     }
@@ -62,15 +71,62 @@ public class CreateUserUseCase {
                 .collect(Collectors.toSet())
                 : Set.of(Role.user());
 
+        // Build full name from firstName and lastName for backwards compatibility
+        String fullName = request.name() != null
+                ? request.name()
+                : buildFullName(request.firstName(), request.lastName());
+
         User user = User.builder()
                 .email(email)
                 .passwordHash(encodedPassword)
-                .name(request.name())
+                .name(fullName)  // Still save to users.name for backwards compatibility
                 .phoneNumber(request.phoneNumber())
                 .roles(roles)
                 .build();
 
         User savedUser = userRepository.save(user);
+
+        // Create UserProfile with names (this is now the source of truth for names)
+        createDefaultUserProfile(savedUser, request.firstName(), request.lastName());
+
         return mapper.toResponse(savedUser);
+    }
+
+    /**
+     * Builds a full name from first and last names.
+     *
+     * @param firstName the first name
+     * @param lastName the last name (optional)
+     * @return the full name
+     */
+    private String buildFullName(String firstName, String lastName) {
+        if (lastName != null && !lastName.isBlank()) {
+            return firstName + " " + lastName;
+        }
+        return firstName;
+    }
+
+    /**
+     * Creates a default UserProfile for a newly registered user.
+     *
+     * <p>This method is called automatically during user registration to ensure
+     * every user has an associated profile with sensible defaults. Names are saved
+     * in the profile as the source of truth.</p>
+     *
+     * @param user the newly created user
+     * @param firstName the user's first name
+     * @param lastName the user's last name (optional)
+     */
+    private void createDefaultUserProfile(User user, String firstName, String lastName) {
+        UserProfile defaultProfile = UserProfile.builder()
+                .userId(user.id())
+                .firstName(firstName)
+                .lastName(lastName)
+                .preferredLanguage("en")
+                .emailNotificationsEnabled(true)
+                .smsNotificationsEnabled(false)
+                .build();
+
+        userProfileRepository.save(defaultProfile);
     }
 }

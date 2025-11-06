@@ -27,7 +27,9 @@ import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
 import com.affiliate.rentals.gydi.users.domain.model.RoleName;
 import com.affiliate.rentals.gydi.users.domain.model.User;
+import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
+import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
 
 /**
@@ -50,6 +52,9 @@ class CreateUserUseCaseTest {
     private UserRepositoryPort userRepository;
 
     @Mock
+    private UserProfileRepositoryPort userProfileRepository;
+
+    @Mock
     private PasswordEncoder passwordEncoder;
 
     @Mock
@@ -67,7 +72,9 @@ class CreateUserUseCaseTest {
         validRequest = new CreateUserRequest(
                 "john.doe@example.com",
                 "SecurePassword123",
-                "John Doe",
+                "John",            // firstName
+                "Doe",             // lastName
+                null,              // name (deprecated)
                 "+1234567890",
                 Set.of("USER")
         );
@@ -141,9 +148,11 @@ class CreateUserUseCaseTest {
         CreateUserRequest requestWithoutRoles = new CreateUserRequest(
                 "jane.doe@example.com",
                 "Password123",
-                "Jane Doe",
+                "Jane",            // firstName
+                "Doe",             // lastName
+                null,              // name (deprecated)
                 "+1987654321",
-                null
+                null               // roleNames
         );
 
         User userWithGuestRole = User.builder()
@@ -188,7 +197,9 @@ class CreateUserUseCaseTest {
         CreateUserRequest adminRequest = new CreateUserRequest(
                 "admin@example.com",
                 "AdminPass123",
-                "Admin User",
+                "Admin",           // firstName
+                "User",            // lastName
+                null,              // name (deprecated)
                 "+1111111111",
                 Set.of("USER")
         );
@@ -239,7 +250,9 @@ class CreateUserUseCaseTest {
         CreateUserRequest request = new CreateUserRequest(
                 "test@example.com",
                 rawPassword,
-                "Test User",
+                "Test",            // firstName
+                "User",            // lastName
+                null,              // name (deprecated)
                 "+1234567890",
                 Set.of("USER")
         );
@@ -257,5 +270,39 @@ class CreateUserUseCaseTest {
         verify(userRepository).save(argThat(user ->
                 user.passwordHash().equals(encodedPassword)
         ));
+    }
+
+    @Test
+    @DisplayName("Should automatically create UserProfile with defaults when creating a user")
+    void shouldCreateUserProfileAutomatically() {
+        // Arrange
+        when(userRepository.existsByEmail(any(Email.class))).thenReturn(false);
+        when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encodedPassword");
+        when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
+
+        // Act
+        createUserUseCase.execute(validRequest);
+
+        // Assert
+        verify(userProfileRepository).save(argThat(profile ->
+                profile.userId().equals(savedUser.id()) &&
+                profile.preferredLanguage().equals("en") &&
+                profile.emailNotificationsEnabled() &&
+                !profile.smsNotificationsEnabled()
+        ));
+    }
+
+    @Test
+    @DisplayName("Should not create UserProfile if user creation fails")
+    void shouldNotCreateUserProfileIfUserCreationFails() {
+        // Arrange
+        when(userRepository.existsByEmail(any(Email.class))).thenReturn(true);
+
+        // Act & Assert
+        assertThatThrownBy(() -> createUserUseCase.execute(validRequest))
+                .isInstanceOf(UserAlreadyExistsException.class);
+
+        verify(userProfileRepository, never()).save(any(UserProfile.class));
     }
 }

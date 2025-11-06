@@ -35,14 +35,19 @@ public class UserProfileDtoMapper {
         return new UserProfileResponse(
                 profile.id(),
                 profile.userId(),
+                profile.firstName(),
+                profile.lastName(),
                 profile.dateOfBirth(),
                 mapGenderToString(profile.gender()),
                 profile.bio(),
-                profile.countryCode(),
-                profile.timezone(),
+                profile.phoneNumber(),
+                profile.country(),
+                profile.city(),
+                profile.address(),
+                profile.postalCode(),
                 profile.preferredLanguage(),
-                profile.avatarUrl(),
                 profile.coverImageUrl(),
+                profile.websiteUrl(),
                 profile.socialLinks(),
                 profile.preferences(),
                 mapVisibilityToString(profile.profileVisibility()),
@@ -67,14 +72,19 @@ public class UserProfileDtoMapper {
 
         return UserProfile.builder()
                 .userId(request.userId())
+                .firstName(request.firstName())
+                .lastName(request.lastName())
                 .dateOfBirth(request.dateOfBirth())
                 .gender(mapStringToGender(request.gender()))
                 .bio(request.bio())
-                .countryCode(request.countryCode())
-                .timezone(request.timezone())
+                .phoneNumber(request.phoneNumber())
+                .country(request.country())
+                .city(request.city())
+                .address(request.address())
+                .postalCode(request.postalCode())
                 .preferredLanguage(request.preferredLanguage())
-                .avatarUrl(request.avatarUrl())
                 .coverImageUrl(request.coverImageUrl())
+                .websiteUrl(request.websiteUrl())
                 .socialLinks(request.socialLinks() != null ? request.socialLinks() : Map.of())
                 .preferences(request.preferences() != null ? request.preferences() : Map.of())
                 .profileVisibility(mapStringToVisibility(request.profileVisibility()))

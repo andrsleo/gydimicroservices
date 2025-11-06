@@ -77,14 +77,19 @@ public class UpdateUserProfileUseCase {
                 .updatedAt(LocalDateTime.now());
 
         // Apply updates only for non-null fields (PATCH semantics)
+        builder.firstName(request.firstName() != null ? request.firstName() : existing.firstName());
+        builder.lastName(request.lastName() != null ? request.lastName() : existing.lastName());
         builder.dateOfBirth(request.dateOfBirth() != null ? request.dateOfBirth() : existing.dateOfBirth());
         builder.gender(request.gender() != null ? Gender.fromString(request.gender()) : existing.gender());
         builder.bio(request.bio() != null ? request.bio() : existing.bio());
-        builder.countryCode(request.countryCode() != null ? request.countryCode() : existing.countryCode());
-        builder.timezone(request.timezone() != null ? request.timezone() : existing.timezone());
+        builder.phoneNumber(request.phoneNumber() != null ? request.phoneNumber() : existing.phoneNumber());
+        builder.country(request.country() != null ? request.country() : existing.country());
+        builder.city(request.city() != null ? request.city() : existing.city());
+        builder.address(request.address() != null ? request.address() : existing.address());
+        builder.postalCode(request.postalCode() != null ? request.postalCode() : existing.postalCode());
         builder.preferredLanguage(request.preferredLanguage() != null ? request.preferredLanguage() : existing.preferredLanguage());
-        builder.avatarUrl(request.avatarUrl() != null ? request.avatarUrl() : existing.avatarUrl());
         builder.coverImageUrl(request.coverImageUrl() != null ? request.coverImageUrl() : existing.coverImageUrl());
+        builder.websiteUrl(request.websiteUrl() != null ? request.websiteUrl() : existing.websiteUrl());
         builder.socialLinks(request.socialLinks() != null ? request.socialLinks() : existing.socialLinks());
         builder.preferences(request.preferences() != null ? request.preferences() : existing.preferences());
         builder.profileVisibility(request.profileVisibility() != null
