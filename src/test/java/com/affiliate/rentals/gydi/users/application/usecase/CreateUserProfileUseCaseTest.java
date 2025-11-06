@@ -62,33 +62,43 @@ class CreateUserProfileUseCaseTest {
         userId = 1L;
 
         validRequest = new CreateUserProfileRequest(
-                userId,
-                LocalDate.of(1990, 1, 15),
-                "male",
-                "Software engineer passionate about clean code",
-                "USA",
-                "America/New_York",
-                "en",
-                "https://example.com/avatar.jpg",
-                "https://example.com/cover.jpg",
-                Map.of("linkedin", "https://linkedin.com/in/johndoe", "twitter", "@johndoe"),
-                Map.of("theme", "dark", "notifications", true),
-                "public",
-                true,
-                false
+                userId,                                                  // userId
+                "John",                                                  // firstName
+                "Doe",                                                   // lastName
+                LocalDate.of(1990, 1, 15),                              // dateOfBirth
+                "male",                                                  // gender
+                "Software engineer passionate about clean code",         // bio
+                "+15551234567",                                          // phoneNumber
+                "United States",                                         // country
+                "New York",                                              // city
+                "123 Main St",                                           // address
+                "10001",                                                 // postalCode
+                "en",                                                    // preferredLanguage
+                "https://example.com/cover.jpg",                         // coverImageUrl
+                "https://johndoe.com",                                   // websiteUrl
+                Map.of("linkedin", "https://linkedin.com/in/johndoe", "twitter", "@johndoe"), // socialLinks
+                Map.of("theme", "dark", "notifications", true),          // preferences
+                "public",                                                // profileVisibility
+                true,                                                    // emailNotificationsEnabled
+                false                                                    // smsNotificationsEnabled
         );
 
         savedProfile = UserProfile.builder()
                 .id(UUID.randomUUID())
                 .userId(userId)
+                .firstName("John")
+                .lastName("Doe")
                 .dateOfBirth(LocalDate.of(1990, 1, 15))
                 .gender(Gender.MALE)
                 .bio("Software engineer passionate about clean code")
-                .countryCode("USA")
-                .timezone("America/New_York")
+                .phoneNumber("+15551234567")
+                .country("United States")
+                .city("New York")
+                .address("123 Main St")
+                .postalCode("10001")
                 .preferredLanguage("en")
-                .avatarUrl("https://example.com/avatar.jpg")
                 .coverImageUrl("https://example.com/cover.jpg")
+                .websiteUrl("https://johndoe.com")
                 .socialLinks(Map.of("linkedin", "https://linkedin.com/in/johndoe", "twitter", "@johndoe"))
                 .preferences(Map.of("theme", "dark", "notifications", true))
                 .profileVisibility(ProfileVisibility.PUBLIC)
@@ -101,14 +111,19 @@ class CreateUserProfileUseCaseTest {
         expectedResponse = new UserProfileResponse(
                 savedProfile.id(),
                 userId,
+                "John",
+                "Doe",
                 LocalDate.of(1990, 1, 15),
                 "male",
                 "Software engineer passionate about clean code",
-                "USA",
-                "America/New_York",
+                "+15551234567",
+                "United States",
+                "New York",
+                "123 Main St",
+                "10001",
                 "en",
-                "https://example.com/avatar.jpg",
                 "https://example.com/cover.jpg",
+                "https://johndoe.com",
                 Map.of("linkedin", "https://linkedin.com/in/johndoe", "twitter", "@johndoe"),
                 Map.of("theme", "dark", "notifications", true),
                 "public",
@@ -167,20 +182,25 @@ class CreateUserProfileUseCaseTest {
     void shouldCreateProfileWithMinimalData() {
         // Arrange
         var minimalRequest = new CreateUserProfileRequest(
-                userId,
-                null, // no date of birth
-                null, // no gender
-                null, // no bio
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null,
-                null
+                userId,       // userId
+                null,         // firstName
+                null,         // lastName
+                null,         // dateOfBirth
+                null,         // gender
+                null,         // bio
+                null,         // phoneNumber
+                null,         // country
+                null,         // city
+                null,         // address
+                null,         // postalCode
+                "en",         // preferredLanguage
+                null,         // coverImageUrl
+                null,         // websiteUrl
+                Map.of(),     // socialLinks
+                Map.of(),     // preferences
+                "public",     // profileVisibility
+                true,         // emailNotificationsEnabled
+                false         // smsNotificationsEnabled
         );
 
         var minimalProfile = UserProfile.builder()
@@ -189,24 +209,29 @@ class CreateUserProfileUseCaseTest {
                 .build();
 
         var minimalResponse = new UserProfileResponse(
-                minimalProfile.id(),
-                userId,
-                null,
-                null,
-                null,
-                null,
-                "UTC",
-                "en",
-                null,
-                null,
-                Map.of(),
-                Map.of(),
-                "public",
-                true,
-                false,
-                Map.of(),
-                LocalDateTime.now(),
-                LocalDateTime.now()
+                minimalProfile.id(),   // id
+                userId,                // userId
+                null,                  // firstName
+                null,                  // lastName
+                null,                  // dateOfBirth
+                null,                  // gender
+                null,                  // bio
+                null,                  // phoneNumber
+                null,                  // country
+                null,                  // city
+                null,                  // address
+                null,                  // postalCode
+                "en",                  // preferredLanguage
+                null,                  // coverImageUrl
+                null,                  // websiteUrl
+                Map.of(),              // socialLinks
+                Map.of(),              // preferences
+                "public",              // profileVisibility
+                true,                  // emailNotificationsEnabled
+                false,                 // smsNotificationsEnabled
+                Map.of(),              // metadata
+                LocalDateTime.now(),   // createdAt
+                LocalDateTime.now()    // updatedAt
         );
 
         when(profileRepository.existsByUserId(userId)).thenReturn(false);
@@ -220,7 +245,6 @@ class CreateUserProfileUseCaseTest {
         // Assert
         assertThat(result).isNotNull();
         assertThat(result.userId()).isEqualTo(userId);
-        assertThat(result.timezone()).isEqualTo("UTC");
         assertThat(result.preferredLanguage()).isEqualTo("en");
         assertThat(result.profileVisibility()).isEqualTo("public");
 
@@ -239,11 +263,25 @@ class CreateUserProfileUseCaseTest {
 
             // Arrange
             var requestWithGender = new CreateUserProfileRequest(
-                    testUserId,
-                    LocalDate.of(1995, 5, 20),
-                    genderValue,
-                    "Test bio",
-                    null, null, null, null, null, null, null, null, null, null
+                    testUserId,        // userId
+                    null,              // firstName
+                    null,              // lastName
+                    LocalDate.of(1995, 5, 20), // dateOfBirth
+                    genderValue,       // gender
+                    "Test bio",        // bio
+                    null,              // phoneNumber
+                    null,              // country
+                    null,              // city
+                    null,              // address
+                    null,              // postalCode
+                    "en",              // preferredLanguage
+                    null,              // coverImageUrl
+                    null,              // websiteUrl
+                    Map.of(),          // socialLinks
+                    Map.of(),          // preferences
+                    "public",          // profileVisibility
+                    true,              // emailNotificationsEnabled
+                    false              // smsNotificationsEnabled
             );
 
             var profileWithGender = UserProfile.builder()
@@ -257,10 +295,29 @@ class CreateUserProfileUseCaseTest {
             when(profileRepository.save(any(UserProfile.class))).thenReturn(profileWithGender);
             when(mapper.toResponse(any(UserProfile.class))).thenReturn(
                     new UserProfileResponse(
-                            profileWithGender.id(), requestWithGender.userId(), LocalDate.of(1995, 5, 20),
-                            genderValue, "Test bio", null, "UTC", "en", null, null,
-                            Map.of(), Map.of(), "public", true, false, Map.of(),
-                            LocalDateTime.now(), LocalDateTime.now()
+                            profileWithGender.id(),    // id
+                            requestWithGender.userId(), // userId
+                            null,                      // firstName
+                            null,                      // lastName
+                            LocalDate.of(1995, 5, 20), // dateOfBirth
+                            genderValue,               // gender
+                            "Test bio",                // bio
+                            null,                      // phoneNumber
+                            null,                      // country
+                            null,                      // city
+                            null,                      // address
+                            null,                      // postalCode
+                            "en",                      // preferredLanguage
+                            null,                      // coverImageUrl
+                            null,                      // websiteUrl
+                            Map.of(),                  // socialLinks
+                            Map.of(),                  // preferences
+                            "public",                  // profileVisibility
+                            true,                      // emailNotificationsEnabled
+                            false,                     // smsNotificationsEnabled
+                            Map.of(),                  // metadata
+                            LocalDateTime.now(),       // createdAt
+                            LocalDateTime.now()        // updatedAt
                     )
             );
 
@@ -300,20 +357,25 @@ class CreateUserProfileUseCaseTest {
         );
 
         var customRequest = new CreateUserProfileRequest(
-                userId,
-                LocalDate.of(1992, 6, 10),
-                "non_binary",
-                "Full-stack developer",
-                "CAN",
-                "America/Toronto",
-                "en",
-                null,
-                null,
-                customSocialLinks,
-                customPreferences,
-                "connections",
-                true,
-                true
+                userId,                    // userId
+                "Alex",                    // firstName
+                "Smith",                   // lastName
+                LocalDate.of(1992, 6, 10), // dateOfBirth
+                "non_binary",              // gender
+                "Full-stack developer",    // bio
+                "+1234567890",             // phoneNumber
+                "Canada",                  // country
+                "Toronto",                 // city
+                "123 Main St",             // address
+                "M5H 2N2",                 // postalCode
+                "en",                      // preferredLanguage
+                null,                      // coverImageUrl
+                "https://alexsmith.dev",   // websiteUrl
+                customSocialLinks,         // socialLinks
+                customPreferences,         // preferences
+                "connections",             // profileVisibility
+                true,                      // emailNotificationsEnabled
+                true                       // smsNotificationsEnabled
         );
 
         var customProfile = UserProfile.builder()
@@ -328,10 +390,29 @@ class CreateUserProfileUseCaseTest {
         when(profileRepository.save(any(UserProfile.class))).thenReturn(customProfile);
         when(mapper.toResponse(any(UserProfile.class))).thenReturn(
                 new UserProfileResponse(
-                        customProfile.id(), userId, LocalDate.of(1992, 6, 10),
-                        "non_binary", "Full-stack developer", "CAN", "America/Toronto", "en",
-                        null, null, customSocialLinks, customPreferences, "connections",
-                        true, true, Map.of(), LocalDateTime.now(), LocalDateTime.now()
+                        customProfile.id(),        // id
+                        userId,                    // userId
+                        "Alex",                    // firstName
+                        "Smith",                   // lastName
+                        LocalDate.of(1992, 6, 10), // dateOfBirth
+                        "non_binary",              // gender
+                        "Full-stack developer",    // bio
+                        "+1234567890",             // phoneNumber
+                        "Canada",                  // country
+                        "Toronto",                 // city
+                        "123 Main St",             // address
+                        "M5H 2N2",                 // postalCode
+                        "en",                      // preferredLanguage
+                        null,                      // coverImageUrl
+                        "https://alexsmith.dev",   // websiteUrl
+                        customSocialLinks,         // socialLinks
+                        customPreferences,         // preferences
+                        "connections",             // profileVisibility
+                        true,                      // emailNotificationsEnabled
+                        true,                      // smsNotificationsEnabled
+                        Map.of(),                  // metadata
+                        LocalDateTime.now(),       // createdAt
+                        LocalDateTime.now()        // updatedAt
                 )
         );
 

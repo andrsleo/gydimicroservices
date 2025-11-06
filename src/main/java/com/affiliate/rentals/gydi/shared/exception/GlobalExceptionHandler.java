@@ -1,5 +1,7 @@
 package com.affiliate.rentals.gydi.shared.exception;
 
+import com.affiliate.rentals.gydi.properties.domain.exception.PropertyCannotBePublishedException;
+import com.affiliate.rentals.gydi.properties.domain.exception.PropertyDomainException;
 import com.affiliate.rentals.gydi.users.domain.exception.*;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.ConstraintViolation;
@@ -79,6 +81,66 @@ public class GlobalExceptionHandler {
         if (ex instanceof InvalidUserDataException dataException && dataException.hasMultipleErrors()) {
             List<ErrorResponse.FieldError> fieldErrors = dataException.getErrors().stream()
                     .map(error -> ErrorResponse.FieldError.of("user", error))
+                    .toList();
+
+            return ResponseEntity
+                    .status(status)
+                    .body(ErrorResponse.of(
+                            status.value(),
+                            errorType,
+                            ex.getMessage(),
+                            request.getRequestURI(),
+                            fieldErrors
+                    ));
+        }
+
+        return buildResponse(status, errorType, ex.getMessage(), request.getRequestURI());
+    }
+
+    /**
+     * Handles property domain exceptions using annotation-based HTTP status mapping.
+     *
+     * <p>This handler specifically manages exceptions from the properties bounded context,
+     * following the same pattern as the users domain exception handler. It extracts
+     * HTTP status and error type from the {@link HttpStatusMapping} annotation.</p>
+     *
+     * <p>Special handling for {@link PropertyCannotBePublishedException} which aggregates
+     * multiple validation errors, providing detailed feedback to users about all missing
+     * requirements for publication.</p>
+     *
+     * @param ex      the property domain exception
+     * @param request the HTTP request
+     * @return an appropriate error response based on the exception's annotation
+     */
+    @ExceptionHandler(PropertyDomainException.class)
+    public ResponseEntity<ErrorResponse> handlePropertyDomainException(
+            PropertyDomainException ex,
+            HttpServletRequest request
+    ) {
+        logger.warn("Property domain exception: {}", ex.getMessage());
+
+        // Extract HTTP status and error type from annotation
+        HttpStatusMapping mapping = ex.getClass().getAnnotation(HttpStatusMapping.class);
+
+        if (mapping == null) {
+            logger.error("Property domain exception {} is missing @HttpStatusMapping annotation",
+                    ex.getClass().getSimpleName());
+            return buildResponse(
+                    HttpStatus.INTERNAL_SERVER_ERROR,
+                    "Internal Error",
+                    "An unexpected error occurred",
+                    request.getRequestURI()
+            );
+        }
+
+        HttpStatus status = mapping.status();
+        String errorType = mapping.errorType();
+
+        // Handle special case for PropertyCannotBePublishedException with multiple errors
+        if (ex instanceof PropertyCannotBePublishedException publishException &&
+                publishException.hasMultipleErrors()) {
+            List<ErrorResponse.FieldError> fieldErrors = publishException.getErrors().stream()
+                    .map(error -> ErrorResponse.FieldError.of("property", error))
                     .toList();
 
             return ResponseEntity
@@ -208,6 +270,61 @@ public class GlobalExceptionHandler {
                 message,
                 request.getRequestURI()
         );
+    }
+
+    /**
+     * Handles illegal state exceptions (e.g., business rule violations).
+     *
+     * <p>This is commonly thrown when an operation cannot be performed
+     * due to the current state of an entity, such as trying to publish
+     * a property that doesn't meet the minimum requirements.</p>
+     *
+     * @param ex      the illegal state exception
+     * @param request the HTTP request
+     * @return a BAD_REQUEST response
+     */
+    @ExceptionHandler(IllegalStateException.class)
+    public ResponseEntity<ErrorResponse> handleIllegalStateException(
+            IllegalStateException ex,
+            HttpServletRequest request
+    ) {
+        logger.warn("Illegal state exception: {}", ex.getMessage());
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Invalid Operation",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
+     * Handles client abort exceptions during streaming (e.g., video, large files).
+     *
+     * <p>This exception is thrown when the client (browser) closes the connection
+     * before the server finishes sending data. This is normal behavior when:
+     * <ul>
+     *   <li>User navigates away while video is loading</li>
+     *   <li>Video player makes range requests and cancels previous ones</li>
+     *   <li>Browser prefetches content and then cancels</li>
+     * </ul>
+     *
+     * <p>We log at DEBUG level only and don't return a response since the client
+     * has already closed the connection.</p>
+     *
+     * @param ex      the client abort exception
+     * @param request the HTTP request
+     */
+    @ExceptionHandler(org.apache.catalina.connector.ClientAbortException.class)
+    public void handleClientAbortException(
+            org.apache.catalina.connector.ClientAbortException ex,
+            HttpServletRequest request
+    ) {
+        // Log at DEBUG level only - this is expected behavior during video streaming
+        logger.debug("Client aborted connection during streaming: {} - {}",
+                request.getMethod(), request.getRequestURI());
+
+        // No response needed - client already closed the connection
     }
 
     /**
