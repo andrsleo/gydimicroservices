@@ -27,12 +27,20 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
             throw new SecurityException("User is not authorized to update this property");
         }
 
-        if (command.title() != null || command.description() != null || 
-            (command.priceAmount() != null && command.priceCurrency() != null)) {
+        // Update listing type first if provided
+        if (command.listingType() != null && !command.listingType().isBlank()) {
+            property.updateListingType(PropertyListingType.valueOf(command.listingType()));
+        }
+
+        if (command.title() != null || command.description() != null ||
+            command.priceAmount() != null || command.salePrice() != null) {
             Money newPrice = command.priceAmount() != null && command.priceCurrency() != null
                 ? Money.of(command.priceAmount(), command.priceCurrency())
-                : null;
-            property.updateDetails(command.title(), command.description(), newPrice);
+                : property.getPricePerNight();
+            Money newSalePrice = command.salePrice() != null && command.priceCurrency() != null
+                ? Money.of(command.salePrice(), command.priceCurrency())
+                : property.getSalePrice(); // Preserve current value if not provided
+            property.updateDetails(command.title(), command.description(), newPrice, newSalePrice);
         }
 
         if (command.country() != null && command.city() != null) {

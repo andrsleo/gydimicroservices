@@ -27,11 +27,14 @@ public class PropertyJpaEntity {
     @Column(columnDefinition = "TEXT")
     private String description;
 
-    @Column(name = "price_amount", nullable = false, precision = 10, scale = 2)
+    @Column(name = "price_amount", nullable = false, precision = 15, scale = 2)
     private BigDecimal priceAmount;
 
     @Column(name = "price_currency", nullable = false, length = 3)
     private String priceCurrency;
+
+    @Column(name = "sale_price", precision = 15, scale = 2)
+    private BigDecimal salePrice;
 
     @Column(nullable = false, length = 100)
     private String country;
@@ -66,6 +69,9 @@ public class PropertyJpaEntity {
 
     @Column(name = "property_type", nullable = false, length = 50)
     private String propertyType;
+
+    @Column(name = "listing_type", nullable = false, length = 20)
+    private String listingType;
 
     @Column(nullable = false, length = 20)
     private String status;
@@ -122,6 +128,9 @@ public class PropertyJpaEntity {
     public String getPriceCurrency() { return priceCurrency; }
     public void setPriceCurrency(String priceCurrency) { this.priceCurrency = priceCurrency; }
 
+    public BigDecimal getSalePrice() { return salePrice; }
+    public void setSalePrice(BigDecimal salePrice) { this.salePrice = salePrice; }
+
     public String getCountry() { return country; }
     public void setCountry(String country) { this.country = country; }
 
@@ -148,6 +157,9 @@ public class PropertyJpaEntity {
 
     public String getPropertyType() { return propertyType; }
     public void setPropertyType(String propertyType) { this.propertyType = propertyType; }
+
+    public String getListingType() { return listingType; }
+    public void setListingType(String listingType) { this.listingType = listingType; }
 
     public String getStatus() { return status; }
     public void setStatus(String status) { this.status = status; }

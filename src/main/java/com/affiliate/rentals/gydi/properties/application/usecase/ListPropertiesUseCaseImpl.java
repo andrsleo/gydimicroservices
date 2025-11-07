@@ -20,6 +20,7 @@ public class ListPropertiesUseCaseImpl implements ListPropertiesUseCase {
         PropertyRepositoryPort.PropertySearchSpec spec = new PropertyRepositoryPort.PropertySearchSpec(
             query.status(),
             query.propertyType(),
+            query.listingType(),
             query.country(),
             query.city(),
             query.minPrice(),

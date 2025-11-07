@@ -29,7 +29,7 @@ public class PropertyJpaMapper {
             .map(AmenityJpaEntity::getName)
             .collect(Collectors.toList());
 
-        return Property.builder()
+        Property.Builder builder = Property.builder()
             .id(PropertyId.of(entity.getId()))
             .hostId(entity.getHostId())
             .title(entity.getTitle())
@@ -39,14 +39,21 @@ public class PropertyJpaMapper {
             .amenities(amenityNames)
             .specs(PropertySpecs.of(entity.getBedrooms(), entity.getBathrooms(), entity.getMaxGuests()))
             .propertyType(PropertyType.valueOf(entity.getPropertyType()))
+            .listingType(PropertyListingType.valueOf(entity.getListingType()))
             .status(PropertyStatus.valueOf(entity.getStatus()))
             .images(images)
             .videos(videos)
             .coverImageId(entity.getCoverImageId())
             .createdAt(entity.getCreatedAt())
             .updatedAt(entity.getUpdatedAt())
-            .publishedAt(entity.getPublishedAt())
-            .build();
+            .publishedAt(entity.getPublishedAt());
+
+        // Set sale price if available
+        if (entity.getSalePrice() != null) {
+            builder.salePrice(Money.of(entity.getSalePrice(), entity.getPriceCurrency()));
+        }
+
+        return builder.build();
     }
 
     public PropertyJpaEntity toEntity(Property domain) {
@@ -57,6 +64,14 @@ public class PropertyJpaMapper {
         entity.setDescription(domain.getDescription());
         entity.setPriceAmount(domain.getPricePerNight().amount());
         entity.setPriceCurrency(domain.getPricePerNight().currency().getCurrencyCode());
+
+        // Set sale price (or null if not available)
+        if (domain.getSalePrice() != null) {
+            entity.setSalePrice(domain.getSalePrice().amount());
+        } else {
+            entity.setSalePrice(null);
+        }
+
         entity.setCountry(domain.getLocation().country());
         entity.setCity(domain.getLocation().city());
         entity.setAddress(domain.getLocation().address());
@@ -74,6 +89,7 @@ public class PropertyJpaMapper {
         entity.setBathrooms(domain.getSpecs().bathrooms());
         entity.setMaxGuests(domain.getSpecs().maxGuests());
         entity.setPropertyType(domain.getPropertyType().name());
+        entity.setListingType(domain.getListingType().name());
         entity.setStatus(domain.getStatus().name());
         entity.setCoverImageId(domain.getCoverImageId());
         entity.setCreatedAt(domain.getCreatedAt());

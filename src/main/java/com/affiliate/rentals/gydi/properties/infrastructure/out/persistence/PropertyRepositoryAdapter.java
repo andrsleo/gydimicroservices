@@ -87,7 +87,11 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
             if (spec.propertyType() != null) {
                 predicates.add(cb.equal(root.get("propertyType"), spec.propertyType().name()));
             }
-            
+
+            if (spec.listingType() != null && !spec.listingType().isBlank()) {
+                predicates.add(cb.equal(root.get("listingType"), spec.listingType()));
+            }
+
             if (spec.country() != null) {
                 predicates.add(cb.equal(root.get("country"), spec.country()));
             }

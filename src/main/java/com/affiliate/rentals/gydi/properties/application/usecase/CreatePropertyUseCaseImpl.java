@@ -21,7 +21,12 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
 
     @Override
     public Property createProperty(CreatePropertyCommand command) {
-        Property property = Property.builder()
+        // Default to SHORT_TERM_RENTAL if listingType is not provided
+        PropertyListingType listingType = (command.listingType() != null && !command.listingType().isBlank())
+                ? PropertyListingType.valueOf(command.listingType())
+                : PropertyListingType.SHORT_TERM_RENTAL;
+
+        Property.Builder builder = Property.builder()
                 .id(PropertyId.generate())
                 .hostId(command.hostId())
                 .title(command.title())
@@ -40,8 +45,15 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
                     command.maxGuests()
                 ))
                 .propertyType(PropertyType.valueOf(command.propertyType()))
-                .status(PropertyStatus.DRAFT)
-                .build();
+                .listingType(listingType)
+                .status(PropertyStatus.DRAFT);
+
+        // Set sale price if provided
+        if (command.salePrice() != null) {
+            builder.salePrice(Money.of(command.salePrice(), command.priceCurrency()));
+        }
+
+        Property property = builder.build();
 
         return propertyRepository.save(property);
     }

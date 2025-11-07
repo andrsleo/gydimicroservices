@@ -20,10 +20,13 @@ public record CreatePropertyRequest(
     @NotNull(message = "Price is required")
     @DecimalMin(value = "0.01", message = "Price must be greater than zero")
     BigDecimal pricePerNight,
-    
+
     @NotBlank(message = "Currency is required")
-    @Pattern(regexp = "USD|EUR|MXN|CAD|GBP", message = "Invalid currency")
+    @Pattern(regexp = "USD|EUR|MXN|COP|CAD|GBP", message = "Invalid currency")
     String currency,
+
+    @DecimalMin(value = "0.01", message = "Sale price must be greater than zero")
+    BigDecimal salePrice,
     
     @NotBlank(message = "Country is required")
     String country,
@@ -50,7 +53,11 @@ public record CreatePropertyRequest(
     Integer maxGuests,
     
     @NotBlank(message = "Property type is required")
-    @Pattern(regexp = "APARTMENT|HOUSE|VILLA|CABIN|STUDIO|CONDO|BUNGALOW|OTHER", 
+    @Pattern(regexp = "APARTMENT|HOUSE|VILLA|CABIN|STUDIO|CONDO|BUNGALOW|OTHER",
              message = "Invalid property type")
-    String propertyType
+    String propertyType,
+
+    @Pattern(regexp = "SHORT_TERM_RENTAL|SALE|BOTH",
+             message = "Invalid listing type. Must be SHORT_TERM_RENTAL, SALE, or BOTH")
+    String listingType
 ) {}

@@ -25,6 +25,7 @@ public interface CreatePropertyUseCase {
         String description,
         java.math.BigDecimal priceAmount,
         String priceCurrency,
+        java.math.BigDecimal salePrice,
         String country,
         String city,
         String address,
@@ -33,6 +34,7 @@ public interface CreatePropertyUseCase {
         int bedrooms,
         int bathrooms,
         int maxGuests,
-        String propertyType
+        String propertyType,
+        String listingType
     ) {}
 }
