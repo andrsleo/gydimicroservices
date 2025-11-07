@@ -26,6 +26,7 @@ public interface ListPropertiesUseCase {
     record ListPropertiesQuery(
         PropertyStatus status,
         PropertyType propertyType,
+        String listingType,
         String country,
         String city,
         BigDecimal minPrice,

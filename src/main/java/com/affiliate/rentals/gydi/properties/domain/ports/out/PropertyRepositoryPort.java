@@ -67,6 +67,7 @@ public interface PropertyRepositoryPort {
     record PropertySearchSpec(
         PropertyStatus status,
         PropertyType propertyType,
+        String listingType,
         String country,
         String city,
         BigDecimal minPrice,
