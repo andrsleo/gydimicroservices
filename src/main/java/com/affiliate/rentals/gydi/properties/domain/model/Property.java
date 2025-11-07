@@ -23,10 +23,12 @@ public class Property {
     private String title;
     private String description;
     private Money pricePerNight;
+    private Money salePrice; // Price for sale (used when listingType allows sale)
     private PropertyLocation location;
     private List<String> amenities;
     private PropertySpecs specs;
     private PropertyType propertyType;
+    private PropertyListingType listingType;
     private PropertyStatus status;
     private final List<PropertyImage> images;
     private final List<PropertyVideo> videos;
@@ -41,10 +43,12 @@ public class Property {
         this.title = Objects.requireNonNull(builder.title, "Title cannot be null");
         this.description = builder.description;
         this.pricePerNight = Objects.requireNonNull(builder.pricePerNight, "Price per night cannot be null");
+        this.salePrice = builder.salePrice; // Optional, used when listingType allows sale
         this.location = Objects.requireNonNull(builder.location, "Location cannot be null");
         this.amenities = builder.amenities != null ? new ArrayList<>(builder.amenities) : new ArrayList<>();
         this.specs = Objects.requireNonNull(builder.specs, "Property specs cannot be null");
         this.propertyType = Objects.requireNonNull(builder.propertyType, "Property type cannot be null");
+        this.listingType = builder.listingType != null ? builder.listingType : PropertyListingType.SHORT_TERM_RENTAL;
         this.status = builder.status != null ? builder.status : PropertyStatus.DRAFT;
         this.images = builder.images != null ? new ArrayList<>(builder.images) : new ArrayList<>();
         this.videos = builder.videos != null ? new ArrayList<>(builder.videos) : new ArrayList<>();
@@ -119,6 +123,7 @@ public class Property {
         validateLocation(errors);
         validateSpecs(errors);
         validateAmenities(errors);
+        validateListingType(errors);
         validateStatus(errors);
 
         return errors;
@@ -189,6 +194,28 @@ public class Property {
     private void validateAmenities(List<String> errors) {
         if (amenities == null || amenities.isEmpty()) {
             errors.add("Property must have at least 1 amenity");
+        }
+    }
+
+    private void validateListingType(List<String> errors) {
+        if (listingType == null) {
+            errors.add("Listing type is required");
+            return;
+        }
+
+        // Validate sale price for sale listings
+        if (listingType.allowsSale() && (salePrice == null || salePrice.amount().compareTo(java.math.BigDecimal.ZERO) <= 0)) {
+            errors.add("Sale price is required for properties available for sale");
+        }
+
+        // Validate rental price for rental listings
+        if (listingType.allowsRental() && (pricePerNight == null || pricePerNight.amount().compareTo(java.math.BigDecimal.ZERO) <= 0)) {
+            errors.add("Price per night is required for rental properties");
+        }
+
+        // Validate specs for rental listings
+        if (listingType.allowsRental() && (specs == null || specs.maxGuests() <= 0)) {
+            errors.add("Max guests is required for rental properties");
         }
     }
 
@@ -346,7 +373,7 @@ public class Property {
         return coverImageId;
     }
 
-    public void updateDetails(String title, String description, Money pricePerNight) {
+    public void updateDetails(String title, String description, Money pricePerNight, Money salePrice) {
         if (title != null) {
             if (title.isBlank() || title.length() < 10 || title.length() > 100) {
                 throw new IllegalArgumentException("Invalid title");
@@ -362,6 +389,9 @@ public class Property {
         if (pricePerNight != null) {
             this.pricePerNight = pricePerNight;
         }
+        if (salePrice != null) {
+            this.salePrice = salePrice;
+        }
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -372,6 +402,26 @@ public class Property {
 
     public void updateSpecs(PropertySpecs specs) {
         this.specs = Objects.requireNonNull(specs, "Specs cannot be null");
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Updates the listing type with business validations.
+     *
+     * @param newListingType the new listing type
+     * @throws IllegalArgumentException if newListingType is null
+     * @throws IllegalStateException if transition not allowed
+     */
+    public void updateListingType(PropertyListingType newListingType) {
+        Objects.requireNonNull(newListingType, "Listing type cannot be null");
+
+        if (!this.listingType.canTransitionTo(newListingType)) {
+            throw new IllegalStateException(
+                    String.format("Cannot change listing type from %s to %s",
+                            this.listingType, newListingType));
+        }
+
+        this.listingType = newListingType;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -439,6 +489,10 @@ public class Property {
         return pricePerNight;
     }
 
+    public Money getSalePrice() {
+        return salePrice;
+    }
+
     public PropertyLocation getLocation() {
         return location;
     }
@@ -453,6 +507,10 @@ public class Property {
 
     public PropertyType getPropertyType() {
         return propertyType;
+    }
+
+    public PropertyListingType getListingType() {
+        return listingType;
     }
 
     public PropertyStatus getStatus() {
@@ -504,10 +562,12 @@ public class Property {
         private String title;
         private String description;
         private Money pricePerNight;
+        private Money salePrice;
         private PropertyLocation location;
         private List<String> amenities;
         private PropertySpecs specs;
         private PropertyType propertyType;
+        private PropertyListingType listingType;
         private PropertyStatus status;
         private List<PropertyImage> images;
         private List<PropertyVideo> videos;
@@ -541,6 +601,11 @@ public class Property {
             return this;
         }
 
+        public Builder salePrice(Money salePrice) {
+            this.salePrice = salePrice;
+            return this;
+        }
+
         public Builder location(PropertyLocation location) {
             this.location = location;
             return this;
@@ -558,6 +623,11 @@ public class Property {
 
         public Builder propertyType(PropertyType propertyType) {
             this.propertyType = propertyType;
+            return this;
+        }
+
+        public Builder listingType(PropertyListingType listingType) {
+            this.listingType = listingType;
             return this;
         }
 

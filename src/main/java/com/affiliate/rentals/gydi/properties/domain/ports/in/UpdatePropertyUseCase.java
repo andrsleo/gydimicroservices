@@ -26,6 +26,7 @@ public interface UpdatePropertyUseCase {
         String description,
         java.math.BigDecimal priceAmount,
         String priceCurrency,
+        java.math.BigDecimal salePrice,
         String country,
         String city,
         String address,
@@ -33,6 +34,7 @@ public interface UpdatePropertyUseCase {
         java.util.List<String> amenities,
         Integer bedrooms,
         Integer bathrooms,
-        Integer maxGuests
+        Integer maxGuests,
+        String listingType
     ) {}
 }

@@ -107,6 +107,7 @@ public class PropertyController {
                 request.description(),
                 request.pricePerNight(),
                 request.currency(),
+                request.salePrice(),
                 request.country(),
                 request.city(),
                 request.address(),
@@ -115,7 +116,8 @@ public class PropertyController {
                 request.bedrooms(),
                 request.bathrooms(),
                 request.maxGuests(),
-                request.propertyType()
+                request.propertyType(),
+                request.listingType()
             );
         
         Property property = createPropertyUseCase.createProperty(command);
@@ -136,6 +138,7 @@ public class PropertyController {
     public ResponseEntity<PropertyPageResponse> listProperties(
             @RequestParam(required = false) String status,
             @RequestParam(required = false) String propertyType,
+            @RequestParam(required = false) String listingType,
             @RequestParam(required = false) String country,
             @RequestParam(required = false) String city,
             @RequestParam(required = false) BigDecimal minPrice,
@@ -154,6 +157,7 @@ public class PropertyController {
             new ListPropertiesUseCase.ListPropertiesQuery(
                 status != null ? PropertyStatus.valueOf(status) : null,
                 propertyType != null ? PropertyType.valueOf(propertyType) : null,
+                listingType,
                 country, city, minPrice, maxPrice, minBedrooms, minBathrooms, minGuests,
                 amenities, searchText,
                 page, size, sortBy, sortDirection
@@ -237,6 +241,7 @@ public class PropertyController {
                 request.description(),
                 request.pricePerNight(),
                 request.currency(),
+                request.salePrice(),
                 request.country(),
                 request.city(),
                 request.address(),
@@ -244,7 +249,8 @@ public class PropertyController {
                 request.amenities(),
                 request.bedrooms(),
                 request.bathrooms(),
-                request.maxGuests()
+                request.maxGuests(),
+                request.listingType()
             );
         
         Property property = updatePropertyUseCase.updateProperty(command);

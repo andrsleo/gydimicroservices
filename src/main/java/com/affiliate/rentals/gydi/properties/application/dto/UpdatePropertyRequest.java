@@ -18,9 +18,12 @@ public record UpdatePropertyRequest(
     
     @DecimalMin(value = "0.01", message = "Price must be greater than zero")
     BigDecimal pricePerNight,
-    
-    @Pattern(regexp = "USD|EUR|MXN|CAD|GBP", message = "Invalid currency")
+
+    @Pattern(regexp = "USD|EUR|MXN|COP|CAD|GBP", message = "Invalid currency")
     String currency,
+
+    @DecimalMin(value = "0.01", message = "Sale price must be greater than zero")
+    BigDecimal salePrice,
     
     String country,
     
@@ -39,5 +42,9 @@ public record UpdatePropertyRequest(
     Integer bathrooms,
     
     @Min(value = 1, message = "Max guests must be at least 1")
-    Integer maxGuests
+    Integer maxGuests,
+
+    @Pattern(regexp = "SHORT_TERM_RENTAL|SALE|BOTH",
+             message = "Invalid listing type. Must be SHORT_TERM_RENTAL, SALE, or BOTH")
+    String listingType
 ) {}
