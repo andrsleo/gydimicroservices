@@ -22,6 +22,7 @@ import static org.mockito.Mockito.verifyNoMoreInteractions;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.affiliate.rentals.gydi.shared.security.OwnershipValidator;
 import com.affiliate.rentals.gydi.users.domain.exception.UserNotFoundException;
 import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.Role;
@@ -42,6 +43,9 @@ class DeleteUserUseCaseTest {
 
     @Mock
     private UserRepositoryPort userRepository;
+
+    @Mock
+    private OwnershipValidator ownershipValidator;
 
     @InjectMocks
     private DeleteUserUseCase deleteUserUseCase;

@@ -118,4 +118,15 @@ public @interface ApiErrorResponses {
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @interface Auth {
     }
+
+    /**
+     * Standard error response for rate limiting (429 Too Many Requests).
+     * Returned when a client exceeds the allowed number of requests in a time window.
+     */
+    @Target(ElementType.METHOD)
+    @Retention(RetentionPolicy.RUNTIME)
+    @ApiResponse(responseCode = "429", description = "Too many requests - rate limit exceeded",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @interface TooManyRequests {
+    }
 }

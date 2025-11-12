@@ -12,7 +12,11 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.junit.jupiter.MockitoSettings;
+import org.mockito.quality.Strictness;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.anyString;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
@@ -20,6 +24,8 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.affiliate.rentals.gydi.shared.security.HTMLSanitizer;
+import com.affiliate.rentals.gydi.shared.security.OwnershipValidator;
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserProfileRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserProfileResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserProfileDtoMapper;
@@ -37,6 +43,7 @@ import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort;
  * @author GYDI Development Team
  */
 @ExtendWith(MockitoExtension.class)
+@MockitoSettings(strictness = Strictness.LENIENT)
 @DisplayName("UpdateUserProfileUseCase Tests")
 class UpdateUserProfileUseCaseTest {
 
@@ -45,6 +52,12 @@ class UpdateUserProfileUseCaseTest {
 
     @Mock
     private UserProfileDtoMapper mapper;
+
+    @Mock
+    private OwnershipValidator ownershipValidator;
+
+    @Mock
+    private HTMLSanitizer htmlSanitizer;
 
     @InjectMocks
     private UpdateUserProfileUseCase updateUserProfileUseCase;
@@ -82,6 +95,10 @@ class UpdateUserProfileUseCaseTest {
                 .createdAt(LocalDateTime.now().minusDays(30))
                 .updatedAt(LocalDateTime.now().minusDays(1))
                 .build();
+
+        // Setup mocks for security components
+        // HTMLSanitizer returns input as-is (passthrough) for testing
+        when(htmlSanitizer.sanitizeToPlainText(anyString())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
     @Test

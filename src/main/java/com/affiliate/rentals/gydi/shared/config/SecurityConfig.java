@@ -60,8 +60,13 @@ public class SecurityConfig {
                         // Public endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
-                        .requestMatchers("/actuator/**").permitAll()
                         .requestMatchers("/error").permitAll()
+
+                        // Actuator endpoints - SECURITY: Only health endpoint is public
+                        .requestMatchers("/actuator/health").permitAll()
+                        .requestMatchers("/actuator/info").permitAll()
+                        // All other actuator endpoints require ADMIN role
+                        .requestMatchers("/actuator/**").hasRole("ADMIN")
 
                         // Static files (uploads) - allow public access for development
                         .requestMatchers("/uploads/**").permitAll()
@@ -77,6 +82,10 @@ public class SecurityConfig {
 
                         // Admin-only endpoints
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("ADMIN")
+
+                        // Property endpoints - Public read access for browsing properties
+                        .requestMatchers(HttpMethod.GET, "/api/properties/**").permitAll()
+                        .requestMatchers(HttpMethod.GET, "/api/properties").permitAll()
 
                         // Authenticated endpoints
                         .anyRequest().authenticated()
