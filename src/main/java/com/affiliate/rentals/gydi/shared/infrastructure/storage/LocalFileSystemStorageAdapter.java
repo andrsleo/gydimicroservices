@@ -13,6 +13,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.affiliate.rentals.gydi.shared.domain.port.StoragePort;
+import com.affiliate.rentals.gydi.shared.security.FileValidator;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,13 +51,16 @@ public class LocalFileSystemStorageAdapter implements StoragePort {
 
     private final Path uploadDirectory;
     private final String baseUrl;
+    private final FileValidator fileValidator;
 
     public LocalFileSystemStorageAdapter(
             @Value("${storage.local.directory:./uploads}") String uploadDirectory,
-            @Value("${storage.local.base-url:http://localhost:8080/uploads}") String baseUrl) {
+            @Value("${storage.local.base-url:http://localhost:8080/uploads}") String baseUrl,
+            FileValidator fileValidator) {
 
         this.uploadDirectory = Paths.get(uploadDirectory).toAbsolutePath().normalize();
         this.baseUrl = baseUrl;
+        this.fileValidator = fileValidator;
 
         try {
             Files.createDirectories(this.uploadDirectory);
@@ -155,24 +159,20 @@ public class LocalFileSystemStorageAdapter implements StoragePort {
 
     /**
      * Validate file before upload.
+     * Uses comprehensive validation including magic number verification.
      *
      * @param file the file to validate
      * @throws StorageException if validation fails
      */
     private void validateFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new StorageException("File is empty or null");
-        }
-
+        // SECURITY: Use FileValidator with magic number verification
+        // to prevent malicious file uploads and MIME type spoofing
         String contentType = file.getContentType();
-        if (contentType == null || (!contentType.startsWith("image/") && !contentType.startsWith("video/"))) {
-            throw new StorageException("Only image and video files are allowed");
-        }
 
-        // Max file size: 500MB (for videos)
-        long maxSize = 500 * 1024 * 1024;
-        if (file.getSize() > maxSize) {
-            throw new StorageException("File size exceeds maximum allowed size of 500MB");
+        if (contentType != null && contentType.startsWith("video/")) {
+            fileValidator.validateVideo(file);
+        } else {
+            fileValidator.validateImage(file);
         }
     }
 }
