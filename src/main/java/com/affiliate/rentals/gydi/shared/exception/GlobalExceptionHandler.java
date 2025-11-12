@@ -244,6 +244,34 @@ public class GlobalExceptionHandler {
     }
 
     /**
+     * Handles forbidden access exceptions (IDOR prevention).
+     *
+     * <p><b>SECURITY: IDOR (Insecure Direct Object Reference) Prevention</b></p>
+     *
+     * <p>This handler catches attempts by users to access resources they don't own.
+     * It returns HTTP 403 Forbidden instead of 404 Not Found to be transparent about
+     * the reason for denial (resource exists but user doesn't have permission).</p>
+     *
+     * @param ex      the forbidden exception
+     * @param request the HTTP request
+     * @return a FORBIDDEN response
+     */
+    @ExceptionHandler(ForbiddenException.class)
+    public ResponseEntity<ErrorResponse> handleForbiddenException(
+            ForbiddenException ex,
+            HttpServletRequest request
+    ) {
+        logger.warn("SECURITY: Forbidden access attempt - {}", ex.getMessage());
+
+        return buildResponse(
+                HttpStatus.FORBIDDEN,
+                "Access Denied",
+                ex.getMessage(),
+                request.getRequestURI()
+        );
+    }
+
+    /**
      * Handles method argument type mismatch exceptions.
      *
      * @param ex      the type mismatch exception

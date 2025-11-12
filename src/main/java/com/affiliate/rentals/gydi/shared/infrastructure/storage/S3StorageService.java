@@ -10,10 +10,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
 import com.affiliate.rentals.gydi.shared.domain.port.StoragePort;
+import com.affiliate.rentals.gydi.shared.security.FileValidator;
 
 import lombok.extern.slf4j.Slf4j;
-import software.amazon.awssdk.auth.credentials.AwsBasicCredentials;
-import software.amazon.awssdk.auth.credentials.StaticCredentialsProvider;
+import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
@@ -29,14 +29,21 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
  *
  * <p><b>Active only in production profile ({@code @Profile("prod")})</b></p>
  *
+ * <p><b>SECURITY: Uses AWS IAM roles for authentication instead of hardcoded credentials.</b></p>
+ * <p>The AWS SDK will automatically discover credentials in this order:</p>
+ * <ol>
+ *   <li>Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)</li>
+ *   <li>System properties (aws.accessKeyId, aws.secretAccessKey)</li>
+ *   <li>IAM role attached to EC2 instance, ECS task, or Lambda function</li>
+ *   <li>AWS credentials file (~/.aws/credentials)</li>
+ * </ol>
+ *
  * <p><b>Configuration required in application-prod.yml:</b></p>
  * <pre>
  * aws:
  *   s3:
  *     bucket-name: your-bucket-name
  *     region: us-east-1
- *     access-key: ${AWS_ACCESS_KEY_ID}
- *     secret-key: ${AWS_SECRET_ACCESS_KEY}
  *     base-url: https://your-bucket.s3.amazonaws.com
  * </pre>
  *
@@ -50,23 +57,30 @@ public class S3StorageService implements StoragePort {
     private final S3Client s3Client;
     private final String bucketName;
     private final String baseUrl;
+    private final FileValidator fileValidator;
 
     public S3StorageService(
             @Value("${aws.s3.bucket-name}") String bucketName,
             @Value("${aws.s3.region}") String region,
-            @Value("${aws.s3.access-key}") String accessKey,
-            @Value("${aws.s3.secret-key}") String secretKey,
-            @Value("${aws.s3.base-url}") String baseUrl) {
+            @Value("${aws.s3.base-url}") String baseUrl,
+            FileValidator fileValidator) {
         this.bucketName = bucketName;
+        this.fileValidator = fileValidator;
         this.baseUrl = baseUrl;
 
-        AwsBasicCredentials awsCreds = AwsBasicCredentials.create(accessKey, secretKey);
+        // SECURITY: Use DefaultCredentialsProvider instead of hardcoded credentials
+        // This automatically discovers credentials from:
+        // 1. Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+        // 2. System properties
+        // 3. IAM role (EC2, ECS, Lambda)
+        // 4. AWS credentials file
         this.s3Client = S3Client.builder()
                 .region(Region.of(region))
-                .credentialsProvider(StaticCredentialsProvider.create(awsCreds))
+                .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();
 
-        log.info("S3StorageService initialized for bucket: {} in region: {}", bucketName, region);
+        log.info("S3StorageService initialized for bucket: {} in region: {} using IAM credentials",
+                 bucketName, region);
     }
 
     @Override
@@ -164,24 +178,14 @@ public class S3StorageService implements StoragePort {
 
     /**
      * Validate file before upload.
+     * Uses comprehensive validation including magic number verification.
      *
      * @param file the file to validate
      * @throws StorageException if validation fails
      */
     private void validateFile(MultipartFile file) {
-        if (file == null || file.isEmpty()) {
-            throw new StorageException("File is empty or null");
-        }
-
-        String contentType = file.getContentType();
-        if (contentType == null || !contentType.startsWith("image/")) {
-            throw new StorageException("Only image files are allowed");
-        }
-
-        // Max file size: 10MB
-        long maxSize = 10 * 1024 * 1024;
-        if (file.getSize() > maxSize) {
-            throw new StorageException("File size exceeds maximum allowed size of 10MB");
-        }
+        // SECURITY: Use FileValidator with magic number verification
+        // to prevent malicious file uploads and MIME type spoofing
+        fileValidator.validateImage(file);
     }
 }

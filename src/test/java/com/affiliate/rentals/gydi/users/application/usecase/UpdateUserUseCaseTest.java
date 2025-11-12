@@ -20,6 +20,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.affiliate.rentals.gydi.shared.security.OwnershipValidator;
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
@@ -46,6 +47,9 @@ class UpdateUserUseCaseTest {
 
     @Mock
     private UserDtoMapper mapper;
+
+    @Mock
+    private OwnershipValidator ownershipValidator;
 
     @InjectMocks
     private UpdateUserUseCase updateUserUseCase;

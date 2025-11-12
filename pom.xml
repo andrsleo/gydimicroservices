@@ -105,6 +105,20 @@
             <scope>test</scope>
         </dependency>
 
+        <!-- Spring Security Test for @WithMockUser and security testing -->
+        <dependency>
+            <groupId>org.springframework.security</groupId>
+            <artifactId>spring-security-test</artifactId>
+            <scope>test</scope>
+        </dependency>
+
+        <!-- OWASP Java HTML Sanitizer for XSS prevention -->
+        <dependency>
+            <groupId>com.googlecode.owasp-java-html-sanitizer</groupId>
+            <artifactId>owasp-java-html-sanitizer</artifactId>
+            <version>20220608.1</version>
+        </dependency>
+
         <!-- ArchUnit for architecture tests (JUnit 5 integration) -->
         <dependency>
             <groupId>com.tngtech.archunit</groupId>
