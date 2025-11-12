@@ -5,6 +5,8 @@ import java.time.LocalDateTime;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.affiliate.rentals.gydi.shared.security.HTMLSanitizer;
+import com.affiliate.rentals.gydi.shared.security.OwnershipValidator;
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserProfileRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserProfileResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserProfileDtoMapper;
@@ -23,6 +25,8 @@ import lombok.extern.slf4j.Slf4j;
  * <p>This use case handles partial updates to user profiles, applying only
  * the fields that are provided in the request (PATCH semantics).</p>
  *
+ * <p><b>SECURITY: IDOR Prevention</b> - Validates that users can only update their own profiles.</p>
+ *
  * @author GYDI Development Team
  */
 @Slf4j
@@ -32,6 +36,8 @@ public class UpdateUserProfileUseCase {
 
     private final UserProfileRepositoryPort profileRepository;
     private final UserProfileDtoMapper mapper;
+    private final OwnershipValidator ownershipValidator;
+    private final HTMLSanitizer htmlSanitizer;
 
     /**
      * Updates a user profile with the provided data.
@@ -40,10 +46,14 @@ public class UpdateUserProfileUseCase {
      * @param request the update request with fields to modify
      * @return the updated profile response
      * @throws UserNotFoundException if the profile is not found
+     * @throws com.affiliate.rentals.gydi.shared.exception.ForbiddenException if user doesn't own the profile
      */
     @Transactional
     public UserProfileResponse execute(Long userId, UpdateUserProfileRequest request) {
         log.debug("Updating profile for user ID: {}", userId);
+
+        // SECURITY: Validate ownership to prevent IDOR
+        ownershipValidator.validateOwnership(userId);
 
         var existingProfile = profileRepository.findByUserId(userId)
                 .orElseThrow(() -> {
@@ -81,11 +91,16 @@ public class UpdateUserProfileUseCase {
         builder.lastName(request.lastName() != null ? request.lastName() : existing.lastName());
         builder.dateOfBirth(request.dateOfBirth() != null ? request.dateOfBirth() : existing.dateOfBirth());
         builder.gender(request.gender() != null ? Gender.fromString(request.gender()) : existing.gender());
-        builder.bio(request.bio() != null ? request.bio() : existing.bio());
+
+        // SECURITY: XSS Prevention - Sanitize user bio (strip all HTML tags)
+        builder.bio(request.bio() != null ? htmlSanitizer.sanitizeToPlainText(request.bio()) : existing.bio());
+
         builder.phoneNumber(request.phoneNumber() != null ? request.phoneNumber() : existing.phoneNumber());
         builder.country(request.country() != null ? request.country() : existing.country());
         builder.city(request.city() != null ? request.city() : existing.city());
-        builder.address(request.address() != null ? request.address() : existing.address());
+
+        // SECURITY: XSS Prevention - Sanitize address field (strip all HTML tags)
+        builder.address(request.address() != null ? htmlSanitizer.sanitizeToPlainText(request.address()) : existing.address());
         builder.postalCode(request.postalCode() != null ? request.postalCode() : existing.postalCode());
         builder.preferredLanguage(request.preferredLanguage() != null ? request.preferredLanguage() : existing.preferredLanguage());
         builder.coverImageUrl(request.coverImageUrl() != null ? request.coverImageUrl() : existing.coverImageUrl());

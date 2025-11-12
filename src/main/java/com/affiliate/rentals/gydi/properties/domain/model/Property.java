@@ -229,8 +229,28 @@ public class Property {
         if (images.size() >= MAX_IMAGES) {
             throw new IllegalStateException("Maximum number of images (" + MAX_IMAGES + ") reached");
         }
-        // Auto-calculate displayOrder if -1
-        int finalDisplayOrder = displayOrder == -1 ? images.size() : displayOrder;
+        // Auto-calculate displayOrder if -1 or if conflicts with existing order
+        int finalDisplayOrder;
+        if (displayOrder == -1) {
+            // Calculate next available displayOrder (max + 1)
+            finalDisplayOrder = images.stream()
+                    .mapToInt(PropertyImage::getDisplayOrder)
+                    .max()
+                    .orElse(-1) + 1;
+        } else {
+            // Check if displayOrder already exists
+            boolean orderExists = images.stream()
+                    .anyMatch(img -> img.getDisplayOrder() == displayOrder);
+            if (orderExists) {
+                // Calculate next available displayOrder to avoid conflict
+                finalDisplayOrder = images.stream()
+                        .mapToInt(PropertyImage::getDisplayOrder)
+                        .max()
+                        .orElse(-1) + 1;
+            } else {
+                finalDisplayOrder = displayOrder;
+            }
+        }
         PropertyImage image = PropertyImage.create(this.id, url, finalDisplayOrder);
         this.images.add(image);
         this.updatedAt = LocalDateTime.now();
@@ -240,8 +260,28 @@ public class Property {
         if (videos.size() >= MAX_VIDEOS) {
             throw new IllegalStateException("Maximum number of videos (" + MAX_VIDEOS + ") reached");
         }
-        // Auto-calculate displayOrder if -1
-        int finalDisplayOrder = displayOrder == -1 ? videos.size() : displayOrder;
+        // Auto-calculate displayOrder if -1 or if conflicts with existing order
+        int finalDisplayOrder;
+        if (displayOrder == -1) {
+            // Calculate next available displayOrder (max + 1)
+            finalDisplayOrder = videos.stream()
+                    .mapToInt(PropertyVideo::getDisplayOrder)
+                    .max()
+                    .orElse(-1) + 1;
+        } else {
+            // Check if displayOrder already exists
+            boolean orderExists = videos.stream()
+                    .anyMatch(vid -> vid.getDisplayOrder() == displayOrder);
+            if (orderExists) {
+                // Calculate next available displayOrder to avoid conflict
+                finalDisplayOrder = videos.stream()
+                        .mapToInt(PropertyVideo::getDisplayOrder)
+                        .max()
+                        .orElse(-1) + 1;
+            } else {
+                finalDisplayOrder = displayOrder;
+            }
+        }
         PropertyVideo video = PropertyVideo.create(this.id, url, finalDisplayOrder);
         this.videos.add(video);
         this.updatedAt = LocalDateTime.now();
@@ -251,8 +291,28 @@ public class Property {
         if (videos.size() >= MAX_VIDEOS) {
             throw new IllegalStateException("Maximum number of videos (" + MAX_VIDEOS + ") reached");
         }
-        // Auto-calculate displayOrder if -1
-        int finalDisplayOrder = displayOrder == -1 ? videos.size() : displayOrder;
+        // Auto-calculate displayOrder if -1 or if conflicts with existing order
+        int finalDisplayOrder;
+        if (displayOrder == -1) {
+            // Calculate next available displayOrder (max + 1)
+            finalDisplayOrder = videos.stream()
+                    .mapToInt(PropertyVideo::getDisplayOrder)
+                    .max()
+                    .orElse(-1) + 1;
+        } else {
+            // Check if displayOrder already exists
+            boolean orderExists = videos.stream()
+                    .anyMatch(vid -> vid.getDisplayOrder() == displayOrder);
+            if (orderExists) {
+                // Calculate next available displayOrder to avoid conflict
+                finalDisplayOrder = videos.stream()
+                        .mapToInt(PropertyVideo::getDisplayOrder)
+                        .max()
+                        .orElse(-1) + 1;
+            } else {
+                finalDisplayOrder = displayOrder;
+            }
+        }
         PropertyVideo video = PropertyVideo.create(this.id, url, thumbnailUrl, finalDisplayOrder, durationSeconds);
         this.videos.add(video);
         this.updatedAt = LocalDateTime.now();

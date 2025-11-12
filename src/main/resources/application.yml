@@ -62,11 +62,18 @@ spring:
   # ============================================
   # File Upload Configuration
   # ============================================
+  # SECURITY: Limits prevent DoS attacks via large file uploads
+  # These are Spring Boot limits (first layer of defense)
+  # FileValidator provides additional validation (second layer)
   servlet:
     multipart:
       enabled: true
-      max-file-size: 500MB
-      max-request-size: 550MB
+      # Max single file: 100MB (for videos, images are limited to 10MB by FileValidator)
+      max-file-size: 100MB
+      # Max total request: 150MB (allows multiple files + metadata)
+      max-request-size: 150MB
+      # File size threshold for writing to disk (default: 0 = always disk)
+      file-size-threshold: 0
 
 # ============================================
 # Server Configuration
@@ -79,10 +86,13 @@ server:
 # ============================================
 # JWT Configuration
 # ============================================
+# SECURITY: JWT secret MUST be set via environment variable
+# Generate strong secret: openssl rand -base64 64
+# DO NOT commit actual secrets to git
 jwt:
-  secret: ***REMOVED***
-  expiration: 86400000 # 24 hours in milliseconds
-  refresh-expiration: 604800000 # 7 days in milliseconds
+  secret: ${JWT_SECRET:CHANGE_THIS_IN_PRODUCTION_USE_ENVIRONMENT_VARIABLE}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
 
 # ============================================
 # Logging Configuration
@@ -110,14 +120,40 @@ springdoc:
 # ============================================
 # Actuator Configuration
 # ============================================
+# SECURITY: Most endpoints are restricted to ADMIN role (see SecurityConfig)
 management:
   endpoints:
     web:
       exposure:
+        # Only expose these endpoints (others are disabled)
         include: health,info,metrics
+      base-path: /actuator
   endpoint:
     health:
+      # Show full details only when user is authenticated
       show-details: when-authorized
+      # Cache health responses for 10 seconds to prevent abuse
+      cache:
+        time-to-live: 10s
+    info:
+      # Using 'access' instead of deprecated 'enabled'
+      access: unrestricted
+    metrics:
+      # Using 'access' instead of deprecated 'enabled'
+      access: unrestricted
+    # Disable dangerous endpoints using 'access: none'
+    shutdown:
+      access: none  # Disabled - can shutdown the application
+    env:
+      # Environment endpoint requires ADMIN role (configured in SecurityConfig)
+      access: unrestricted
+      show-values: when-authorized  # Hide values from unauthorized users
+    threaddump:
+      access: none  # Disabled - can reveal sensitive data
+    heapdump:
+      access: none  # Disabled - contains all application memory
+    logfile:
+      access: none  # Disabled - can contain sensitive logs
 
 # ============================================
 # AWS Configuration

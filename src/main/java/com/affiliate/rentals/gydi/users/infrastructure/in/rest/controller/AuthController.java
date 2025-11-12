@@ -2,6 +2,7 @@ package com.affiliate.rentals.gydi.users.infrastructure.in.rest.controller;
 
 import com.affiliate.rentals.gydi.shared.exception.ApiErrorResponses;
 import com.affiliate.rentals.gydi.shared.security.JwtService;
+import com.affiliate.rentals.gydi.shared.security.RateLimitService;
 import com.affiliate.rentals.gydi.users.application.dto.AuthResponse;
 import com.affiliate.rentals.gydi.users.application.dto.LoginRequest;
 import com.affiliate.rentals.gydi.users.application.dto.RefreshTokenRequest;
@@ -76,6 +77,7 @@ public class AuthController {
     private final ValidateResetTokenUseCase validateResetTokenUseCase;
     private final ResetPasswordUseCase resetPasswordUseCase;
     private final JwtService jwtService;
+    private final RateLimitService rateLimitService;
 
     /**
      * Constructs a new AuthController with the required use cases.
@@ -89,6 +91,7 @@ public class AuthController {
      * @param validateResetTokenUseCase the use case for validating reset tokens
      * @param resetPasswordUseCase the use case for resetting password
      * @param jwtService the JWT service for token operations
+     * @param rateLimitService the rate limiting service for preventing abuse
      */
     public AuthController(
             AuthenticateUserUseCase authenticateUserUseCase,
@@ -97,7 +100,8 @@ public class AuthController {
             RequestPasswordResetUseCase requestPasswordResetUseCase,
             ValidateResetTokenUseCase validateResetTokenUseCase,
             ResetPasswordUseCase resetPasswordUseCase,
-            JwtService jwtService
+            JwtService jwtService,
+            RateLimitService rateLimitService
     ) {
         this.authenticateUserUseCase = authenticateUserUseCase;
         this.logoutUserUseCase = logoutUserUseCase;
@@ -106,6 +110,7 @@ public class AuthController {
         this.validateResetTokenUseCase = validateResetTokenUseCase;
         this.resetPasswordUseCase = resetPasswordUseCase;
         this.jwtService = jwtService;
+        this.rateLimitService = rateLimitService;
     }
 
     /**
@@ -130,10 +135,26 @@ public class AuthController {
     )
     @ApiErrorResponses.BadRequest
     @ApiErrorResponses.Unauthorized
+    @ApiErrorResponses.TooManyRequests
     public ResponseEntity<AuthResponse> login(
             @Valid @RequestBody LoginRequest request,
+            jakarta.servlet.http.HttpServletRequest httpRequest,
             jakarta.servlet.http.HttpServletResponse httpResponse
     ) {
+        // SECURITY: Rate limiting to prevent brute force attacks
+        if (!rateLimitService.tryConsumeAuth(httpRequest)) {
+            long remainingAttempts = rateLimitService.getRemainingAuthAttempts(httpRequest);
+            httpResponse.setHeader("X-RateLimit-Remaining", String.valueOf(remainingAttempts));
+            httpResponse.setHeader("X-RateLimit-Retry-After", "900"); // 15 minutes in seconds
+            return ResponseEntity.status(429)
+                    .body(AuthResponse.builder()
+                            .token(null)
+                            .refreshToken(null)
+                            .tokenType(null)
+                            .user(null)
+                            .build());
+        }
+
         AuthResponse response = authenticateUserUseCase.execute(request);
 
         // SECURITY: In production, set httpOnly cookie (XSS-proof)
