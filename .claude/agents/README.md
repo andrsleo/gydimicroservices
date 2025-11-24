@@ -98,7 +98,6 @@ GydiMicroservices/
 │   │   └── infrastructure/      # ← Backend_AI
 │   │
 │   ├── properties/              # Bounded Context: Propiedades
-│   ├── bookings/                # Bounded Context: Reservas
 │   ├── subscriptions/           # Bounded Context: Suscripciones
 │   │
 │   └── shared/                  # Cross-cutting concerns

@@ -25,9 +25,12 @@ import java.util.Arrays;
 /**
  * Spring Security configuration for the application.
  *
- * <p>This configuration sets up JWT-based stateless authentication with role-based
- * access control. It configures the security filter chain, authentication provider,
- * and password encoder.</p>
+ * <p>
+ * This configuration sets up JWT-based stateless authentication with role-based
+ * access control. It configures the security filter chain, authentication
+ * provider,
+ * and password encoder.
+ * </p>
  *
  * @author GYDI Development Team
  */
@@ -59,7 +62,10 @@ public class SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
-                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**", "/swagger-resources/**", "/webjars/**").permitAll()
+                        .requestMatchers("/api/v1/referrals/resolve").permitAll()
+                        .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
+                                "/swagger-resources/**", "/webjars/**")
+                        .permitAll()
                         .requestMatchers("/error").permitAll()
 
                         // Actuator endpoints - SECURITY: Only health endpoint is public
@@ -68,8 +74,12 @@ public class SecurityConfig {
                         // All other actuator endpoints require ADMIN role
                         .requestMatchers("/actuator/**").hasRole("ADMIN")
 
-                        // Static files (uploads) - allow public access for development
-                        .requestMatchers("/uploads/**").permitAll()
+                        // Static files (uploads) - RESTRICTED to specific subdirectories for security
+                        // Only allow public access to property images and profile images
+                        .requestMatchers("/uploads/properties/**").permitAll()
+                        .requestMatchers("/uploads/profile-images/**").permitAll()
+                        // Block everything else in /uploads/ for security
+                        .requestMatchers("/uploads/**").denyAll()
 
                         // User registration endpoint
                         .requestMatchers(HttpMethod.POST, "/api/v1/users").permitAll()
@@ -80,6 +90,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.POST, "/api/v1/users/profiles").authenticated()
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users/profiles/**").authenticated()
 
+                        // TEMPORARY: Allow slug generation endpoint (TODO: Remove after initial setup)
+                        .requestMatchers(HttpMethod.POST, "/api/admin/properties/generate-slugs").permitAll()
+
                         // Admin-only endpoints
                         .requestMatchers(HttpMethod.DELETE, "/api/v1/users/**").hasRole("ADMIN")
 
@@ -88,11 +101,9 @@ public class SecurityConfig {
                         .requestMatchers(HttpMethod.GET, "/api/properties").permitAll()
 
                         // Authenticated endpoints
-                        .anyRequest().authenticated()
-                )
+                        .anyRequest().authenticated())
                 .sessionManagement(session -> session
-                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                )
+                        .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
 
         return http.build();
@@ -123,11 +134,16 @@ public class SecurityConfig {
     /**
      * Configures CORS (Cross-Origin Resource Sharing) for the application.
      *
-     * <p>This configuration allows the Next.js frontend running on localhost:3000
-     * to make requests to this backend API running on localhost:8080.</p>
+     * <p>
+     * This configuration allows the Next.js frontend running on localhost:3000
+     * to make requests to this backend API running on localhost:8080.
+     * </p>
      *
-     * <p><strong>Production Note:</strong> Update allowed origins for production deployment.
-     * Do not use "*" in production as it allows any origin to access your API.</p>
+     * <p>
+     * <strong>Production Note:</strong> Update allowed origins for production
+     * deployment.
+     * Do not use "*" in production as it allows any origin to access your API.
+     * </p>
      *
      * @return CorsConfigurationSource configured for frontend integration
      */
@@ -139,13 +155,11 @@ public class SecurityConfig {
         // TODO: Update this for production deployment
         configuration.setAllowedOrigins(Arrays.asList(
                 "http://localhost:3000",
-                "http://127.0.0.1:3000"
-        ));
+                "http://127.0.0.1:3000"));
 
         // Allow all HTTP methods (GET, POST, PUT, DELETE, PATCH, OPTIONS)
         configuration.setAllowedMethods(Arrays.asList(
-                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"
-        ));
+                "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
         // Allow all headers
         configuration.setAllowedHeaders(Arrays.asList("*"));

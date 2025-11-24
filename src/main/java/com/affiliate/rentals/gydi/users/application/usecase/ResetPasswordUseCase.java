@@ -1,5 +1,8 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.users.application.dto.PasswordResetResponse;
 import com.affiliate.rentals.gydi.users.application.dto.ResetPasswordRequest;
 import com.affiliate.rentals.gydi.users.domain.model.PasswordResetToken;
@@ -8,10 +11,8 @@ import com.affiliate.rentals.gydi.users.domain.ports.EmailServicePort;
 import com.affiliate.rentals.gydi.users.domain.ports.PasswordResetTokenRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Use case for resetting a user's password using a valid reset token.
@@ -36,10 +37,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * @author GYDI Development Team
  */
+@Slf4j
 @Service
 public class ResetPasswordUseCase {
-
-    private static final Logger log = LoggerFactory.getLogger(ResetPasswordUseCase.class);
 
     private final UserRepositoryPort userRepository;
     private final PasswordResetTokenRepositoryPort tokenRepository;

@@ -8,8 +8,6 @@ import com.affiliate.rentals.gydi.shared.domain.port.StoragePort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 /**
  * Implementation of DeletePropertyImageUseCase.
  * Deletes image from both database and storage (S3/local filesystem).
@@ -27,7 +25,7 @@ public class DeletePropertyImageUseCaseImpl implements DeletePropertyImageUseCas
     }
 
     @Override
-    public void execute(UUID propertyId, UUID imageId, Long userId) {
+    public void execute(Long propertyId, Long imageId, Long userId) {
         // 1. Find property
         Property property = propertyRepository.findById(PropertyId.of(propertyId))
                 .orElseThrow(() -> new IllegalArgumentException("Property not found: " + propertyId));

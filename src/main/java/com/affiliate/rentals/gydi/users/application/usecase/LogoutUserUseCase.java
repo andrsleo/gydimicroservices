@@ -1,12 +1,12 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import com.affiliate.rentals.gydi.shared.security.TokenBlacklistService;
 import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepositoryPort;
+
+import lombok.extern.slf4j.Slf4j;
 
 
 /**
@@ -17,11 +17,10 @@ import com.affiliate.rentals.gydi.users.domain.ports.RefreshTokenRepositoryPort;
  *
  * @author GYDI Development Team
  */
+@Slf4j
 @Service
 public class LogoutUserUseCase {
-
-    private static final Logger logger = LoggerFactory.getLogger(LogoutUserUseCase.class);
-
+    
     private final TokenBlacklistService tokenBlacklistService;
     private final RefreshTokenRepositoryPort refreshTokenRepository;
 
@@ -48,19 +47,19 @@ public class LogoutUserUseCase {
      */
     @Transactional
     public void execute(String accessToken, Long userId, boolean revokeAllDevices) {
-        logger.debug("Executing logout for userId: {}, revokeAllDevices: {}", userId, revokeAllDevices);
+        log.debug("Executing logout for userId: {}, revokeAllDevices: {}", userId, revokeAllDevices);
 
         // Blacklist the current access token
         tokenBlacklistService.blacklistToken(accessToken);
-        logger.info("Access token blacklisted successfully");
+        log.info("Access token blacklisted successfully");
 
         // Optionally revoke all refresh tokens for the user
         if (revokeAllDevices && userId != null) {
             int revokedCount = refreshTokenRepository.revokeAllByUserId(userId);
-            logger.info("Revoked {} refresh token(s) for userId: {}", revokedCount, userId);
+            log.info("Revoked {} refresh token(s) for userId: {}", revokedCount, userId);
 
             if (revokedCount == 0) {
-                logger.warn("No refresh tokens found to revoke for userId: {}", userId);
+                log.warn("No refresh tokens found to revoke for userId: {}", userId);
             }
         }
     }

@@ -1,10 +1,11 @@
 package com.affiliate.rentals.gydi.users.infrastructure.scheduler;
 
-import com.affiliate.rentals.gydi.users.domain.ports.PasswordResetTokenRepositoryPort;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
+
+import com.affiliate.rentals.gydi.users.domain.ports.PasswordResetTokenRepositoryPort;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Scheduled task for cleaning up expired and old password reset tokens.
@@ -31,11 +32,10 @@ import org.springframework.stereotype.Component;
  *
  * @author GYDI Development Team
  */
+@Slf4j
 @Component
 public class PasswordResetTokenCleanupScheduler {
-
-    private static final Logger log = LoggerFactory.getLogger(PasswordResetTokenCleanupScheduler.class);
-
+    
     private static final int USED_TOKEN_RETENTION_DAYS = 30;
 
     private final PasswordResetTokenRepositoryPort tokenRepository;

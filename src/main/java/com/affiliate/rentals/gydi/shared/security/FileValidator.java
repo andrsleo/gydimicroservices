@@ -1,13 +1,15 @@
 package com.affiliate.rentals.gydi.shared.security;
 
-import com.affiliate.rentals.gydi.shared.infrastructure.storage.StorageException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.io.IOException;
+import java.util.Map;
+import java.util.Set;
+
 import org.springframework.stereotype.Component;
 import org.springframework.web.multipart.MultipartFile;
 
-import java.io.IOException;
-import java.util.*;
+import com.affiliate.rentals.gydi.shared.infrastructure.storage.StorageException;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Validates uploaded files for security vulnerabilities.
@@ -46,10 +48,10 @@ import java.util.*;
  * @since 2025-11-10
  * @see <a href="https://en.wikipedia.org/wiki/List_of_file_signatures">File Signatures</a>
  */
+@Slf4j
 @Component
 public class FileValidator {
-
-    private static final Logger log = LoggerFactory.getLogger(FileValidator.class);
+    
 
     /**
      * Magic numbers (file signatures) for supported image formats.

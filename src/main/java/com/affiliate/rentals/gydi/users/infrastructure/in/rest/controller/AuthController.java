@@ -146,16 +146,21 @@ public class AuthController {
             long remainingAttempts = rateLimitService.getRemainingAuthAttempts(httpRequest);
             httpResponse.setHeader("X-RateLimit-Remaining", String.valueOf(remainingAttempts));
             httpResponse.setHeader("X-RateLimit-Retry-After", "900"); // 15 minutes in seconds
-            return ResponseEntity.status(429)
-                    .body(AuthResponse.builder()
-                            .token(null)
-                            .refreshToken(null)
-                            .tokenType(null)
-                            .user(null)
-                            .build());
+            httpResponse.setHeader("X-RateLimit-Limit", "10"); // Total limit
+
+            // Throw exception instead of returning 200 with null body (better error handling)
+            throw new org.springframework.web.server.ResponseStatusException(
+                org.springframework.http.HttpStatus.TOO_MANY_REQUESTS,
+                String.format("Too many login attempts. Please try again in 15 minutes. Remaining attempts: %d", remainingAttempts)
+            );
         }
 
         AuthResponse response = authenticateUserUseCase.execute(request);
+
+        // Add rate limit headers to successful responses too (for transparency)
+        long remainingAttempts = rateLimitService.getRemainingAuthAttempts(httpRequest);
+        httpResponse.setHeader("X-RateLimit-Remaining", String.valueOf(remainingAttempts));
+        httpResponse.setHeader("X-RateLimit-Limit", "10");
 
         // SECURITY: In production, set httpOnly cookie (XSS-proof)
         // In development, return token in body (cross-origin workaround for localhost)

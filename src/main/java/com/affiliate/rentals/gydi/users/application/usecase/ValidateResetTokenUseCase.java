@@ -1,14 +1,15 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.users.application.dto.ValidateTokenResponse;
 import com.affiliate.rentals.gydi.users.domain.model.PasswordResetToken;
 import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.ports.PasswordResetTokenRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Use case for validating a password reset token.
@@ -30,10 +31,9 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * @author GYDI Development Team
  */
+@Slf4j
 @Service
 public class ValidateResetTokenUseCase {
-
-    private static final Logger log = LoggerFactory.getLogger(ValidateResetTokenUseCase.class);
 
     private final PasswordResetTokenRepositoryPort tokenRepository;
     private final UserRepositoryPort userRepository;

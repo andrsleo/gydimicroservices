@@ -4,7 +4,7 @@
 
 CREATE TABLE user_profile (
     -- Primary Key
-    id UUID DEFAULT gen_random_uuid() PRIMARY KEY,
+    id BIGSERIAL PRIMARY KEY,
 
     -- Foreign Key (1:1 relationship with users table)
     user_id BIGINT NOT NULL UNIQUE,

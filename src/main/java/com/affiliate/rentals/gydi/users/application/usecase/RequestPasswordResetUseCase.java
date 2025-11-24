@@ -1,5 +1,9 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
 import com.affiliate.rentals.gydi.users.application.dto.ForgotPasswordRequest;
 import com.affiliate.rentals.gydi.users.application.dto.PasswordResetResponse;
 import com.affiliate.rentals.gydi.users.domain.model.Email;
@@ -8,11 +12,8 @@ import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.ports.EmailServicePort;
 import com.affiliate.rentals.gydi.users.domain.ports.PasswordResetTokenRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Value;
-import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Use case for requesting a password reset.
@@ -34,11 +35,10 @@ import org.springframework.transaction.annotation.Transactional;
  *
  * @author GYDI Development Team
  */
+@Slf4j
 @Service
 public class RequestPasswordResetUseCase {
-
-    private static final Logger log = LoggerFactory.getLogger(RequestPasswordResetUseCase.class);
-
+    
     private final UserRepositoryPort userRepository;
     private final PasswordResetTokenRepositoryPort tokenRepository;
     private final EmailServicePort emailService;
