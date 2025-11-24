@@ -1,7 +1,5 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
-import java.util.UUID;
-
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,7 +14,9 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Use case for retrieving a user profile by ID.
  *
- * <p>This use case retrieves a specific user profile by its unique identifier.</p>
+ * <p>
+ * This use case retrieves a specific user profile by its unique identifier.
+ * </p>
  *
  * @author GYDI Development Team
  */
@@ -36,7 +36,7 @@ public class GetUserProfileByIdUseCase {
      * @throws UserNotFoundException if the profile is not found
      */
     @Transactional(readOnly = true)
-    public UserProfileResponse execute(UUID profileId) {
+    public UserProfileResponse execute(Long profileId) {
         log.debug("Retrieving profile with ID: {}", profileId);
 
         return profileRepository.findById(profileId)

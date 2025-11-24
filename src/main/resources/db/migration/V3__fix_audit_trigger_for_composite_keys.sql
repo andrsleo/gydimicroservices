@@ -120,24 +120,3 @@ CREATE TRIGGER audit_user_roles_trigger AFTER INSERT OR DELETE ON users.user_rol
 
 CREATE TRIGGER audit_roles_trigger AFTER INSERT OR UPDATE OR DELETE ON users.roles
     FOR EACH ROW EXECUTE FUNCTION audit.log_audit_event();
-
-CREATE TRIGGER audit_properties_trigger AFTER INSERT OR UPDATE OR DELETE ON properties.properties
-    FOR EACH ROW EXECUTE FUNCTION audit.log_audit_event();
-
-CREATE TRIGGER audit_amenities_trigger AFTER INSERT OR UPDATE OR DELETE ON properties.amenities_catalog
-    FOR EACH ROW EXECUTE FUNCTION audit.log_audit_event();
-
-CREATE TRIGGER audit_property_amenities_trigger AFTER INSERT OR DELETE ON properties.property_amenities
-    FOR EACH ROW EXECUTE FUNCTION audit.log_audit_event();
-
-CREATE TRIGGER audit_property_owners_trigger AFTER INSERT OR UPDATE OR DELETE ON properties.property_owners
-    FOR EACH ROW EXECUTE FUNCTION audit.log_audit_event();
-
-CREATE TRIGGER audit_property_media_trigger AFTER INSERT OR UPDATE OR DELETE ON properties.property_media
-    FOR EACH ROW EXECUTE FUNCTION audit.log_audit_event();
-
-CREATE TRIGGER audit_bookings_trigger AFTER INSERT OR UPDATE OR DELETE ON bookings.bookings
-    FOR EACH ROW EXECUTE FUNCTION audit.log_audit_event();
-
-CREATE TRIGGER audit_booking_status_trigger AFTER INSERT OR UPDATE OR DELETE ON bookings.booking_status
-    FOR EACH ROW EXECUTE FUNCTION audit.log_audit_event();

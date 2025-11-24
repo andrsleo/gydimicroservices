@@ -44,12 +44,12 @@ class RateLimitingTest {
     }
 
     @Test
-    @DisplayName("Should allow first 5 authentication attempts")
+    @DisplayName("Should allow first 10 authentication attempts")
     void shouldAllowFirst5Attempts() {
         // Given: Fresh rate limit bucket
 
-        // When: Make 5 attempts
-        for (int i = 1; i <= 5; i++) {
+        // When: Make 10 attempts
+        for (int i = 1; i <= 10; i++) {
             boolean allowed = rateLimitService.tryConsumeAuth(request);
 
             // Then: All attempts should be allowed
@@ -60,19 +60,19 @@ class RateLimitingTest {
     }
 
     @Test
-    @DisplayName("Should block 6th authentication attempt (brute force)")
+    @DisplayName("Should block 11th authentication attempt (brute force)")
     void shouldBlock6thAttempt() {
-        // Given: 5 attempts already made
-        for (int i = 1; i <= 5; i++) {
+        // Given: 10 attempts already made
+        for (int i = 1; i <= 10; i++) {
             rateLimitService.tryConsumeAuth(request);
         }
 
-        // When: Make 6th attempt
+        // When: Make 11th attempt
         boolean allowed = rateLimitService.tryConsumeAuth(request);
 
         // Then: Should be blocked
         assertThat(allowed)
-                .as("6th attempt should be blocked")
+                .as("11th attempt should be blocked")
                 .isFalse();
     }
 
@@ -88,15 +88,15 @@ class RateLimitingTest {
 
         long remaining = rateLimitService.getRemainingAuthAttempts(request);
 
-        // Then: Should have 2 attempts remaining (5 - 3 = 2)
-        assertThat(remaining).isEqualTo(2);
+        // Then: Should have 7 attempts remaining (10 - 3 = 7)
+        assertThat(remaining).isEqualTo(7);
     }
 
     @Test
     @DisplayName("Should show 0 remaining attempts after hitting limit")
     void shouldShow0RemainingAfterHittingLimit() {
-        // Given: 5 attempts already made
-        for (int i = 1; i <= 5; i++) {
+        // Given: 10 attempts already made
+        for (int i = 1; i <= 10; i++) {
             rateLimitService.tryConsumeAuth(request);
         }
 
@@ -112,7 +112,7 @@ class RateLimitingTest {
     void shouldIsolateByIpAddress() {
         // Given: IP1 has exhausted attempts
         when(request.getRemoteAddr()).thenReturn("192.168.1.100");
-        for (int i = 1; i <= 5; i++) {
+        for (int i = 1; i <= 10; i++) {
             rateLimitService.tryConsumeAuth(request);
         }
         boolean ip1Blocked = rateLimitService.tryConsumeAuth(request);
@@ -132,17 +132,17 @@ class RateLimitingTest {
         // Given: Request comes through proxy
         when(request.getHeader("X-Forwarded-For")).thenReturn("203.0.113.1, 198.51.100.1");
 
-        // When: Make 6 attempts through proxy
-        for (int i = 1; i <= 6; i++) {
+        // When: Make 11 attempts through proxy
+        for (int i = 1; i <= 11; i++) {
             boolean allowed = rateLimitService.tryConsumeAuth(request);
 
-            if (i <= 5) {
-                // First 5 attempts should be allowed
+            if (i <= 10) {
+                // First 10 attempts should be allowed
                 assertThat(allowed)
                         .as("Attempt %d should be allowed", i)
                         .isTrue();
             } else {
-                // 6th attempt should be blocked
+                // 11th attempt should be blocked
                 assertThat(allowed)
                         .as("Attempt %d should be blocked", i)
                         .isFalse();
@@ -154,16 +154,16 @@ class RateLimitingTest {
      * Brute force attack simulation
      */
     @Test
-    @DisplayName("Brute Force Scenario: 10 rapid login attempts")
+    @DisplayName("Brute Force Scenario: 15 rapid login attempts")
     void bruteForceScenario_10RapidAttempts() {
         // Given: Attacker IP
         when(request.getRemoteAddr()).thenReturn("10.0.0.1");
 
-        // When: Attacker makes 10 rapid login attempts
+        // When: Attacker makes 15 rapid login attempts
         int successfulAttempts = 0;
         int blockedAttempts = 0;
 
-        for (int i = 1; i <= 10; i++) {
+        for (int i = 1; i <= 15; i++) {
             boolean allowed = rateLimitService.tryConsumeAuth(request);
             if (allowed) {
                 successfulAttempts++;
@@ -172,8 +172,8 @@ class RateLimitingTest {
             }
         }
 
-        // Then: Only first 5 attempts should succeed
-        assertThat(successfulAttempts).isEqualTo(5);
+        // Then: Only first 10 attempts should succeed, rest blocked
+        assertThat(successfulAttempts).isEqualTo(10);
         assertThat(blockedAttempts).isEqualTo(5);
     }
 
@@ -186,11 +186,11 @@ class RateLimitingTest {
         // Given: Attacker IP trying different accounts
         when(request.getRemoteAddr()).thenReturn("10.0.0.2");
 
-        // When: Attacker tries 10 different accounts from same IP
+        // When: Attacker tries 15 different accounts from same IP
         int successfulAttempts = 0;
         int blockedAttempts = 0;
 
-        for (int i = 1; i <= 10; i++) {
+        for (int i = 1; i <= 15; i++) {
             // Each attempt is for a different username, but same IP
             boolean allowed = rateLimitService.tryConsumeAuth(request);
             if (allowed) {
@@ -201,7 +201,7 @@ class RateLimitingTest {
         }
 
         // Then: Rate limit should apply regardless of username (IP-based)
-        assertThat(successfulAttempts).isEqualTo(5);
+        assertThat(successfulAttempts).isEqualTo(10);
         assertThat(blockedAttempts).isEqualTo(5);
     }
 
@@ -213,23 +213,23 @@ class RateLimitingTest {
     void distributedAttackScenario() {
         // Given: Multiple attacker IPs
 
-        // When: 3 different IPs each make 5 attempts
+        // When: 3 different IPs each make 10 attempts
         for (int ip = 1; ip <= 3; ip++) {
             when(request.getRemoteAddr()).thenReturn("10.0.0." + ip);
 
-            for (int attempt = 1; attempt <= 5; attempt++) {
+            for (int attempt = 1; attempt <= 10; attempt++) {
                 boolean allowed = rateLimitService.tryConsumeAuth(request);
 
-                // Then: Each IP gets 5 attempts
+                // Then: Each IP gets 10 attempts
                 assertThat(allowed)
                         .as("IP 10.0.0.%d attempt %d should be allowed", ip, attempt)
                         .isTrue();
             }
 
-            // And: 6th attempt from each IP should be blocked
+            // And: 11th attempt from each IP should be blocked
             boolean blocked = rateLimitService.tryConsumeAuth(request);
             assertThat(blocked)
-                    .as("IP 10.0.0.%d 6th attempt should be blocked", ip)
+                    .as("IP 10.0.0.%d 11th attempt should be blocked", ip)
                     .isFalse();
         }
     }

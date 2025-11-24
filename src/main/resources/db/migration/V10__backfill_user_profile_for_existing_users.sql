@@ -4,8 +4,7 @@
 
 -- Insert default user profiles for all users that don't have one
 -- Uses INSERT ... ON CONFLICT to be idempotent (safe to run multiple times)
-INSERT INTO user_profile (
-    id,
+INSERT INTO user_profile (    
     user_id,
     timezone,
     preferred_language,
@@ -18,8 +17,7 @@ INSERT INTO user_profile (
     created_at,
     updated_at
 )
-SELECT
-    gen_random_uuid() AS id,
+SELECT    
     u.id AS user_id,
     'UTC' AS timezone,
     'en' AS preferred_language,

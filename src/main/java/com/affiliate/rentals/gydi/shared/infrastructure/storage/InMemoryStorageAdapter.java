@@ -16,10 +16,14 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * In-memory implementation of StoragePort for testing.
  *
- * <p>Stores file metadata in memory without actual I/O operations.
- * Perfect for fast unit and integration tests.</p>
+ * <p>
+ * Stores file metadata in memory without actual I/O operations.
+ * Perfect for fast unit and integration tests.
+ * </p>
  *
- * <p><b>Active only in test profile ({@code @Profile("test")})</b></p>
+ * <p>
+ * <b>Active only in test profile ({@code @Profile("test")})</b>
+ * </p>
  *
  * @author GYDI Development Team
  */

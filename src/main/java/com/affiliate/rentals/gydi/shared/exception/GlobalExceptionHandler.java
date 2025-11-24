@@ -1,13 +1,7 @@
 package com.affiliate.rentals.gydi.shared.exception;
 
-import com.affiliate.rentals.gydi.properties.domain.exception.PropertyCannotBePublishedException;
-import com.affiliate.rentals.gydi.properties.domain.exception.PropertyDomainException;
-import com.affiliate.rentals.gydi.users.domain.exception.*;
-import jakarta.servlet.http.HttpServletRequest;
-import jakarta.validation.ConstraintViolation;
-import jakarta.validation.ConstraintViolationException;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import java.util.List;
+
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -18,7 +12,15 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
-import java.util.List;
+import com.affiliate.rentals.gydi.properties.domain.exception.PropertyCannotBePublishedException;
+import com.affiliate.rentals.gydi.properties.domain.exception.PropertyDomainException;
+import com.affiliate.rentals.gydi.users.domain.exception.DomainException;
+import com.affiliate.rentals.gydi.users.domain.exception.InvalidUserDataException;
+
+import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolation;
+import jakarta.validation.ConstraintViolationException;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Global exception handler for all REST controllers.
@@ -37,11 +39,12 @@ import java.util.List;
  *
  * @author GYDI Development Team
  */
+
+@Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
-    private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
-
+    
     /**
      * Handles all domain-level exceptions using annotation-based HTTP status mapping.
      *
@@ -59,13 +62,13 @@ public class GlobalExceptionHandler {
             DomainException ex,
             HttpServletRequest request
     ) {
-        logger.warn("Domain exception: {}", ex.getMessage());
+        log.warn("Domain exception: {}", ex.getMessage());
 
         // Extract HTTP status and error type from annotation
         HttpStatusMapping mapping = ex.getClass().getAnnotation(HttpStatusMapping.class);
 
         if (mapping == null) {
-            logger.error("Domain exception {} is missing @HttpStatusMapping annotation", ex.getClass().getSimpleName());
+            log.error("Domain exception {} is missing @HttpStatusMapping annotation", ex.getClass().getSimpleName());
             return buildResponse(
                     HttpStatus.INTERNAL_SERVER_ERROR,
                     "Internal Error",
@@ -117,13 +120,13 @@ public class GlobalExceptionHandler {
             PropertyDomainException ex,
             HttpServletRequest request
     ) {
-        logger.warn("Property domain exception: {}", ex.getMessage());
+        log.warn("Property domain exception: {}", ex.getMessage());
 
         // Extract HTTP status and error type from annotation
         HttpStatusMapping mapping = ex.getClass().getAnnotation(HttpStatusMapping.class);
 
         if (mapping == null) {
-            logger.error("Property domain exception {} is missing @HttpStatusMapping annotation",
+            log.error("Property domain exception {} is missing @HttpStatusMapping annotation",
                     ex.getClass().getSimpleName());
             return buildResponse(
                     HttpStatus.INTERNAL_SERVER_ERROR,
@@ -172,7 +175,7 @@ public class GlobalExceptionHandler {
             MethodArgumentNotValidException ex,
             HttpServletRequest request
     ) {
-        logger.warn("Validation exception: {}", ex.getMessage());
+        log.warn("Validation exception: {}", ex.getMessage());
 
         List<ErrorResponse.FieldError> fieldErrors = ex.getBindingResult()
                 .getFieldErrors()
@@ -203,7 +206,7 @@ public class GlobalExceptionHandler {
             ConstraintViolationException ex,
             HttpServletRequest request
     ) {
-        logger.warn("Constraint violation: {}", ex.getMessage());
+        log.warn("Constraint violation: {}", ex.getMessage());
 
         List<ErrorResponse.FieldError> fieldErrors = ex.getConstraintViolations()
                 .stream()
@@ -233,7 +236,7 @@ public class GlobalExceptionHandler {
             Exception ex,
             HttpServletRequest request
     ) {
-        logger.warn("Authentication exception: {}", ex.getMessage());
+        log.warn("Authentication exception: {}", ex.getMessage());
 
         return buildResponse(
                 HttpStatus.UNAUTHORIZED,
@@ -261,7 +264,7 @@ public class GlobalExceptionHandler {
             ForbiddenException ex,
             HttpServletRequest request
     ) {
-        logger.warn("SECURITY: Forbidden access attempt - {}", ex.getMessage());
+        log.warn("SECURITY: Forbidden access attempt - {}", ex.getMessage());
 
         return buildResponse(
                 HttpStatus.FORBIDDEN,
@@ -283,7 +286,7 @@ public class GlobalExceptionHandler {
             MethodArgumentTypeMismatchException ex,
             HttpServletRequest request
     ) {
-        logger.warn("Type mismatch exception: {}", ex.getMessage());
+        log.warn("Type mismatch exception: {}", ex.getMessage());
 
         String message = String.format(
                 "Invalid value '%s' for parameter '%s'. Expected type: %s",
@@ -316,7 +319,7 @@ public class GlobalExceptionHandler {
             IllegalStateException ex,
             HttpServletRequest request
     ) {
-        logger.warn("Illegal state exception: {}", ex.getMessage());
+        log.warn("Illegal state exception: {}", ex.getMessage());
 
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
@@ -349,7 +352,7 @@ public class GlobalExceptionHandler {
             HttpServletRequest request
     ) {
         // Log at DEBUG level only - this is expected behavior during video streaming
-        logger.debug("Client aborted connection during streaming: {} - {}",
+        log.debug("Client aborted connection during streaming: {} - {}",
                 request.getMethod(), request.getRequestURI());
 
         // No response needed - client already closed the connection
@@ -370,7 +373,7 @@ public class GlobalExceptionHandler {
             Exception ex,
             HttpServletRequest request
     ) {
-        logger.error("Unexpected exception occurred", ex);
+        log.error("Unexpected exception occurred", ex);
 
         return buildResponse(
                 HttpStatus.INTERNAL_SERVER_ERROR,

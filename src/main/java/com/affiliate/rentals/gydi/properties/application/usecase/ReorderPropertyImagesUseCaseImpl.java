@@ -10,7 +10,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -30,7 +29,7 @@ public class ReorderPropertyImagesUseCaseImpl implements ReorderPropertyImagesUs
     }
 
     @Override
-    public ReorderImagesResponse execute(UUID propertyId, Long userId, ReorderImagesRequest request) {
+    public ReorderImagesResponse execute(Long propertyId, Long userId, ReorderImagesRequest request) {
         // 1. Set constraints to deferred for this transaction
         entityManager.createNativeQuery("SET CONSTRAINTS ALL DEFERRED").executeUpdate();
 
@@ -44,7 +43,7 @@ public class ReorderPropertyImagesUseCaseImpl implements ReorderPropertyImagesUs
         }
 
         // 4. Build order map
-        Map<UUID, Integer> orderMap = request.imageOrders().stream()
+        Map<Long, Integer> orderMap = request.imageOrders().stream()
                 .collect(Collectors.toMap(
                     ReorderImagesRequest.ImageOrderItem::imageId,
                     ReorderImagesRequest.ImageOrderItem::displayOrder

@@ -29,7 +29,15 @@ public interface PropertyRepositoryPort {
      * @return the property if found
      */
     Optional<Property> findById(PropertyId id);
-    
+
+    /**
+     * Finds a property by its SEO-friendly slug.
+     *
+     * @param slug the property slug (e.g., "beach-house-malibu-x7k2m")
+     * @return the property if found
+     */
+    Optional<Property> findBySlug(String slug);
+
     /**
      * Finds all properties by host ID.
      *

@@ -11,6 +11,7 @@ public record PropertyDetailResponse(
     String id,
     Long hostId,
     String title,
+    String slug,
     String description,
     BigDecimal pricePerNight,
     String currency,

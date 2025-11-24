@@ -1,24 +1,24 @@
 package com.affiliate.rentals.gydi.shared.ratelimit;
 
-import io.github.bucket4j.Bandwidth;
-import io.github.bucket4j.Bucket;
-import io.github.bucket4j.Refill;
-import jakarta.servlet.http.HttpServletRequest;
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 import org.springframework.web.server.ResponseStatusException;
 
-import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import io.github.bucket4j.Bandwidth;
+import io.github.bucket4j.Bucket;
+import io.github.bucket4j.Refill;
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Aspect for enforcing rate limiting on annotated methods.
@@ -49,12 +49,11 @@ import java.util.concurrent.ConcurrentHashMap;
  * @author GYDI Development Team
  * @see RateLimited
  */
+@Slf4j
 @Aspect
 @Component
 public class RateLimitingAspect {
-
-    private static final Logger log = LoggerFactory.getLogger(RateLimitingAspect.class);
-
+    
     // In-memory storage of buckets per IP address
     // Key format: "methodName:ipAddress"
     private final Map<String, Bucket> bucketCache = new ConcurrentHashMap<>();
