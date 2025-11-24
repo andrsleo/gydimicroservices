@@ -81,14 +81,13 @@ public final class PermissionEvaluator {
             case PROPERTY_PUBLISH -> user.capabilities().canPublish();
             case PROPERTY_UPDATE_OWN, PROPERTY_DELETE_OWN -> true; // Ownership check in use case
 
+            // Rental permissions - require canRent capability
+            case PROPERTY_RENT -> user.capabilities().canRent();
+
             // Referral permissions - require canRefer capability
             case REFERRAL_GENERATE -> user.capabilities().canRefer();
             case REFERRAL_VIEW_OWN -> user.capabilities().canRefer();
-
-            // Rental permissions - require canRent capability
-            case PROPERTY_RENT, BOOKING_CREATE -> user.capabilities().canRent();
-            case BOOKING_VIEW_OWN -> true;
-
+            
             // Analytics permissions - plan-based
             case ANALYTICS_VIEW_OWN -> true;
             case ANALYTICS_VIEW_ADVANCED ->
@@ -99,7 +98,7 @@ public final class PermissionEvaluator {
 
             // Admin-only permissions
             case PROPERTY_VIEW_ANY, PROPERTY_UPDATE_ANY, PROPERTY_DELETE_ANY, PROPERTY_MODERATE,
-                 REFERRAL_VIEW_ANY, BOOKING_VIEW_ANY, ANALYTICS_VIEW_GLOBAL,
+                 REFERRAL_VIEW_ANY, ANALYTICS_VIEW_GLOBAL,
                  USER_MANAGE, SUBSCRIPTION_MANAGE, SYSTEM_CONFIGURE,
                  MODERATION_MANAGE, PAYMENT_VIEW, REPORT_GENERATE -> false;
         };
@@ -261,7 +260,7 @@ public final class PermissionEvaluator {
         if (permission == Permission.REFERRAL_GENERATE && !user.capabilities().canRefer()) {
             return "Referral generation capability is disabled for your account";
         }
-        if ((permission == Permission.PROPERTY_RENT || permission == Permission.BOOKING_CREATE) &&
+        if ((permission == Permission.PROPERTY_RENT) &&
             !user.capabilities().canRent()) {
             return "Property rental capability is disabled for your account";
         }

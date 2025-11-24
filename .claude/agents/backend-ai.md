@@ -299,7 +299,7 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
 
     @Override
     public Optional<Property> findById(PropertyId id) {
-        return jpaRepository.findById(UUID.fromString(id.value()))
+        return jpaRepository.findById(Long.parseLong(id.value()))
             .map(entityMapper::toDomain);
     }
 

@@ -12,7 +12,7 @@ package com.affiliate.rentals.gydi.users.domain.model;
  *   <li><strong>Profile</strong> - User profile management</li>
  *   <li><strong>Property</strong> - Property CRUD and moderation</li>
  *   <li><strong>Referral</strong> - Referral link generation and tracking</li>
- *   <li><strong>Rental</strong> - Property booking and rental</li>
+ *   <li><strong>Rental</strong> - Property rental</li>
  *   <li><strong>Analytics</strong> - Statistics and reporting</li>
  *   <li><strong>Admin</strong> - System administration</li>
  * </ul>
@@ -117,24 +117,6 @@ public enum Permission {
      */
     PROPERTY_RENT,
 
-    /**
-     * Permission to create a booking.
-     * Requires: canRent capability.
-     */
-    BOOKING_CREATE,
-
-    /**
-     * Permission to view own bookings.
-     * Available to all users.
-     */
-    BOOKING_VIEW_OWN,
-
-    /**
-     * Permission to view any booking.
-     * Admin-only permission.
-     */
-    BOOKING_VIEW_ANY,
-
     // Analytics permissions
     /**
      * Permission to view own analytics and statistics.
@@ -208,8 +190,7 @@ public enum Permission {
                  PROPERTY_DELETE_ANY,
                  PROPERTY_VIEW_ANY,
                  PROPERTY_MODERATE,
-                 REFERRAL_VIEW_ANY,
-                 BOOKING_VIEW_ANY,
+                 REFERRAL_VIEW_ANY,                 
                  ANALYTICS_VIEW_GLOBAL,
                  USER_MANAGE,
                  SUBSCRIPTION_MANAGE,
@@ -240,7 +221,7 @@ public enum Permission {
      */
     public boolean requiresCapabilityCheck() {
         return switch (this) {
-            case PROPERTY_PUBLISH, REFERRAL_GENERATE, PROPERTY_RENT, BOOKING_CREATE -> true;
+            case PROPERTY_PUBLISH, REFERRAL_GENERATE, PROPERTY_RENT -> true;
             default -> false;
         };
     }
@@ -290,9 +271,6 @@ public enum Permission {
             case REFERRAL_VIEW_OWN -> "View own referrals";
             case REFERRAL_VIEW_ANY -> "View any referrals";
             case PROPERTY_RENT -> "Rent properties";
-            case BOOKING_CREATE -> "Create bookings";
-            case BOOKING_VIEW_OWN -> "View own bookings";
-            case BOOKING_VIEW_ANY -> "View any bookings";
             case ANALYTICS_VIEW_OWN -> "View own analytics";
             case ANALYTICS_VIEW_ADVANCED -> "View advanced analytics";
             case ANALYTICS_EXPORT -> "Export analytics";

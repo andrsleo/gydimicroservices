@@ -12,17 +12,23 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * JPA entity representing a user profile in the users schema.
  *
- * <p>This entity maps to the {@code user_profile} table in the {@code users} schema.
+ * <p>
+ * This entity maps to the {@code user_profile} table in the {@code users}
+ * schema.
  * It stores extended user information with a 1:1 relationship to UserEntity.
- * Uses PostgreSQL JSONB for flexible storage of social links, preferences, and metadata.</p>
+ * Uses PostgreSQL JSONB for flexible storage of social links, preferences, and
+ * metadata.
+ * </p>
  *
- * <p>This is an infrastructure-layer class following hexagonal architecture principles,
- * utilizing Java 21 features and modern JPA patterns.</p>
+ * <p>
+ * This is an infrastructure-layer class following hexagonal architecture
+ * principles,
+ * utilizing Java 21 features and modern JPA patterns.
+ * </p>
  *
  * @author GYDI Development Team
  * @see UserEntity
@@ -39,8 +45,8 @@ public class UserProfileEntity {
      * The unique identifier for this user profile.
      */
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     /**
      * Foreign key reference to the associated user (1:1 relationship).
@@ -203,8 +209,10 @@ public class UserProfileEntity {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         UserProfileEntity that = (UserProfileEntity) o;
         return Objects.equals(id, that.id) && Objects.equals(userId, that.userId);
     }

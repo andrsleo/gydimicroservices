@@ -4,6 +4,8 @@ import com.affiliate.rentals.gydi.properties.domain.model.*;
 import com.affiliate.rentals.gydi.properties.domain.ports.in.UpdatePropertyUseCase;
 import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
 import com.affiliate.rentals.gydi.shared.security.HTMLSanitizer;
+import com.affiliate.rentals.gydi.shared.util.SlugGenerator;
+import org.hashids.Hashids;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -15,10 +17,18 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
 
     private final PropertyRepositoryPort propertyRepository;
     private final HTMLSanitizer htmlSanitizer;
+    private final SlugGenerator slugGenerator;
+    private final Hashids hashids;
 
-    public UpdatePropertyUseCaseImpl(PropertyRepositoryPort propertyRepository, HTMLSanitizer htmlSanitizer) {
+    public UpdatePropertyUseCaseImpl(
+            PropertyRepositoryPort propertyRepository,
+            HTMLSanitizer htmlSanitizer,
+            SlugGenerator slugGenerator,
+            Hashids hashids) {
         this.propertyRepository = propertyRepository;
         this.htmlSanitizer = htmlSanitizer;
+        this.slugGenerator = slugGenerator;
+        this.hashids = hashids;
     }
 
     @Override
@@ -53,6 +63,13 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
                 ? Money.of(command.salePrice(), command.priceCurrency())
                 : property.getSalePrice(); // Preserve current value if not provided
             property.updateDetails(sanitizedTitle, sanitizedDescription, newPrice, newSalePrice);
+
+            // Regenerate slug if title changed
+            if (sanitizedTitle != null && !sanitizedTitle.equals(property.getTitle())) {
+                String shortId = generateShortId(property.getId().getValue());
+                String newSlug = slugGenerator.generateUniqueSlug(sanitizedTitle, shortId);
+                property.setSlug(newSlug);
+            }
         }
 
         if (command.country() != null && command.city() != null) {
@@ -77,5 +94,13 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
         }
 
         return propertyRepository.save(property);
+    }
+
+    /**
+     * Generates a short ID from Long ID using Hashids.
+     */
+    private String generateShortId(Long id) {
+        // Hashids requires positive numbers
+        return hashids.encode(Math.abs(id));
     }
 }

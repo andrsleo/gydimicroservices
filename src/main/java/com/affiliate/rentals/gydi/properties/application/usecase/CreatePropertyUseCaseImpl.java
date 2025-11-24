@@ -4,6 +4,8 @@ import com.affiliate.rentals.gydi.properties.domain.model.*;
 import com.affiliate.rentals.gydi.properties.domain.ports.in.CreatePropertyUseCase;
 import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
 import com.affiliate.rentals.gydi.shared.security.HTMLSanitizer;
+import com.affiliate.rentals.gydi.shared.util.SlugGenerator;
+import org.hashids.Hashids;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -16,10 +18,18 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
 
     private final PropertyRepositoryPort propertyRepository;
     private final HTMLSanitizer htmlSanitizer;
+    private final SlugGenerator slugGenerator;
+    private final Hashids hashids;
 
-    public CreatePropertyUseCaseImpl(PropertyRepositoryPort propertyRepository, HTMLSanitizer htmlSanitizer) {
+    public CreatePropertyUseCaseImpl(
+            PropertyRepositoryPort propertyRepository,
+            HTMLSanitizer htmlSanitizer,
+            SlugGenerator slugGenerator,
+            Hashids hashids) {
         this.propertyRepository = propertyRepository;
         this.htmlSanitizer = htmlSanitizer;
+        this.slugGenerator = slugGenerator;
+        this.hashids = hashids;
     }
 
     @Override
@@ -34,7 +44,6 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
         String sanitizedDescription = htmlSanitizer.sanitizeBasicFormatting(command.description());
 
         Property.Builder builder = Property.builder()
-                .id(PropertyId.generate())
                 .hostId(command.hostId())
                 .title(sanitizedTitle)
                 .description(sanitizedDescription)
@@ -62,6 +71,22 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
 
         Property property = builder.build();
 
-        return propertyRepository.save(property);
+        // Save first to get auto-generated ID
+        Property savedProperty = propertyRepository.save(property);
+
+        // Generate SEO-friendly slug: {title}-{short-id}
+        String shortId = generateShortId(savedProperty.getId().getValue());
+        String slug = slugGenerator.generateUniqueSlug(sanitizedTitle, shortId);
+        savedProperty.setSlug(slug);
+
+        return propertyRepository.save(savedProperty);
+    }
+
+    /**
+     * Generates a short ID from Long ID using Hashids.
+     */
+    private String generateShortId(Long id) {
+        // Hashids requires positive numbers
+        return hashids.encode(Math.abs(id));
     }
 }

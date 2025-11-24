@@ -1,17 +1,18 @@
 package com.affiliate.rentals.gydi.shared.audit;
 
-import com.affiliate.rentals.gydi.users.application.dto.ForgotPasswordRequest;
-import com.affiliate.rentals.gydi.users.application.dto.ResetPasswordRequest;
-import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.PasswordResetAuditEntity;
-import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.ProceedingJoinPoint;
 import org.aspectj.lang.annotation.Around;
 import org.aspectj.lang.annotation.Aspect;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
+
+import com.affiliate.rentals.gydi.users.application.dto.ForgotPasswordRequest;
+import com.affiliate.rentals.gydi.users.application.dto.ResetPasswordRequest;
+import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.PasswordResetAuditEntity;
+
+import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Aspect for auditing password reset operations.
@@ -41,12 +42,11 @@ import org.springframework.web.context.request.ServletRequestAttributes;
  *
  * @author GYDI Development Team
  */
+@Slf4j
 @Aspect
 @Component
 public class PasswordResetAuditAspect {
-
-    private static final Logger log = LoggerFactory.getLogger(PasswordResetAuditAspect.class);
-
+    
     private final PasswordResetAuditService auditService;
 
     public PasswordResetAuditAspect(PasswordResetAuditService auditService) {

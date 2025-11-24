@@ -5,20 +5,21 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Spring Data JPA repository for UserProfileEntity.
  *
- * <p>This repository interface provides database access for user profiles
+ * <p>
+ * This repository interface provides database access for user profiles
  * using Spring Data JPA's repository abstraction. It extends JpaRepository
- * to inherit common CRUD operations.</p>
+ * to inherit common CRUD operations.
+ * </p>
  *
  * @author GYDI Development Team
  * @see UserProfileEntity
  */
 @Repository
-public interface JpaUserProfileRepository extends JpaRepository<UserProfileEntity, UUID> {
+public interface JpaUserProfileRepository extends JpaRepository<UserProfileEntity, Long> {
 
     /**
      * Finds a user profile by the associated user ID.

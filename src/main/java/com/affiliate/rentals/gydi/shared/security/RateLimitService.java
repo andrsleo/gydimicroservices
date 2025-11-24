@@ -1,16 +1,16 @@
 package com.affiliate.rentals.gydi.shared.security;
 
+import java.time.Duration;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+
+import org.springframework.stereotype.Service;
+
 import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
 import jakarta.servlet.http.HttpServletRequest;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
-import org.springframework.stereotype.Service;
-
-import java.time.Duration;
-import java.util.Map;
-import java.util.concurrent.ConcurrentHashMap;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Service for rate limiting API endpoints using Bucket4j token bucket algorithm.
@@ -34,10 +34,9 @@ import java.util.concurrent.ConcurrentHashMap;
  * @version 1.0
  * @since 2025-11-07
  */
+@Slf4j
 @Service
 public class RateLimitService {
-
-    private static final Logger log = LoggerFactory.getLogger(RateLimitService.class);
 
     /**
      * Cache of rate limit buckets per client IP address.
@@ -49,13 +48,19 @@ public class RateLimitService {
     private final Map<String, Bucket> generalApiBucketCache = new ConcurrentHashMap<>();
 
     /**
-     * Authentication endpoints rate limit: 5 attempts per 15 minutes.
-     * Protects against brute force attacks.
+     * Authentication endpoints rate limit: 10 attempts per 15 minutes.
+     * Protects against brute force attacks while allowing legitimate users to retry.
+     *
+     * Note: Each login attempt may consume 1-2 tokens due to NextAuth flow:
+     * - Token 1: NextAuth calls /login for validation
+     * - Token 2: Frontend may call /login again for full response
+     *
+     * With 10 tokens, users get ~5-10 real attempts before being rate limited.
      */
     private Bucket createAuthBucket() {
         Bandwidth limit = Bandwidth.classic(
-            5,  // 5 tokens (attempts)
-            Refill.intervally(5, Duration.ofMinutes(15))  // Refill 5 tokens every 15 minutes
+            10,  // 10 tokens (5-10 login attempts accounting for double-call pattern)
+            Refill.intervally(10, Duration.ofMinutes(15))  // Refill 10 tokens every 15 minutes
         );
         return Bucket.builder()
             .addLimit(limit)

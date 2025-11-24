@@ -1,10 +1,15 @@
 package com.affiliate.rentals.gydi.properties.infrastructure.in.rest.controller;
 
-import com.affiliate.rentals.gydi.properties.infrastructure.out.persistence.AmenityJpaRepository;
-import org.springframework.http.ResponseEntity;
-import org.springframework.web.bind.annotation.*;
-
 import java.util.List;
+
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+import com.affiliate.rentals.gydi.properties.infrastructure.out.persistence.repository.AmenityJpaRepository;
 
 /**
  * REST Controller for Amenities

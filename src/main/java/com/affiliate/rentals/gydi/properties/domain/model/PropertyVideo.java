@@ -2,14 +2,13 @@ package com.affiliate.rentals.gydi.properties.domain.model;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * PropertyVideo entity representing a video associated with a property.
  * Part of the Property aggregate.
  */
 public class PropertyVideo {
-    private UUID id;
+    private Long id;
     private final PropertyId propertyId;
     private final String url;
     private final String thumbnailUrl;
@@ -17,7 +16,7 @@ public class PropertyVideo {
     private final Integer durationSeconds;
     private final LocalDateTime uploadedAt;
 
-    private PropertyVideo(UUID id, PropertyId propertyId, String url, String thumbnailUrl, 
+    private PropertyVideo(Long id, PropertyId propertyId, String url, String thumbnailUrl,
                           int displayOrder, Integer durationSeconds, LocalDateTime uploadedAt) {
         this.id = id;
         this.propertyId = Objects.requireNonNull(propertyId, "PropertyId cannot be null");
@@ -31,14 +30,14 @@ public class PropertyVideo {
     }
 
     public static PropertyVideo create(PropertyId propertyId, String url, int displayOrder) {
-        return new PropertyVideo(UUID.randomUUID(), propertyId, url, null, displayOrder, null, LocalDateTime.now());
+        return new PropertyVideo(null, propertyId, url, null, displayOrder, null, LocalDateTime.now());
     }
 
     public static PropertyVideo create(PropertyId propertyId, String url, String thumbnailUrl, int displayOrder, Integer durationSeconds) {
-        return new PropertyVideo(UUID.randomUUID(), propertyId, url, thumbnailUrl, displayOrder, durationSeconds, LocalDateTime.now());
+        return new PropertyVideo(null, propertyId, url, thumbnailUrl, displayOrder, durationSeconds, LocalDateTime.now());
     }
 
-    public static PropertyVideo of(UUID id, PropertyId propertyId, String url, String thumbnailUrl, 
+    public static PropertyVideo of(Long id, PropertyId propertyId, String url, String thumbnailUrl,
                                    int displayOrder, Integer durationSeconds, LocalDateTime uploadedAt) {
         return new PropertyVideo(id, propertyId, url, thumbnailUrl, displayOrder, durationSeconds, uploadedAt);
     }
@@ -65,7 +64,7 @@ public class PropertyVideo {
                                 this.displayOrder, durationSeconds, this.uploadedAt);
     }
 
-    public UUID getId() {
+    public Long getId() {
         return id;
     }
 
