@@ -1,32 +1,27 @@
 package com.affiliate.rentals.gydi.properties.domain.model;
 
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Value object representing a property unique identifier
  */
 public class PropertyId {
-    private final UUID value;
+    private final Long value;
 
-    private PropertyId(UUID value) {
+    private PropertyId(Long value) {
         Objects.requireNonNull(value, "PropertyId cannot be null");
         this.value = value;
     }
 
-    public static PropertyId of(UUID value) {
+    public static PropertyId of(Long value) {
         return new PropertyId(value);
     }
 
     public static PropertyId of(String value) {
-        return new PropertyId(UUID.fromString(value));
+        return new PropertyId(Long.parseLong(value));
     }
 
-    public static PropertyId generate() {
-        return new PropertyId(UUID.randomUUID());
-    }
-
-    public UUID getValue() {
+    public Long getValue() {
         return value;
     }
 

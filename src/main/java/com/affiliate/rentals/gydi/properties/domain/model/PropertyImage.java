@@ -2,20 +2,19 @@ package com.affiliate.rentals.gydi.properties.domain.model;
 
 import java.time.LocalDateTime;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * PropertyImage entity representing an image associated with a property.
  * Part of the Property aggregate.
  */
 public class PropertyImage {
-    private UUID id;
+    private Long id;
     private final PropertyId propertyId;
     private final String url;
     private int displayOrder; // Mutable for reordering
     private final LocalDateTime uploadedAt;
 
-    private PropertyImage(UUID id, PropertyId propertyId, String url, int displayOrder, LocalDateTime uploadedAt) {
+    private PropertyImage(Long id, PropertyId propertyId, String url, int displayOrder, LocalDateTime uploadedAt) {
         this.id = id;
         this.propertyId = Objects.requireNonNull(propertyId, "PropertyId cannot be null");
         this.url = Objects.requireNonNull(url, "URL cannot be null");
@@ -26,10 +25,10 @@ public class PropertyImage {
     }
 
     public static PropertyImage create(PropertyId propertyId, String url, int displayOrder) {
-        return new PropertyImage(UUID.randomUUID(), propertyId, url, displayOrder, LocalDateTime.now());
+        return new PropertyImage(null, propertyId, url, displayOrder, LocalDateTime.now());
     }
 
-    public static PropertyImage of(UUID id, PropertyId propertyId, String url, int displayOrder, LocalDateTime uploadedAt) {
+    public static PropertyImage of(Long id, PropertyId propertyId, String url, int displayOrder, LocalDateTime uploadedAt) {
         return new PropertyImage(id, propertyId, url, displayOrder, uploadedAt);
     }
 
@@ -42,7 +41,7 @@ public class PropertyImage {
         }
     }
 
-    public UUID getId() {
+    public Long getId() {
         return id;
     }
 

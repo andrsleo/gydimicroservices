@@ -1,16 +1,21 @@
 package com.affiliate.rentals.gydi.users.domain.service;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.time.LocalDateTime;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.EnumSource;
 
-import com.affiliate.rentals.gydi.users.domain.model.*;
+import com.affiliate.rentals.gydi.users.domain.model.Email;
+import com.affiliate.rentals.gydi.users.domain.model.Permission;
+import com.affiliate.rentals.gydi.users.domain.model.ResourceType;
+import com.affiliate.rentals.gydi.users.domain.model.Role;
+import com.affiliate.rentals.gydi.users.domain.model.SubscriptionPlan;
+import com.affiliate.rentals.gydi.users.domain.model.User;
+import com.affiliate.rentals.gydi.users.domain.model.UserCapabilities;
 
 /**
  * Unit tests for {@link PermissionEvaluator}.
@@ -131,28 +136,7 @@ class PermissionEvaluatorTest {
         // Act & Assert
         assertThat(PermissionEvaluator.evaluate(user, Permission.REFERRAL_GENERATE)).isFalse();
     }
-
-    @Test
-    @DisplayName("User with disabled rent capability should not create bookings")
-    void userWithDisabledRentCapabilityShouldNotCreateBookings() {
-        // Arrange
-        UserCapabilities disabledRent = UserCapabilities.of(true, true, false);
-        User user = User.builder()
-                .id(USER_ID)
-                .email(Email.of(USER_EMAIL))
-                .name("User")
-                .passwordHash("hashedPassword")
-                .roles(Set.of(Role.user()))
-                .activePlan(SubscriptionPlan.PRO)
-                .capabilities(disabledRent)
-                .accountVerified(true)
-                .createdAt(LocalDateTime.now())
-                .build();
-
-        // Act & Assert
-        assertThat(PermissionEvaluator.evaluate(user, Permission.BOOKING_CREATE)).isFalse();
-    }
-
+    
     @Test
     @DisplayName("FREE plan user should NOT have advanced analytics")
     void freePlanUserShouldNotHaveAdvancedAnalytics() {

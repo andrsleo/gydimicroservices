@@ -4,34 +4,41 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * UserProfile domain entity representing extended user information.
  *
- * <p>This immutable domain entity follows Domain-Driven Design (DDD) principles
- * and contains profile-specific information that complements the core User entity.
- * It maintains a 1:1 relationship with User through userId.</p>
+ * <p>
+ * This immutable domain entity follows Domain-Driven Design (DDD) principles
+ * and contains profile-specific information that complements the core User
+ * entity.
+ * It maintains a 1:1 relationship with User through userId.
+ * </p>
  *
- * <p>The entity uses Java 21 features including records for value objects and
+ * <p>
+ * The entity uses Java 21 features including records for value objects and
  * sealed types for type safety. All data is immutable to ensure thread safety
- * and consistency.</p>
+ * and consistency.
+ * </p>
  *
- * <p>Example usage:</p>
+ * <p>
+ * Example usage:
+ * </p>
+ * 
  * <pre>{@code
  * UserProfile profile = UserProfile.builder()
- *     .userId(userId)
- *     .dateOfBirth(LocalDate.of(1990, 1, 1))
- *     .gender(Gender.MALE)
- *     .bio("Software engineer passionate about clean code")
- *     .build();
+ *         .userId(userId)
+ *         .dateOfBirth(LocalDate.of(1990, 1, 1))
+ *         .gender(Gender.MALE)
+ *         .bio("Software engineer passionate about clean code")
+ *         .build();
  * }</pre>
  *
  * @author GYDI Development Team
  */
 public final class UserProfile {
 
-    private final UUID id;
+    private final Long id;
     private final Long userId;
     private final String firstName;
     private final String lastName;
@@ -99,7 +106,7 @@ public final class UserProfile {
         }
     }
 
-    public UUID id() {
+    public Long id() {
         return id;
     }
 
@@ -225,8 +232,10 @@ public final class UserProfile {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         UserProfile that = (UserProfile) o;
         return Objects.equals(id, that.id) && Objects.equals(userId, that.userId);
     }
@@ -246,7 +255,7 @@ public final class UserProfile {
      * Builder class for constructing {@link UserProfile} instances.
      */
     public static final class Builder {
-        private UUID id;
+        private Long id;
         private Long userId;
         private String firstName;
         private String lastName;
@@ -273,7 +282,7 @@ public final class UserProfile {
         private Builder() {
         }
 
-        public Builder id(UUID id) {
+        public Builder id(Long id) {
             this.id = id;
             return this;
         }

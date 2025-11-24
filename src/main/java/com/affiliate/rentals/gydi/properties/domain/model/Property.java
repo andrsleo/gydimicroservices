@@ -7,7 +7,6 @@ import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
 import java.util.Objects;
-import java.util.UUID;
 
 /**
  * Property aggregate root representing a vacation rental property.
@@ -21,6 +20,7 @@ public class Property {
     private final PropertyId id;
     private Long hostId;
     private String title;
+    private String slug; // SEO-friendly URL slug (e.g., "beach-house-malibu-x7k2m")
     private String description;
     private Money pricePerNight;
     private Money salePrice; // Price for sale (used when listingType allows sale)
@@ -32,15 +32,17 @@ public class Property {
     private PropertyStatus status;
     private final List<PropertyImage> images;
     private final List<PropertyVideo> videos;
-    private UUID coverImageId; // Main/cover image for listings
+    private Long coverImageId; // Main/cover image for listings
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime publishedAt;
 
     private Property(Builder builder) {
-        this.id = Objects.requireNonNull(builder.id, "Property ID cannot be null");
+        // Allow null ID for new entities (will be assigned by repository/database)
+        this.id = builder.id;
         this.hostId = Objects.requireNonNull(builder.hostId, "Host ID cannot be null");
         this.title = Objects.requireNonNull(builder.title, "Title cannot be null");
+        this.slug = builder.slug; // Optional, can be generated later
         this.description = builder.description;
         this.pricePerNight = Objects.requireNonNull(builder.pricePerNight, "Price per night cannot be null");
         this.salePrice = builder.salePrice; // Optional, used when listingType allows sale
@@ -86,7 +88,8 @@ public class Property {
      * Publishes this property, making it available to the public.
      * Validates all required fields before publishing.
      *
-     * @throws PropertyCannotBePublishedException if property doesn't meet publication requirements
+     * @throws PropertyCannotBePublishedException if property doesn't meet
+     *                                            publication requirements
      */
     public void publish() {
         List<String> errors = collectPublishValidationErrors();
@@ -204,12 +207,14 @@ public class Property {
         }
 
         // Validate sale price for sale listings
-        if (listingType.allowsSale() && (salePrice == null || salePrice.amount().compareTo(java.math.BigDecimal.ZERO) <= 0)) {
+        if (listingType.allowsSale()
+                && (salePrice == null || salePrice.amount().compareTo(java.math.BigDecimal.ZERO) <= 0)) {
             errors.add("Sale price is required for properties available for sale");
         }
 
         // Validate rental price for rental listings
-        if (listingType.allowsRental() && (pricePerNight == null || pricePerNight.amount().compareTo(java.math.BigDecimal.ZERO) <= 0)) {
+        if (listingType.allowsRental()
+                && (pricePerNight == null || pricePerNight.amount().compareTo(java.math.BigDecimal.ZERO) <= 0)) {
             errors.add("Price per night is required for rental properties");
         }
 
@@ -318,14 +323,14 @@ public class Property {
         this.updatedAt = LocalDateTime.now();
     }
 
-    public void removeImage(UUID imageId) {
+    public void removeImage(Long imageId) {
         boolean removed = images.removeIf(img -> img.getId().equals(imageId));
         if (removed) {
             this.updatedAt = LocalDateTime.now();
         }
     }
 
-    public void removeVideo(UUID videoId) {
+    public void removeVideo(Long videoId) {
         boolean removed = videos.removeIf(vid -> vid.getId().equals(videoId));
         if (removed) {
             this.updatedAt = LocalDateTime.now();
@@ -339,13 +344,13 @@ public class Property {
      * @param imageOrders map of image ID to new display order
      * @throws IllegalArgumentException if validation fails
      */
-    public void reorderImages(java.util.Map<UUID, Integer> imageOrders) {
+    public void reorderImages(java.util.Map<Long, Integer> imageOrders) {
         if (imageOrders.isEmpty()) {
             throw new IllegalArgumentException("Cannot reorder with empty orders");
         }
 
         // Validate all current image IDs are in the map
-        java.util.Set<UUID> currentIds = images.stream()
+        java.util.Set<Long> currentIds = images.stream()
                 .map(PropertyImage::getId)
                 .collect(java.util.stream.Collectors.toSet());
 
@@ -377,7 +382,7 @@ public class Property {
      * @param imageId the ID of the image to set as cover, or null to clear
      * @throws IllegalArgumentException if imageId is not null and image not found
      */
-    public void setCoverImage(UUID imageId) {
+    public void setCoverImage(Long imageId) {
         // Allow null to clear cover image
         if (imageId == null) {
             this.coverImageId = null;
@@ -429,7 +434,7 @@ public class Property {
      *
      * @return the cover image ID, or null if not set
      */
-    public UUID getCoverImageId() {
+    public Long getCoverImageId() {
         return coverImageId;
     }
 
@@ -470,7 +475,7 @@ public class Property {
      *
      * @param newListingType the new listing type
      * @throws IllegalArgumentException if newListingType is null
-     * @throws IllegalStateException if transition not allowed
+     * @throws IllegalStateException    if transition not allowed
      */
     public void updateListingType(PropertyListingType newListingType) {
         Objects.requireNonNull(newListingType, "Listing type cannot be null");
@@ -541,6 +546,15 @@ public class Property {
         return title;
     }
 
+    public String getSlug() {
+        return slug;
+    }
+
+    public void setSlug(String slug) {
+        this.slug = slug;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public String getDescription() {
         return description;
     }
@@ -599,8 +613,10 @@ public class Property {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         Property property = (Property) o;
         return Objects.equals(id, property.id);
     }
@@ -620,6 +636,7 @@ public class Property {
         private PropertyId id;
         private Long hostId;
         private String title;
+        private String slug;
         private String description;
         private Money pricePerNight;
         private Money salePrice;
@@ -631,7 +648,7 @@ public class Property {
         private PropertyStatus status;
         private List<PropertyImage> images;
         private List<PropertyVideo> videos;
-        private UUID coverImageId;
+        private Long coverImageId;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         private LocalDateTime publishedAt;
@@ -648,6 +665,11 @@ public class Property {
 
         public Builder title(String title) {
             this.title = title;
+            return this;
+        }
+
+        public Builder slug(String slug) {
+            this.slug = slug;
             return this;
         }
 
@@ -706,7 +728,7 @@ public class Property {
             return this;
         }
 
-        public Builder coverImageId(UUID coverImageId) {
+        public Builder coverImageId(Long coverImageId) {
             this.coverImageId = coverImageId;
             return this;
         }

@@ -4,8 +4,6 @@ import org.aspectj.lang.JoinPoint;
 import org.aspectj.lang.annotation.Aspect;
 import org.aspectj.lang.annotation.Before;
 import org.aspectj.lang.reflect.MethodSignature;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
@@ -20,6 +18,7 @@ import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PermissionEvaluator;
 
 import jakarta.servlet.http.HttpServletRequest;
+import lombok.extern.slf4j.Slf4j;
 
 /**
  * Aspect for enforcing permission-based access control using the {@link RequirePermission} annotation.
@@ -48,12 +47,11 @@ import jakarta.servlet.http.HttpServletRequest;
  * @see RequirePermission
  * @see PermissionEvaluator
  */
+@Slf4j
 @Aspect
 @Component
 public class PermissionAspect {
-
-    private static final Logger logger = LoggerFactory.getLogger(PermissionAspect.class);
-
+    
     private final UserRepositoryPort userRepository;
     private final JwtService jwtService;
     private final HttpServletRequest request;
@@ -93,21 +91,21 @@ public class PermissionAspect {
         // Get current authentication
         Authentication authentication = SecurityContextHolder.getContext().getAuthentication();
         if (authentication == null || !authentication.isAuthenticated()) {
-            logger.warn("Permission check failed: No authenticated user for permission {}", requiredPermission);
+            log.warn("Permission check failed: No authenticated user for permission {}", requiredPermission);
             throw PermissionDeniedException.forPermission(requiredPermission);
         }
 
         // Extract userId from JWT token
         Long userId = extractUserIdFromRequest();
         if (userId == null) {
-            logger.warn("Permission check failed: Could not extract userId from JWT for permission {}", requiredPermission);
+            log.warn("Permission check failed: Could not extract userId from JWT for permission {}", requiredPermission);
             throw PermissionDeniedException.forPermission(requiredPermission);
         }
 
         // Load complete user from repository (fresh data, not from JWT)
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> {
-                    logger.error("Permission check failed: User {} not found", userId);
+                    log.error("Permission check failed: User {} not found", userId);
                     return UserNotFoundException.withId(userId);
                 });
 
@@ -119,12 +117,12 @@ public class PermissionAspect {
                     ? determineDenialReason(user, requiredPermission)
                     : customMessage;
 
-            logger.warn("Permission denied for user {} on permission {}: {}",
+            log.warn("Permission denied for user {} on permission {}: {}",
                     userId, requiredPermission, reason);
 
             // Log method details for audit
             MethodSignature signature = (MethodSignature) joinPoint.getSignature();
-            logger.debug("Denied access to method: {}.{}",
+            log.debug("Denied access to method: {}.{}",
                     signature.getDeclaringType().getSimpleName(),
                     signature.getName());
 
@@ -132,7 +130,7 @@ public class PermissionAspect {
         }
 
         // Permission granted - log for audit
-        logger.debug("Permission granted for user {} on permission {}", userId, requiredPermission);
+        log.debug("Permission granted for user {} on permission {}", userId, requiredPermission);
     }
 
     /**
@@ -171,11 +169,7 @@ public class PermissionAspect {
 
             case REFERRAL_GENERATE -> !user.capabilities().canRefer()
                     ? "Referral generation capability is disabled"
-                    : "Insufficient subscription plan for referrals";
-
-            case BOOKING_CREATE -> !user.capabilities().canRent()
-                    ? "Booking capability is disabled"
-                    : "Insufficient subscription plan for bookings";
+                    : "Insufficient subscription plan for referrals";            
 
             case ANALYTICS_VIEW_ADVANCED, ANALYTICS_EXPORT ->
                     "Requires PRO or ELITE subscription plan";

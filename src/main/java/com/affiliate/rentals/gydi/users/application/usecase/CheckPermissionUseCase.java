@@ -87,11 +87,7 @@ public class CheckPermissionUseCase {
 
             case REFERRAL_GENERATE -> !user.capabilities().canRefer()
                     ? "Referral capability disabled"
-                    : "Insufficient subscription plan";
-
-            case BOOKING_CREATE -> !user.capabilities().canRent()
-                    ? "Booking capability disabled"
-                    : "Insufficient subscription plan";
+                    : "Insufficient subscription plan";           
 
             case ANALYTICS_VIEW_ADVANCED, ANALYTICS_EXPORT ->
                     "Requires PRO or ELITE subscription plan";

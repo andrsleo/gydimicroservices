@@ -199,7 +199,7 @@ public final class PropertyEnhanced {
     }
 
     /**
-     * Checks if the property is active and available for booking.
+     * Checks if the property is active and available.
      *
      * @return {@code true} if active, {@code false} otherwise
      */

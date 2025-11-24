@@ -15,7 +15,7 @@ public enum PropertyStatus {
     PUBLISHED,
 
     /**
-     * Property is temporarily inactive (not accepting bookings)
+     * Property is temporarily inactive (not visible to users)
      */
     INACTIVE,
 

@@ -3,14 +3,16 @@ package com.affiliate.rentals.gydi.users.domain.ports;
 import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
 
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * Repository port for UserProfile aggregate.
  *
- * <p>This interface defines the contract for UserProfile persistence operations
- * following the hexagonal architecture pattern. It serves as a port that will be
- * implemented by adapters in the infrastructure layer.</p>
+ * <p>
+ * This interface defines the contract for UserProfile persistence operations
+ * following the hexagonal architecture pattern. It serves as a port that will
+ * be
+ * implemented by adapters in the infrastructure layer.
+ * </p>
  *
  * @author GYDI Development Team
  * @see UserProfile
@@ -31,7 +33,7 @@ public interface UserProfileRepositoryPort {
      * @param id the profile ID
      * @return an Optional containing the profile if found, empty otherwise
      */
-    Optional<UserProfile> findById(UUID id);
+    Optional<UserProfile> findById(Long id);
 
     /**
      * Finds a user profile by the associated user ID.
@@ -54,7 +56,7 @@ public interface UserProfileRepositoryPort {
      *
      * @param id the ID of the profile to delete
      */
-    void deleteById(UUID id);
+    void deleteById(Long id);
 
     /**
      * Deletes a user profile by the associated user ID.

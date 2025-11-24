@@ -1,10 +1,9 @@
 package com.affiliate.rentals.gydi.users.domain.model;
 
-import static org.assertj.core.api.Assertions.assertThat;
-
 import java.util.EnumSet;
 import java.util.Set;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
@@ -39,8 +38,7 @@ class PermissionTest {
             Permission.PROPERTY_DELETE_ANY,
             Permission.PROPERTY_VIEW_ANY,
             Permission.PROPERTY_MODERATE,
-            Permission.REFERRAL_VIEW_ANY,
-            Permission.BOOKING_VIEW_ANY,
+            Permission.REFERRAL_VIEW_ANY,            
             Permission.ANALYTICS_VIEW_GLOBAL,
             Permission.USER_MANAGE,
             Permission.SUBSCRIPTION_MANAGE,
@@ -71,9 +69,7 @@ class PermissionTest {
             Permission.PROPERTY_DELETE_OWN,
             Permission.REFERRAL_GENERATE,
             Permission.REFERRAL_VIEW_OWN,
-            Permission.PROPERTY_RENT,
-            Permission.BOOKING_CREATE,
-            Permission.BOOKING_VIEW_OWN,
+            Permission.PROPERTY_RENT,            
             Permission.ANALYTICS_VIEW_OWN,
             Permission.ANALYTICS_VIEW_ADVANCED,
             Permission.ANALYTICS_EXPORT
@@ -90,7 +86,7 @@ class PermissionTest {
     @ParameterizedTest
     @EnumSource(value = Permission.class, names = {
         "PROPERTY_UPDATE_ANY", "PROPERTY_DELETE_ANY", "PROPERTY_VIEW_ANY",
-        "PROPERTY_MODERATE", "REFERRAL_VIEW_ANY", "BOOKING_VIEW_ANY",
+        "PROPERTY_MODERATE", "REFERRAL_VIEW_ANY", 
         "ANALYTICS_VIEW_GLOBAL", "USER_MANAGE", "SUBSCRIPTION_MANAGE",
         "SYSTEM_CONFIGURE", "MODERATION_MANAGE", "PAYMENT_VIEW", "REPORT_GENERATE"
     })
@@ -141,7 +137,7 @@ class PermissionTest {
 
     @ParameterizedTest
     @EnumSource(value = Permission.class, names = {
-        "PROFILE_READ", "PROFILE_UPDATE", "ANALYTICS_VIEW_OWN", "BOOKING_VIEW_OWN"
+        "PROFILE_READ", "PROFILE_UPDATE", "ANALYTICS_VIEW_OWN"
     })
     @DisplayName("Basic permissions should NOT require verification")
     void basicPermissionsShouldNotRequireVerification(Permission permission) {
@@ -158,8 +154,7 @@ class PermissionTest {
         Set<Permission> capabilityRequired = EnumSet.of(
             Permission.PROPERTY_PUBLISH,
             Permission.REFERRAL_GENERATE,
-            Permission.PROPERTY_RENT,
-            Permission.BOOKING_CREATE
+            Permission.PROPERTY_RENT            
         );
 
         // Act & Assert
@@ -178,7 +173,7 @@ class PermissionTest {
 
     @ParameterizedTest
     @EnumSource(value = Permission.class, names = {
-        "PROPERTY_PUBLISH", "REFERRAL_GENERATE", "PROPERTY_RENT", "BOOKING_CREATE"
+        "PROPERTY_PUBLISH", "REFERRAL_GENERATE", "PROPERTY_RENT"
     })
     @DisplayName("Specific permissions should require capability check")
     void specificPermissionsShouldRequireCapabilityCheck(Permission permission) {
@@ -353,7 +348,7 @@ class PermissionTest {
         Permission[] permissions = Permission.values();
 
         // Assert
-        assertThat(permissions).hasSize(27); // Total permissions defined
+        assertThat(permissions).hasSize(24); // Total permissions defined
     }
 
     @Test
@@ -481,17 +476,6 @@ class PermissionTest {
             }
         }
     }
-
-    @Test
-    @DisplayName("Booking permissions should have correct categorization")
-    void bookingPermissionsShouldHaveCorrectCategorization() {
-        // Act & Assert
-        assertThat(Permission.BOOKING_CREATE.isAdminOnly()).isFalse();
-        assertThat(Permission.BOOKING_CREATE.requiresCapabilityCheck()).isTrue();
-
-        assertThat(Permission.BOOKING_VIEW_OWN.isAdminOnly()).isFalse();
-        assertThat(Permission.BOOKING_VIEW_OWN.requiresCapabilityCheck()).isFalse();
-
-        assertThat(Permission.BOOKING_VIEW_ANY.isAdminOnly()).isTrue();
-    }
+    
+    
 }

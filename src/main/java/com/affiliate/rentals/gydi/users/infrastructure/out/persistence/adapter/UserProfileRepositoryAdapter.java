@@ -1,7 +1,6 @@
 package com.affiliate.rentals.gydi.users.infrastructure.out.persistence.adapter;
 
 import java.util.Optional;
-import java.util.UUID;
 
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -16,10 +15,13 @@ import lombok.RequiredArgsConstructor;
 /**
  * Adapter implementation of UserProfileRepository port.
  *
- * <p>This adapter bridges the domain layer and the persistence infrastructure,
- * implementing the UserProfileRepository port using Spring Data JPA and PostgreSQL.
+ * <p>
+ * This adapter bridges the domain layer and the persistence infrastructure,
+ * implementing the UserProfileRepository port using Spring Data JPA and
+ * PostgreSQL.
  * It follows the hexagonal architecture pattern by adapting the JPA repository
- * to the domain's port interface.</p>
+ * to the domain's port interface.
+ * </p>
  *
  * @author GYDI Development Team
  * @see UserProfileRepository
@@ -41,7 +43,7 @@ public class UserProfileRepositoryAdapter implements UserProfileRepositoryPort {
 
     @Override
     @Transactional(readOnly = true)
-    public Optional<UserProfile> findById(UUID id) {
+    public Optional<UserProfile> findById(Long id) {
         return jpaRepository.findById(id)
                 .map(mapper::toDomain);
     }
@@ -61,7 +63,7 @@ public class UserProfileRepositoryAdapter implements UserProfileRepositoryPort {
 
     @Override
     @Transactional
-    public void deleteById(UUID id) {
+    public void deleteById(Long id) {
         jpaRepository.deleteById(id);
     }
 

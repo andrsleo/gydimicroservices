@@ -8,8 +8,6 @@ import com.affiliate.rentals.gydi.shared.domain.port.StoragePort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.util.UUID;
-
 /**
  * Implementation of DeletePropertyVideoUseCase.
  * Deletes video from both database and storage (S3/local filesystem).
@@ -27,7 +25,7 @@ public class DeletePropertyVideoUseCaseImpl implements DeletePropertyVideoUseCas
     }
 
     @Override
-    public void execute(UUID propertyId, UUID videoId, Long userId) {
+    public void execute(Long propertyId, Long videoId, Long userId) {
         // 1. Find property
         Property property = propertyRepository.findById(PropertyId.of(propertyId))
                 .orElseThrow(() -> new IllegalArgumentException("Property not found: " + propertyId));

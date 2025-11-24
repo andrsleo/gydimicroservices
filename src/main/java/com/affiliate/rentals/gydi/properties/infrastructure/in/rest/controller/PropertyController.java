@@ -64,19 +64,19 @@ public class PropertyController {
     private final JwtService jwtService;
 
     public PropertyController(CreatePropertyUseCase createPropertyUseCase,
-                            UpdatePropertyUseCase updatePropertyUseCase,
-                            GetPropertyByIdUseCase getPropertyByIdUseCase,
-                            ListPropertiesUseCase listPropertiesUseCase,
-                            PublishPropertyUseCase publishPropertyUseCase,
-                            ActivatePropertyUseCase activatePropertyUseCase,
-                            DeactivatePropertyUseCase deactivatePropertyUseCase,
-                            DeletePropertyUseCase deletePropertyUseCase,
-                            ReorderPropertyImagesUseCase reorderPropertyImagesUseCase,
-                            DeletePropertyImageUseCase deletePropertyImageUseCase,
-                            DeletePropertyVideoUseCase deletePropertyVideoUseCase,
-                            PropertyRepositoryPort propertyRepository,
-                            PropertyMapper mapper,
-                            JwtService jwtService) {
+            UpdatePropertyUseCase updatePropertyUseCase,
+            GetPropertyByIdUseCase getPropertyByIdUseCase,
+            ListPropertiesUseCase listPropertiesUseCase,
+            PublishPropertyUseCase publishPropertyUseCase,
+            ActivatePropertyUseCase activatePropertyUseCase,
+            DeactivatePropertyUseCase deactivatePropertyUseCase,
+            DeletePropertyUseCase deletePropertyUseCase,
+            ReorderPropertyImagesUseCase reorderPropertyImagesUseCase,
+            DeletePropertyImageUseCase deletePropertyImageUseCase,
+            DeletePropertyVideoUseCase deletePropertyVideoUseCase,
+            PropertyRepositoryPort propertyRepository,
+            PropertyMapper mapper,
+            JwtService jwtService) {
         this.createPropertyUseCase = createPropertyUseCase;
         this.updatePropertyUseCase = updatePropertyUseCase;
         this.getPropertyByIdUseCase = getPropertyByIdUseCase;
@@ -100,8 +100,7 @@ public class PropertyController {
 
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
-        CreatePropertyUseCase.CreatePropertyCommand command =
-            new CreatePropertyUseCase.CreatePropertyCommand(
+        CreatePropertyUseCase.CreatePropertyCommand command = new CreatePropertyUseCase.CreatePropertyCommand(
                 userId,
                 request.title(),
                 request.description(),
@@ -117,18 +116,41 @@ public class PropertyController {
                 request.bathrooms(),
                 request.maxGuests(),
                 request.propertyType(),
-                request.listingType()
-            );
-        
+                request.listingType());
+
         Property property = createPropertyUseCase.createProperty(command);
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(mapper.toPropertyResponse(property));
     }
 
     @GetMapping("/{id}")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public ResponseEntity<PropertyDetailResponse> getProperty(@PathVariable String id) {
         return getPropertyByIdUseCase.getProperty(
                 new GetPropertyByIdUseCase.GetPropertyQuery(PropertyId.of(id)))
+                .map(mapper::toPropertyDetailResponse)
+                .map(ResponseEntity::ok)
+                .orElse(ResponseEntity.notFound().build());
+    }
+
+    /**
+     * Get property by SEO-friendly slug.
+     * Supports optional referral token for tracking.
+     *
+     * @param slug the property slug (e.g., "beach-house-malibu-x7k2m")
+     * @param ref  optional JWT referral token
+     * @return property details
+     */
+    @GetMapping("/by-slug/{slug}")
+    @org.springframework.transaction.annotation.Transactional(readOnly = true)
+    public ResponseEntity<PropertyDetailResponse> getPropertyBySlug(
+            @PathVariable String slug,
+            @RequestParam(required = false) String ref) {
+
+        // TODO: Process referral token if present (track click, validate token)
+        // This will be implemented when updating ReferralController
+
+        return propertyRepository.findBySlug(slug)
                 .map(mapper::toPropertyDetailResponse)
                 .map(ResponseEntity::ok)
                 .orElse(ResponseEntity.notFound().build());
@@ -153,25 +175,23 @@ public class PropertyController {
             @RequestParam(defaultValue = "createdAt") String sortBy,
             @RequestParam(defaultValue = "DESC") String sortDirection) {
 
-        ListPropertiesUseCase.ListPropertiesQuery query =
-            new ListPropertiesUseCase.ListPropertiesQuery(
+        ListPropertiesUseCase.ListPropertiesQuery query = new ListPropertiesUseCase.ListPropertiesQuery(
                 status != null ? PropertyStatus.valueOf(status) : null,
                 propertyType != null ? PropertyType.valueOf(propertyType) : null,
                 listingType,
                 country, city, minPrice, maxPrice, minBedrooms, minBathrooms, minGuests,
                 amenities, searchText,
-                page, size, sortBy, sortDirection
-            );
+                page, size, sortBy, sortDirection);
 
         ListPropertiesUseCase.PropertyPage result = listPropertiesUseCase.listProperties(query);
         List<PropertyResponse> properties = mapper.toPropertyResponseList(result.properties());
 
         PropertyPageResponse response = new PropertyPageResponse(
-            properties,              // content
-            result.totalElements(),  // totalElements
-            result.totalPages(),     // totalPages
-            result.currentPage(),    // page
-            result.pageSize()        // size
+                properties, // content
+                result.totalElements(), // totalElements
+                result.totalPages(), // totalPages
+                result.currentPage(), // page
+                result.pageSize() // size
         );
 
         return ResponseEntity.ok(response);
@@ -215,11 +235,11 @@ public class PropertyController {
         List<PropertyResponse> properties = mapper.toPropertyResponseList(paginatedProperties);
 
         PropertyPageResponse response = new PropertyPageResponse(
-            properties,      // content
-            totalElements,   // totalElements
-            totalPages,      // totalPages
-            page,           // page
-            size            // size
+                properties, // content
+                totalElements, // totalElements
+                totalPages, // totalPages
+                page, // page
+                size // size
         );
 
         return ResponseEntity.ok(response);
@@ -233,8 +253,7 @@ public class PropertyController {
 
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
-        UpdatePropertyUseCase.UpdatePropertyCommand command =
-            new UpdatePropertyUseCase.UpdatePropertyCommand(
+        UpdatePropertyUseCase.UpdatePropertyCommand command = new UpdatePropertyUseCase.UpdatePropertyCommand(
                 PropertyId.of(id),
                 userId,
                 request.title(),
@@ -250,9 +269,8 @@ public class PropertyController {
                 request.bedrooms(),
                 request.bathrooms(),
                 request.maxGuests(),
-                request.listingType()
-            );
-        
+                request.listingType());
+
         Property property = updatePropertyUseCase.updateProperty(command);
         return ResponseEntity.ok(mapper.toPropertyResponse(property));
     }
@@ -265,8 +283,7 @@ public class PropertyController {
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
         Property property = publishPropertyUseCase.publishProperty(
-            new PublishPropertyUseCase.PublishPropertyCommand(PropertyId.of(id), userId)
-        );
+                new PublishPropertyUseCase.PublishPropertyCommand(PropertyId.of(id), userId));
 
         return ResponseEntity.ok(mapper.toPropertyResponse(property));
     }
@@ -279,8 +296,7 @@ public class PropertyController {
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
         Property property = activatePropertyUseCase.activateProperty(
-            new ActivatePropertyUseCase.ActivatePropertyCommand(PropertyId.of(id), userId)
-        );
+                new ActivatePropertyUseCase.ActivatePropertyCommand(PropertyId.of(id), userId));
 
         return ResponseEntity.ok(mapper.toPropertyResponse(property));
     }
@@ -293,8 +309,7 @@ public class PropertyController {
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
         Property property = deactivatePropertyUseCase.deactivateProperty(
-            new DeactivatePropertyUseCase.DeactivatePropertyCommand(PropertyId.of(id), userId)
-        );
+                new DeactivatePropertyUseCase.DeactivatePropertyCommand(PropertyId.of(id), userId));
 
         return ResponseEntity.ok(mapper.toPropertyResponse(property));
     }
@@ -307,8 +322,7 @@ public class PropertyController {
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
         deletePropertyUseCase.deleteProperty(
-            new DeletePropertyUseCase.DeletePropertyCommand(PropertyId.of(id), userId)
-        );
+                new DeletePropertyUseCase.DeletePropertyCommand(PropertyId.of(id), userId));
 
         return ResponseEntity.noContent().build();
     }
@@ -322,10 +336,9 @@ public class PropertyController {
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
         ReorderImagesResponse response = reorderPropertyImagesUseCase.execute(
-            java.util.UUID.fromString(id),
-            userId,
-            request
-        );
+                Long.parseLong(id),
+                userId,
+                request);
 
         return ResponseEntity.ok(response);
     }
@@ -339,10 +352,9 @@ public class PropertyController {
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
         deletePropertyImageUseCase.execute(
-            java.util.UUID.fromString(id),
-            java.util.UUID.fromString(imageId),
-            userId
-        );
+                Long.parseLong(id),
+                Long.parseLong(imageId),
+                userId);
 
         return ResponseEntity.noContent().build();
     }
@@ -356,19 +368,18 @@ public class PropertyController {
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
         deletePropertyVideoUseCase.execute(
-            java.util.UUID.fromString(id),
-            java.util.UUID.fromString(videoId),
-            userId
-        );
+                Long.parseLong(id),
+                Long.parseLong(videoId),
+                userId);
 
         return ResponseEntity.noContent().build();
     }
 
     record PropertyPageResponse(
-        List<PropertyResponse> content,
-        long totalElements,
-        int totalPages,
-        int page,
-        int size
-    ) {}
+            List<PropertyResponse> content,
+            long totalElements,
+            int totalPages,
+            int page,
+            int size) {
+    }
 }
