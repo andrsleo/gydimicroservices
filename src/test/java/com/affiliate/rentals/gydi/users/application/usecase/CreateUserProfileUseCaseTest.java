@@ -47,6 +47,9 @@ class CreateUserProfileUseCaseTest {
         private UserProfileRepositoryPort profileRepository;
 
         @Mock
+        private com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort userRepository;
+
+        @Mock
         private UserProfileDtoMapper mapper;
 
         @InjectMocks
@@ -234,6 +237,17 @@ class CreateUserProfileUseCaseTest {
 
                 when(profileRepository.existsByUserId(userId)).thenReturn(false);
                 when(mapper.toDomain(any(CreateUserProfileRequest.class))).thenReturn(minimalProfile);
+
+                // Mock user repository for phone number lookup
+                var mockUser = com.affiliate.rentals.gydi.users.domain.model.User.builder()
+                                .id(userId)
+                                .email(com.affiliate.rentals.gydi.users.domain.model.Email.of("test@example.com"))
+                                .passwordHash("hash")
+                                .name("Test User")
+                                .roles(java.util.Set.of())
+                                .build();
+                when(userRepository.findById(userId)).thenReturn(java.util.Optional.of(mockUser));
+
                 when(profileRepository.save(any(UserProfile.class))).thenReturn(minimalProfile);
                 when(mapper.toResponse(any(UserProfile.class))).thenReturn(minimalResponse);
 
@@ -289,6 +303,18 @@ class CreateUserProfileUseCaseTest {
 
                         when(profileRepository.existsByUserId(any(Long.class))).thenReturn(false);
                         when(mapper.toDomain(any(CreateUserProfileRequest.class))).thenReturn(profileWithGender);
+
+                        // Mock user repository for phone number lookup
+                        var mockUser = com.affiliate.rentals.gydi.users.domain.model.User.builder()
+                                        .id(testUserId)
+                                        .email(com.affiliate.rentals.gydi.users.domain.model.Email
+                                                        .of("test" + i + "@example.com"))
+                                        .passwordHash("hash")
+                                        .name("Test User")
+                                        .roles(java.util.Set.of())
+                                        .build();
+                        when(userRepository.findById(testUserId)).thenReturn(java.util.Optional.of(mockUser));
+
                         when(profileRepository.save(any(UserProfile.class))).thenReturn(profileWithGender);
                         when(mapper.toResponse(any(UserProfile.class))).thenReturn(
                                         new UserProfileResponse(
@@ -372,12 +398,30 @@ class CreateUserProfileUseCaseTest {
 
                 var customProfile = UserProfile.builder()
                                 .userId(userId)
+                                .phoneNumber("+1234567890")
                                 .socialLinks(customSocialLinks)
                                 .preferences(customPreferences)
                                 .build();
 
                 when(profileRepository.existsByUserId(userId)).thenReturn(false);
                 when(mapper.toDomain(any(CreateUserProfileRequest.class))).thenReturn(customProfile);
+
+                // Mock user repository for phone number lookup (even if not strictly needed if
+                // phone is present, good for safety)
+                // In this test case, phone IS present in request ("+1234567890"), so toDomain
+                // should return it.
+                // However, if logic changes, this mock ensures safety.
+                // But wait, if phone is present, the use case DOES NOT call
+                // userRepository.findById.
+                // So adding strict stubbing might cause "UnnecessaryStubbingException" if
+                // strictness is enabled.
+                // MockitoExtension usually enables strict stubbing.
+                // Let's check if customRequest has phone number. Yes: "+1234567890".
+                // So profile.phoneNumber() will NOT be null.
+                // So userRepository.findById will NOT be called.
+                // So I should NOT mock it here, or use lenient().
+                // I will NOT mock it here.
+
                 when(profileRepository.save(any(UserProfile.class))).thenReturn(customProfile);
                 when(mapper.toResponse(any(UserProfile.class))).thenReturn(
                                 new UserProfileResponse(

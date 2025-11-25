@@ -85,12 +85,6 @@ public class UserProfileEntity {
     private String bio;
 
     /**
-     * The user's phone number in E.164 format.
-     */
-    @Column(name = "phone_number", length = 20)
-    private String phoneNumber;
-
-    /**
      * Full country name (e.g., "United States", "Spain").
      */
     @Column(name = "country", length = 100)
