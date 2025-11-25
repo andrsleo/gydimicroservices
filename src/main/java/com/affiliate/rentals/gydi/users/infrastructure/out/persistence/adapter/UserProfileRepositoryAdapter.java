@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 public class UserProfileRepositoryAdapter implements UserProfileRepositoryPort {
 
     private final JpaUserProfileRepository jpaRepository;
+    private final com.affiliate.rentals.gydi.users.infrastructure.out.persistence.repository.UserJpaRepository userJpaRepository;
     private final UserProfileEntityMapper mapper;
 
     @Override
@@ -38,21 +39,39 @@ public class UserProfileRepositoryAdapter implements UserProfileRepositoryPort {
     public UserProfile save(UserProfile profile) {
         var entity = mapper.toEntity(profile);
         var savedEntity = jpaRepository.save(entity);
-        return mapper.toDomain(savedEntity);
+
+        // Sync phone number to User entity
+        var userEntity = userJpaRepository.findById(profile.userId())
+                .orElseThrow(() -> new IllegalStateException("User not found for profile: " + profile.userId()));
+
+        userEntity.setPhoneNumber(profile.phoneNumber());
+        userJpaRepository.save(userEntity);
+
+        return mapper.toDomain(savedEntity, profile.phoneNumber());
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<UserProfile> findById(Long id) {
         return jpaRepository.findById(id)
-                .map(mapper::toDomain);
+                .map(entity -> {
+                    var userEntity = userJpaRepository.findById(entity.getUserId())
+                            .orElse(null);
+                    String phoneNumber = userEntity != null ? userEntity.getPhoneNumber() : null;
+                    return mapper.toDomain(entity, phoneNumber);
+                });
     }
 
     @Override
     @Transactional(readOnly = true)
     public Optional<UserProfile> findByUserId(Long userId) {
         return jpaRepository.findByUserId(userId)
-                .map(mapper::toDomain);
+                .map(entity -> {
+                    var userEntity = userJpaRepository.findById(userId)
+                            .orElse(null);
+                    String phoneNumber = userEntity != null ? userEntity.getPhoneNumber() : null;
+                    return mapper.toDomain(entity, phoneNumber);
+                });
     }
 
     @Override

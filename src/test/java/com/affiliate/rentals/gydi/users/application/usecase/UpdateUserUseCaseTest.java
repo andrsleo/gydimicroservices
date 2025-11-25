@@ -33,8 +33,10 @@ import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 /**
  * Unit tests for {@link UpdateUserUseCase}.
  *
- * <p>This test class validates the user update functionality,
- * including field updates, role management, and error handling.</p>
+ * <p>
+ * This test class validates the user update functionality,
+ * including field updates, role management, and error handling.
+ * </p>
  *
  * @author GYDI Development Team
  */
@@ -42,313 +44,330 @@ import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 @DisplayName("UpdateUserUseCase Tests")
 class UpdateUserUseCaseTest {
 
-    @Mock
-    private UserRepositoryPort userRepository;
+        @Mock
+        private UserRepositoryPort userRepository;
 
-    @Mock
-    private UserDtoMapper mapper;
+        @Mock
+        private UserDtoMapper mapper;
 
-    @Mock
-    private OwnershipValidator ownershipValidator;
+        @Mock
+        private com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort userProfileRepository;
 
-    @InjectMocks
-    private UpdateUserUseCase updateUserUseCase;
+        @Mock
+        private OwnershipValidator ownershipValidator;
 
-    private User existingUser;
-    private UpdateUserRequest updateRequest;
-    private User updatedUser;
-    private UserResponse expectedResponse;
-    private static final Long EXISTING_USER_ID = 1L;
-    private static final Long NON_EXISTING_USER_ID = 999L;
+        @InjectMocks
+        private UpdateUserUseCase updateUserUseCase;
 
-    @BeforeEach
-    void setUp() {
-        existingUser = User.builder()
-                .id(EXISTING_USER_ID)
-                .email(Email.of("john.doe@example.com"))
-                .passwordHash("$2a$10$encodedPassword")
-                .name("John Doe")
-                .phoneNumber("+1234567890")
-                .roles(Set.of(Role.user()))
-                .build();
+        private User existingUser;
+        private UpdateUserRequest updateRequest;
+        private User updatedUser;
+        private UserResponse expectedResponse;
+        private static final Long EXISTING_USER_ID = 1L;
+        private static final Long NON_EXISTING_USER_ID = 999L;
 
-        updateRequest = new UpdateUserRequest(
-                "John Updated",
-                "+1987654321",
-                Set.of("ADMIN")
-        );
+        @BeforeEach
+        void setUp() {
+                existingUser = User.builder()
+                                .id(EXISTING_USER_ID)
+                                .email(Email.of("john.doe@example.com"))
+                                .passwordHash("$2a$10$encodedPassword")
+                                .name("John Doe")
+                                .phoneNumber("+1234567890")
+                                .roles(Set.of(Role.user()))
+                                .build();
 
-        updatedUser = User.builder()
-                .id(EXISTING_USER_ID)
-                .email(Email.of("john.doe@example.com"))
-                .passwordHash("$2a$10$encodedPassword")
-                .name("John Updated")
-                .phoneNumber("+1987654321")
-                .roles(Set.of(Role.admin()))
-                .build();
+                updateRequest = new UpdateUserRequest(
+                                "John Updated",
+                                "+1987654321",
+                                Set.of("ADMIN"));
 
-        expectedResponse = new UserResponse(
-                EXISTING_USER_ID,
-                "john.doe@example.com",
-                "John Updated",
-                "+1987654321",
-                Set.of("ADMIN"),
-                LocalDateTime.now()
-        );
-    }
+                updatedUser = User.builder()
+                                .id(EXISTING_USER_ID)
+                                .email(Email.of("john.doe@example.com"))
+                                .passwordHash("$2a$10$encodedPassword")
+                                .name("John Updated")
+                                .phoneNumber("+1987654321")
+                                .roles(Set.of(Role.admin()))
+                                .build();
 
-    @Test
-    @DisplayName("Should update user successfully with valid data")
-    void shouldUpdateUserSuccessfully() {
-        // Arrange
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
-        when(mapper.toResponse(updatedUser)).thenReturn(expectedResponse);
+                expectedResponse = new UserResponse(
+                                EXISTING_USER_ID,
+                                "john.doe@example.com",
+                                "John Updated",
+                                "+1987654321",
+                                Set.of("ADMIN"),
+                                LocalDateTime.now());
+        }
 
-        // Act
-        UserResponse result = updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
+        @Test
+        @DisplayName("Should update user successfully with valid data")
+        void shouldUpdateUserSuccessfully() {
+                // Arrange
+                when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
+                when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+                when(mapper.toResponse(updatedUser)).thenReturn(expectedResponse);
 
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.id()).isEqualTo(EXISTING_USER_ID);
-        assertThat(result.name()).isEqualTo("John Updated");
-        assertThat(result.phoneNumber()).isEqualTo("+1987654321");
-        assertThat(result.roleNames()).containsExactly("ADMIN");
+                var mockProfile = com.affiliate.rentals.gydi.users.domain.model.UserProfile.builder()
+                                .userId(EXISTING_USER_ID)
+                                .firstName("John")
+                                .lastName("Doe")
+                                .build();
+                when(userProfileRepository.findByUserId(EXISTING_USER_ID)).thenReturn(Optional.of(mockProfile));
 
-        verify(userRepository).findById(EXISTING_USER_ID);
-        verify(userRepository).save(any(User.class));
-        verify(mapper).toResponse(updatedUser);
-    }
+                // Act
+                UserResponse result = updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
 
-    @Test
-    @DisplayName("Should throw UserNotFoundException when user does not exist")
-    void shouldThrowExceptionWhenUserNotFound() {
-        // Arrange
-        when(userRepository.findById(NON_EXISTING_USER_ID)).thenReturn(Optional.empty());
+                // Assert
+                assertThat(result).isNotNull();
+                assertThat(result.id()).isEqualTo(EXISTING_USER_ID);
+                assertThat(result.name()).isEqualTo("John Updated");
+                assertThat(result.phoneNumber()).isEqualTo("+1987654321");
+                assertThat(result.roleNames()).containsExactly("ADMIN");
 
-        // Act & Assert
-        assertThatThrownBy(() -> updateUserUseCase.execute(NON_EXISTING_USER_ID, updateRequest))
-                .isInstanceOf(UserNotFoundException.class)
-                .hasMessageContaining(String.valueOf(NON_EXISTING_USER_ID));
+                verify(userRepository).findById(EXISTING_USER_ID);
+                verify(userRepository).save(any(User.class));
+                verify(mapper).toResponse(updatedUser);
 
-        verify(userRepository).findById(NON_EXISTING_USER_ID);
-        verify(userRepository, never()).save(any(User.class));
-        verify(mapper, never()).toResponse(any(User.class));
-    }
+                // Verify profile update
+                verify(userProfileRepository).findByUserId(EXISTING_USER_ID);
+                verify(userProfileRepository)
+                                .save(any(com.affiliate.rentals.gydi.users.domain.model.UserProfile.class));
+        }
 
-    @Test
-    @DisplayName("Should preserve email when updating user")
-    void shouldPreserveEmailWhenUpdating() {
-        // Arrange
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
-        when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
+        @Test
+        @DisplayName("Should throw UserNotFoundException when user does not exist")
+        void shouldThrowExceptionWhenUserNotFound() {
+                // Arrange
+                when(userRepository.findById(NON_EXISTING_USER_ID)).thenReturn(Optional.empty());
 
-        // Act
-        updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
+                // Act & Assert
+                assertThatThrownBy(() -> updateUserUseCase.execute(NON_EXISTING_USER_ID, updateRequest))
+                                .isInstanceOf(UserNotFoundException.class)
+                                .hasMessageContaining(String.valueOf(NON_EXISTING_USER_ID));
 
-        // Assert
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        User savedUser = userCaptor.getValue();
+                verify(userRepository).findById(NON_EXISTING_USER_ID);
+                verify(userRepository, never()).save(any(User.class));
+                verify(mapper, never()).toResponse(any(User.class));
+        }
 
-        assertThat(savedUser.email()).isEqualTo(existingUser.email());
-        assertThat(savedUser.email().address()).isEqualTo("john.doe@example.com");
-    }
+        @Test
+        @DisplayName("Should preserve email when updating user")
+        void shouldPreserveEmailWhenUpdating() {
+                // Arrange
+                when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
+                when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+                when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
 
-    @Test
-    @DisplayName("Should preserve password hash when updating user")
-    void shouldPreservePasswordHashWhenUpdating() {
-        // Arrange
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
-        when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
+                // Act
+                updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
 
-        // Act
-        updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
+                // Assert
+                ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+                verify(userRepository).save(userCaptor.capture());
+                User savedUser = userCaptor.getValue();
 
-        // Assert
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        User savedUser = userCaptor.getValue();
+                assertThat(savedUser.email()).isEqualTo(existingUser.email());
+                assertThat(savedUser.email().address()).isEqualTo("john.doe@example.com");
+        }
 
-        assertThat(savedUser.passwordHash()).isEqualTo(existingUser.passwordHash());
-        assertThat(savedUser.passwordHash()).isEqualTo("$2a$10$encodedPassword");
-    }
+        @Test
+        @DisplayName("Should preserve password hash when updating user")
+        void shouldPreservePasswordHashWhenUpdating() {
+                // Arrange
+                when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
+                when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+                when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
 
-    @Test
-    @DisplayName("Should update only name when other fields are null")
-    void shouldUpdateOnlyNameWhenOtherFieldsAreNull() {
-        // Arrange
-        UpdateUserRequest nameOnlyRequest = new UpdateUserRequest(
-                "New Name Only",
-                null,
-                null
-        );
+                // Act
+                updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
 
-        User savedUserWithNewName = User.builder()
-                .id(EXISTING_USER_ID)
-                .email(Email.of("john.doe@example.com"))
-                .passwordHash("$2a$10$encodedPassword")
-                .name("New Name Only")
-                .phoneNumber(null)
-                .roles(existingUser.roles()) // Should preserve existing roles
-                .build();
+                // Assert
+                ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+                verify(userRepository).save(userCaptor.capture());
+                User savedUser = userCaptor.getValue();
 
-        UserResponse response = new UserResponse(
-                EXISTING_USER_ID,
-                "john.doe@example.com",
-                "New Name Only",
-                null,
-                Set.of("USER"),
-                LocalDateTime.now()
-        );
+                assertThat(savedUser.passwordHash()).isEqualTo(existingUser.passwordHash());
+                assertThat(savedUser.passwordHash()).isEqualTo("$2a$10$encodedPassword");
+        }
 
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(savedUserWithNewName);
-        when(mapper.toResponse(any(User.class))).thenReturn(response);
+        @Test
+        @DisplayName("Should update only name when other fields are null")
+        void shouldUpdateOnlyNameWhenOtherFieldsAreNull() {
+                // Arrange
+                UpdateUserRequest nameOnlyRequest = new UpdateUserRequest(
+                                "New Name Only",
+                                null,
+                                null);
 
-        // Act
-        UserResponse result = updateUserUseCase.execute(EXISTING_USER_ID, nameOnlyRequest);
+                User savedUserWithNewName = User.builder()
+                                .id(EXISTING_USER_ID)
+                                .email(Email.of("john.doe@example.com"))
+                                .passwordHash("$2a$10$encodedPassword")
+                                .name("New Name Only")
+                                .phoneNumber(null)
+                                .roles(existingUser.roles()) // Should preserve existing roles
+                                .build();
 
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.name()).isEqualTo("New Name Only");
-        assertThat(result.roleNames()).containsExactly("USER"); // Preserved from existing
+                UserResponse response = new UserResponse(
+                                EXISTING_USER_ID,
+                                "john.doe@example.com",
+                                "New Name Only",
+                                null,
+                                Set.of("USER"),
+                                LocalDateTime.now());
 
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        User savedUser = userCaptor.getValue();
+                when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
+                when(userRepository.save(any(User.class))).thenReturn(savedUserWithNewName);
+                when(mapper.toResponse(any(User.class))).thenReturn(response);
 
-        assertThat(savedUser.roles()).isEqualTo(existingUser.roles());
-    }
+                var mockProfile = com.affiliate.rentals.gydi.users.domain.model.UserProfile.builder()
+                                .userId(EXISTING_USER_ID)
+                                .firstName("John")
+                                .lastName("Doe")
+                                .build();
+                when(userProfileRepository.findByUserId(EXISTING_USER_ID)).thenReturn(Optional.of(mockProfile));
 
-    @Test
-    @DisplayName("Should preserve existing roles when roleNames is null")
-    void shouldPreserveExistingRolesWhenRoleNamesIsNull() {
-        // Arrange
-        UpdateUserRequest requestWithoutRoles = new UpdateUserRequest(
-                "Updated Name",
-                "+1111111111",
-                null
-        );
+                // Act
+                UserResponse result = updateUserUseCase.execute(EXISTING_USER_ID, nameOnlyRequest);
 
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(existingUser);
-        when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
+                // Assert
+                assertThat(result).isNotNull();
+                assertThat(result.name()).isEqualTo("New Name Only");
+                assertThat(result.roleNames()).containsExactly("USER"); // Preserved from existing
 
-        // Act
-        updateUserUseCase.execute(EXISTING_USER_ID, requestWithoutRoles);
+                ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+                verify(userRepository).save(userCaptor.capture());
+                User savedUser = userCaptor.getValue();
 
-        // Assert
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        User savedUser = userCaptor.getValue();
+                assertThat(savedUser.roles()).isEqualTo(existingUser.roles());
 
-        assertThat(savedUser.roles()).isEqualTo(existingUser.roles());
-    }
+                verify(userProfileRepository)
+                                .save(any(com.affiliate.rentals.gydi.users.domain.model.UserProfile.class));
+        }
 
-    @Test
-    @DisplayName("Should preserve existing roles when roleNames is empty")
-    void shouldPreserveExistingRolesWhenRoleNamesIsEmpty() {
-        // Arrange
-        UpdateUserRequest requestWithEmptyRoles = new UpdateUserRequest(
-                "Updated Name",
-                "+1111111111",
-                Set.of()
-        );
+        @Test
+        @DisplayName("Should preserve existing roles when roleNames is null")
+        void shouldPreserveExistingRolesWhenRoleNamesIsNull() {
+                // Arrange
+                UpdateUserRequest requestWithoutRoles = new UpdateUserRequest(
+                                "Updated Name",
+                                "+1111111111",
+                                null);
 
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(existingUser);
-        when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
+                when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
+                when(userRepository.save(any(User.class))).thenReturn(existingUser);
+                when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
 
-        // Act
-        updateUserUseCase.execute(EXISTING_USER_ID, requestWithEmptyRoles);
+                // Act
+                updateUserUseCase.execute(EXISTING_USER_ID, requestWithoutRoles);
 
-        // Assert
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        User savedUser = userCaptor.getValue();
+                // Assert
+                ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+                verify(userRepository).save(userCaptor.capture());
+                User savedUser = userCaptor.getValue();
 
-        assertThat(savedUser.roles()).isEqualTo(existingUser.roles());
-    }
+                assertThat(savedUser.roles()).isEqualTo(existingUser.roles());
+        }
 
-    @Test
-    @DisplayName("Should update user with multiple roles")
-    void shouldUpdateUserWithMultipleRoles() {
-        // Arrange
-        UpdateUserRequest multiRoleRequest = new UpdateUserRequest(
-                "Admin User",
-                "+1234567890",
-                Set.of("ADMIN", "USER")
-        );
+        @Test
+        @DisplayName("Should preserve existing roles when roleNames is empty")
+        void shouldPreserveExistingRolesWhenRoleNamesIsEmpty() {
+                // Arrange
+                UpdateUserRequest requestWithEmptyRoles = new UpdateUserRequest(
+                                "Updated Name",
+                                "+1111111111",
+                                Set.of());
 
-        User userWithMultipleRoles = User.builder()
-                .id(EXISTING_USER_ID)
-                .email(Email.of("john.doe@example.com"))
-                .passwordHash("$2a$10$encodedPassword")
-                .name("Admin User")
-                .phoneNumber("+1234567890")
-                .roles(Set.of(Role.admin(), Role.user()))
-                .build();
+                when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
+                when(userRepository.save(any(User.class))).thenReturn(existingUser);
+                when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
 
-        UserResponse multiRoleResponse = new UserResponse(
-                EXISTING_USER_ID,
-                "john.doe@example.com",
-                "Admin User",
-                "+1234567890",
-                Set.of("ADMIN", "USER"),
-                LocalDateTime.now()
-        );
+                // Act
+                updateUserUseCase.execute(EXISTING_USER_ID, requestWithEmptyRoles);
 
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(userWithMultipleRoles);
-        when(mapper.toResponse(userWithMultipleRoles)).thenReturn(multiRoleResponse);
+                // Assert
+                ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+                verify(userRepository).save(userCaptor.capture());
+                User savedUser = userCaptor.getValue();
 
-        // Act
-        UserResponse result = updateUserUseCase.execute(EXISTING_USER_ID, multiRoleRequest);
+                assertThat(savedUser.roles()).isEqualTo(existingUser.roles());
+        }
 
-        // Assert
-        assertThat(result).isNotNull();
-        assertThat(result.roleNames()).containsExactlyInAnyOrder("ADMIN", "USER");
+        @Test
+        @DisplayName("Should update user with multiple roles")
+        void shouldUpdateUserWithMultipleRoles() {
+                // Arrange
+                UpdateUserRequest multiRoleRequest = new UpdateUserRequest(
+                                "Admin User",
+                                "+1234567890",
+                                Set.of("ADMIN", "USER"));
 
-        verify(userRepository).save(any(User.class));
-    }
+                User userWithMultipleRoles = User.builder()
+                                .id(EXISTING_USER_ID)
+                                .email(Email.of("john.doe@example.com"))
+                                .passwordHash("$2a$10$encodedPassword")
+                                .name("Admin User")
+                                .phoneNumber("+1234567890")
+                                .roles(Set.of(Role.admin(), Role.user()))
+                                .build();
 
-    @Test
-    @DisplayName("Should preserve user ID when updating")
-    void shouldPreserveUserIdWhenUpdating() {
-        // Arrange
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
-        when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
+                UserResponse multiRoleResponse = new UserResponse(
+                                EXISTING_USER_ID,
+                                "john.doe@example.com",
+                                "Admin User",
+                                "+1234567890",
+                                Set.of("ADMIN", "USER"),
+                                LocalDateTime.now());
 
-        // Act
-        updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
+                when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
+                when(userRepository.save(any(User.class))).thenReturn(userWithMultipleRoles);
+                when(mapper.toResponse(userWithMultipleRoles)).thenReturn(multiRoleResponse);
 
-        // Assert
-        ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
-        verify(userRepository).save(userCaptor.capture());
-        User savedUser = userCaptor.getValue();
+                // Act
+                UserResponse result = updateUserUseCase.execute(EXISTING_USER_ID, multiRoleRequest);
 
-        assertThat(savedUser.id()).isEqualTo(EXISTING_USER_ID);
-    }
+                // Assert
+                assertThat(result).isNotNull();
+                assertThat(result.roleNames()).containsExactlyInAnyOrder("ADMIN", "USER");
 
-    @Test
-    @DisplayName("Should call repository methods in correct order")
-    void shouldCallRepositoryMethodsInCorrectOrder() {
-        // Arrange
-        when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
-        when(userRepository.save(any(User.class))).thenReturn(updatedUser);
-        when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
+                verify(userRepository).save(any(User.class));
+        }
 
-        // Act
-        updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
+        @Test
+        @DisplayName("Should preserve user ID when updating")
+        void shouldPreserveUserIdWhenUpdating() {
+                // Arrange
+                when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
+                when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+                when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
 
-        // Assert
-        var inOrder = inOrder(userRepository, mapper);
-        inOrder.verify(userRepository).findById(EXISTING_USER_ID);
-        inOrder.verify(userRepository).save(any(User.class));
-        inOrder.verify(mapper).toResponse(any(User.class));
-    }
+                // Act
+                updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
+
+                // Assert
+                ArgumentCaptor<User> userCaptor = ArgumentCaptor.forClass(User.class);
+                verify(userRepository).save(userCaptor.capture());
+                User savedUser = userCaptor.getValue();
+
+                assertThat(savedUser.id()).isEqualTo(EXISTING_USER_ID);
+        }
+
+        @Test
+        @DisplayName("Should call repository methods in correct order")
+        void shouldCallRepositoryMethodsInCorrectOrder() {
+                // Arrange
+                when(userRepository.findById(EXISTING_USER_ID)).thenReturn(Optional.of(existingUser));
+                when(userRepository.save(any(User.class))).thenReturn(updatedUser);
+                when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
+
+                // Act
+                updateUserUseCase.execute(EXISTING_USER_ID, updateRequest);
+
+                // Assert
+                var inOrder = inOrder(userRepository, mapper);
+                inOrder.verify(userRepository).findById(EXISTING_USER_ID);
+                inOrder.verify(userRepository).save(any(User.class));
+                inOrder.verify(mapper).toResponse(any(User.class));
+        }
 }

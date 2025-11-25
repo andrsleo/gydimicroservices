@@ -22,8 +22,10 @@ import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
 /**
  * Use case for creating a new user.
  *
- * <p>This service handles the business logic for user registration, including
- * password encoding, email validation, and role assignment.</p>
+ * <p>
+ * This service handles the business logic for user registration, including
+ * password encoding, email validation, and role assignment.
+ * </p>
  *
  * @author GYDI Development Team
  */
@@ -39,8 +41,7 @@ public class CreateUserUseCase {
             UserRepositoryPort userRepository,
             UserProfileRepositoryPort userProfileRepository,
             PasswordEncoder passwordEncoder,
-            UserDtoMapper mapper
-    ) {
+            UserDtoMapper mapper) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.passwordEncoder = passwordEncoder;
@@ -66,9 +67,9 @@ public class CreateUserUseCase {
 
         Set<Role> roles = request.roleNames() != null && !request.roleNames().isEmpty()
                 ? request.roleNames().stream()
-                .map(RoleName::fromValue)
-                .map(roleName -> new Role(null, roleName))
-                .collect(Collectors.toSet())
+                        .map(RoleName::fromValue)
+                        .map(roleName -> new Role(null, roleName))
+                        .collect(Collectors.toSet())
                 : Set.of(Role.user());
 
         // Build full name from firstName and lastName for backwards compatibility
@@ -79,7 +80,7 @@ public class CreateUserUseCase {
         User user = User.builder()
                 .email(email)
                 .passwordHash(encodedPassword)
-                .name(fullName)  // Still save to users.name for backwards compatibility
+                .name(fullName) // Still save to users.name for backwards compatibility
                 .phoneNumber(request.phoneNumber())
                 .roles(roles)
                 .build();
@@ -87,7 +88,7 @@ public class CreateUserUseCase {
         User savedUser = userRepository.save(user);
 
         // Create UserProfile with names (this is now the source of truth for names)
-        createDefaultUserProfile(savedUser, request.firstName(), request.lastName());
+        createDefaultUserProfile(savedUser, request.firstName(), request.lastName(), request.phoneNumber());
 
         return mapper.toResponse(savedUser);
     }
@@ -96,7 +97,7 @@ public class CreateUserUseCase {
      * Builds a full name from first and last names.
      *
      * @param firstName the first name
-     * @param lastName the last name (optional)
+     * @param lastName  the last name (optional)
      * @return the full name
      */
     private String buildFullName(String firstName, String lastName) {
@@ -109,19 +110,23 @@ public class CreateUserUseCase {
     /**
      * Creates a default UserProfile for a newly registered user.
      *
-     * <p>This method is called automatically during user registration to ensure
+     * <p>
+     * This method is called automatically during user registration to ensure
      * every user has an associated profile with sensible defaults. Names are saved
-     * in the profile as the source of truth.</p>
+     * in the profile as the source of truth.
+     * </p>
      *
-     * @param user the newly created user
-     * @param firstName the user's first name
-     * @param lastName the user's last name (optional)
+     * @param user        the newly created user
+     * @param firstName   the user's first name
+     * @param lastName    the user's last name (optional)
+     * @param phoneNumber the user's phone number (optional)
      */
-    private void createDefaultUserProfile(User user, String firstName, String lastName) {
+    private void createDefaultUserProfile(User user, String firstName, String lastName, String phoneNumber) {
         UserProfile defaultProfile = UserProfile.builder()
                 .userId(user.id())
                 .firstName(firstName)
                 .lastName(lastName)
+                .phoneNumber(phoneNumber)
                 .preferredLanguage("en")
                 .emailNotificationsEnabled(true)
                 .smsNotificationsEnabled(false)

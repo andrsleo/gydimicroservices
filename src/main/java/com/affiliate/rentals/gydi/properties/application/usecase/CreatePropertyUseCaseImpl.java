@@ -43,9 +43,14 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
         String sanitizedTitle = htmlSanitizer.sanitizeToPlainText(command.title());
         String sanitizedDescription = htmlSanitizer.sanitizeBasicFormatting(command.description());
 
+        // Generate temporary unique slug using timestamp + random (will be updated after save)
+        String tempShortId = generateTemporaryShortId();
+        String slug = slugGenerator.generateUniqueSlug(sanitizedTitle, tempShortId);
+
         Property.Builder builder = Property.builder()
                 .hostId(command.hostId())
                 .title(sanitizedTitle)
+                .slug(slug)  // Set slug BEFORE first save
                 .description(sanitizedDescription)
                 .pricePerNight(Money.of(command.priceAmount(), command.priceCurrency()))
                 .location(PropertyLocation.of(
@@ -71,13 +76,13 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
 
         Property property = builder.build();
 
-        // Save first to get auto-generated ID
+        // Save with temporary slug
         Property savedProperty = propertyRepository.save(property);
 
-        // Generate SEO-friendly slug: {title}-{short-id}
-        String shortId = generateShortId(savedProperty.getId().getValue());
-        String slug = slugGenerator.generateUniqueSlug(sanitizedTitle, shortId);
-        savedProperty.setSlug(slug);
+        // Update slug with real ID-based short code
+        String finalShortId = generateShortId(savedProperty.getId().getValue());
+        String finalSlug = slugGenerator.generateUniqueSlug(sanitizedTitle, finalShortId);
+        savedProperty.setSlug(finalSlug);
 
         return propertyRepository.save(savedProperty);
     }
@@ -88,5 +93,16 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
     private String generateShortId(Long id) {
         // Hashids requires positive numbers
         return hashids.encode(Math.abs(id));
+    }
+
+    /**
+     * Generates a temporary short ID using timestamp for uniqueness.
+     * This is used before the property ID is available.
+     * Format: tmp-{timestamp-in-base36}
+     */
+    private String generateTemporaryShortId() {
+        // Use current timestamp in milliseconds, convert to base 36 for shorter string
+        long timestamp = System.currentTimeMillis();
+        return "tmp-" + Long.toString(timestamp, 36);
     }
 }

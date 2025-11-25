@@ -160,7 +160,10 @@ CREATE OR REPLACE VIEW referrals.v_pending_payouts AS
 SELECT
     cl.affiliate_id,
     u.email AS affiliate_email,
-    u.name AS affiliate_name,
+    COALESCE(
+        NULLIF(TRIM(CONCAT_WS(' ', up.first_name, up.last_name)), ''),
+        u.email
+    ) AS affiliate_name,
     COUNT(cl.id) AS commission_count,
     SUM(cl.commission_amount) AS total_payout_amount,
     MIN(cl.approved_at) AS earliest_approval_date,
@@ -168,8 +171,9 @@ SELECT
     ARRAY_AGG(cl.id ORDER BY cl.approved_at) AS commission_ids
 FROM referrals.commission_ledger cl
 JOIN users.users u ON u.id = cl.affiliate_id
+LEFT JOIN users.user_profile up ON up.user_id = u.id
 WHERE cl.status = 'APPROVED'
-GROUP BY cl.affiliate_id, u.email, u.name
+GROUP BY cl.affiliate_id, u.email, up.first_name, up.last_name
 HAVING SUM(cl.commission_amount) >= 50.00  -- Minimum payout threshold
 ORDER BY SUM(cl.commission_amount) DESC;
 

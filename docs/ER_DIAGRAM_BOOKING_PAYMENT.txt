@@ -1,0 +1,406 @@
+================================================================================
+GYDI 2.0 - Booking & Payment System - Entity Relationship Diagram
+================================================================================
+Database: PostgreSQL 16
+Schemas: referrals, payment, users, properties, subscriptions
+Date: 2025-11-24
+================================================================================
+
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                          COMPLETE ER DIAGRAM                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────┐
+│      users.users             │
+│──────────────────────────────│
+│ • id (PK) BIGSERIAL          │◄────────────────┐
+│   email VARCHAR(255)         │                 │
+│   first_name VARCHAR(100)    │                 │
+│   last_name VARCHAR(100)     │                 │
+│   role VARCHAR(50)           │                 │
+│   password_hash VARCHAR(255) │                 │
+│   created_at TIMESTAMPTZ     │                 │
+│   updated_at TIMESTAMPTZ     │                 │
+└──────────────────────────────┘                 │
+         │                                       │
+         │ 1:N (user owns referral links)        │
+         │                                       │
+         ▼                                       │
+┌──────────────────────────────────────┐         │
+│  referrals.referral_link             │         │
+│──────────────────────────────────────│         │
+│ • id (PK) BIGSERIAL                  │         │
+│ • user_id (FK → users.users.id)      │         │
+│ • property_id (FK → properties.id)   │──┐      │
+│   encrypted_link VARCHAR(255)        │  │      │
+│   clicks INT                         │  │      │
+│   conversions INT                    │  │      │
+│   is_active BOOLEAN                  │  │      │
+│   created_at TIMESTAMPTZ             │  │      │
+│   updated_at TIMESTAMPTZ             │  │      │
+└──────────────────────────────────────┘  │      │
+         │                                │      │
+         │ 1:N (one link, many bookings)  │      │
+         │                                │      │
+         ▼                                │      │
+┌──────────────────────────────────────────────────────┐      │
+│  referrals.booking                                   │      │
+│──────────────────────────────────────────────────────│      │
+│ • booking_id (PK) BIGSERIAL                          │      │
+│ • referral_link_id (FK → referral_link.id) ──────────┘      │
+│ • property_id (FK → properties.properties.id) ───────┐      │
+│   start_date DATE                                    │      │
+│   end_date DATE                                      │      │
+│   client_email VARCHAR(255)                          │      │
+│   client_first_name VARCHAR(100)                     │      │
+│   client_last_name VARCHAR(100)                      │      │
+│   client_phone VARCHAR(20)                           │      │
+│   total_amount DECIMAL(10,2)                         │      │
+│   currency VARCHAR(3)                                │      │
+│ • status booking_status (ENUM)                       │      │
+│   cancellation_reason TEXT                           │      │
+│   canceled_by VARCHAR(50)                            │      │
+│   canceled_at TIMESTAMPTZ                            │      │
+│   created_at TIMESTAMPTZ                             │      │
+│   updated_at TIMESTAMPTZ                             │      │
+└──────────────────────────────────────────────────────┘      │
+         │                                                    │
+         │ 1:1 (when booking.status = FINISHED)               │
+         │                                                    │
+         ▼                                                    │
+┌──────────────────────────────────────────────────────────────┐   │
+│  payment.booking                                             │   │
+│──────────────────────────────────────────────────────────────│   │
+│ • payment_booking_id (PK) BIGSERIAL                          │   │
+│ • booking_id (FK → referrals.booking.booking_id) UNIQUE ─────┘   │
+│ • user_id (FK → users.users.id) ─────────────────────────────────┘
+│ • property_id (FK → properties.properties.id) ───────────────┐
+│   percentage_commission DECIMAL(5,2)                         │
+│   commission_amount DECIMAL(10,2)                            │
+│   currency VARCHAR(3)                                        │
+│ • payment_status payment_status (ENUM)                       │
+│   payment_method VARCHAR(50)                                 │
+│   transaction_id VARCHAR(255)                                │
+│   gateway_name VARCHAR(100)                                  │
+│   gateway_response JSONB                                     │
+│   paid_at TIMESTAMPTZ                                        │
+│   created_at TIMESTAMPTZ                                     │
+│   updated_at TIMESTAMPTZ                                     │
+└──────────────────────────────────────────────────────────────┘
+                                                                │
+         ┌──────────────────────────────────────────────────────┘
+         │
+         ▼
+┌──────────────────────────────────────┐
+│  properties.properties               │
+│──────────────────────────────────────│
+│ • id (PK) BIGSERIAL                  │
+│   title VARCHAR(255)                 │
+│   description TEXT                   │
+│   price_per_night DECIMAL(10,2)      │
+│   location VARCHAR(255)              │
+│   max_guests INT                     │
+│   bedrooms INT                       │
+│   bathrooms INT                      │
+│   amenities JSONB                    │
+│   is_active BOOLEAN                  │
+│   created_at TIMESTAMPTZ             │
+│   updated_at TIMESTAMPTZ             │
+└──────────────────────────────────────┘
+
+
+┌──────────────────────────────────────────────────────────────────────────────┐
+│                         SUBSCRIPTION INTEGRATION                             │
+│  (Used to determine commission_rate when creating payment.booking)           │
+└──────────────────────────────────────────────────────────────────────────────┘
+
+┌──────────────────────────────────────┐
+│  subscriptions.subscription_plan     │
+│──────────────────────────────────────│
+│ • id (PK) BIGSERIAL                  │
+│   name VARCHAR(50)                   │      Basic: 2% commission
+│   price DECIMAL(10,2)                │      Pro:   5% commission
+│   commission_rate DECIMAL(5,2)       │      Plus:  15% commission
+│   referral_limit INT                 │
+│   is_active BOOLEAN                  │
+│   created_at TIMESTAMPTZ             │
+│   updated_at TIMESTAMPTZ             │
+└──────────────────────────────────────┘
+         │
+         │ 1:N
+         │
+         ▼
+┌──────────────────────────────────────┐
+│  subscriptions.user_subscription     │
+│──────────────────────────────────────│
+│ • id (PK) BIGSERIAL                  │
+│ • user_id (FK → users.users.id)      │
+│ • subscription_plan_id (FK)          │
+│   status VARCHAR(20)                 │
+│   start_date DATE                    │
+│   end_date DATE                      │
+│   created_at TIMESTAMPTZ             │
+│   updated_at TIMESTAMPTZ             │
+└──────────────────────────────────────┘
+
+
+================================================================================
+                              ENUM TYPES
+================================================================================
+
+referrals.booking_status:
+  ┌────────────┐
+  │  REQUEST   │ ──► Initial booking request from client
+  └─────┬──────┘
+        │
+        ├──► RESERVED  ──► Confirmed by property owner
+        │        │
+        │        ├──► FINISHED  ──► Booking completed (triggers payment)
+        │        │
+        │        └──► CANCELED  ──► Canceled after confirmation
+        │
+        └──► CANCELED  ──► Canceled before confirmation
+
+
+payment.payment_status:
+  ┌────────────┐
+  │  PENDING   │ ──► Payment record created, awaiting processing
+  └─────┬──────┘
+        │
+        ▼
+  ┌────────────┐
+  │ PROCESSING │ ──► Payment being processed by gateway
+  └─────┬──────┘
+        │
+        ├──► SUCCESS   ──► Payment completed (paid_at auto-set)
+        │
+        ├──► FAILED    ──► Payment processing failed
+        │
+        └──► CANCELED  ──► Booking canceled before payment
+
+
+================================================================================
+                          RELATIONSHIP DETAILS
+================================================================================
+
+1. users.users → referrals.referral_link
+   Cardinality: 1:N (one user, many referral links)
+   ON DELETE: RESTRICT (cannot delete user with active links)
+   ON UPDATE: CASCADE
+
+2. referrals.referral_link → referrals.booking
+   Cardinality: 1:N (one link, many bookings)
+   ON DELETE: RESTRICT (cannot delete link with bookings)
+   ON UPDATE: CASCADE
+
+3. properties.properties → referrals.booking
+   Cardinality: 1:N (one property, many bookings)
+   ON DELETE: RESTRICT (cannot delete property with bookings)
+   ON UPDATE: CASCADE
+
+4. referrals.booking → payment.booking
+   Cardinality: 1:1 (one booking, one payment record)
+   ON DELETE: RESTRICT (cannot delete booking with payment)
+   ON UPDATE: CASCADE
+   Constraint: UNIQUE on booking_id in payment.booking
+
+5. users.users → payment.booking
+   Cardinality: 1:N (one user receives many payments)
+   ON DELETE: RESTRICT (cannot delete user with payments)
+   ON UPDATE: CASCADE
+
+6. properties.properties → payment.booking
+   Cardinality: 1:N (denormalized for query performance)
+   ON DELETE: RESTRICT
+   ON UPDATE: CASCADE
+
+
+================================================================================
+                          KEY CONSTRAINTS
+================================================================================
+
+referrals.booking:
+  ✓ end_date > start_date
+  ✓ start_date >= CURRENT_DATE
+  ✓ total_amount > 0
+  ✓ currency IN ('USD', 'EUR', 'GBP', 'MXN', 'COP')
+  ✓ IF status = CANCELED: must have cancellation_reason AND canceled_at
+  ✓ canceled_by IN ('CLIENT', 'OWNER', 'ADMIN', 'SYSTEM') OR NULL
+
+payment.booking:
+  ✓ percentage_commission BETWEEN 0 AND 100
+  ✓ commission_amount >= 0
+  ✓ currency IN ('USD', 'EUR', 'GBP', 'MXN', 'COP')
+  ✓ IF payment_status = SUCCESS: must have paid_at AND transaction_id
+  ✓ payment_method IN ('STRIPE', 'PAYPAL', 'BANK_TRANSFER', 'MANUAL', 'OTHER') OR NULL
+
+
+================================================================================
+                          INDEXES (Performance)
+================================================================================
+
+referrals.booking:
+  ► idx_booking_referral_link_id (referral_link_id)
+  ► idx_booking_property_id (property_id)
+  ► idx_booking_status (status)
+  ► idx_booking_date_range (start_date, end_date)
+  ► idx_booking_created_at (created_at DESC)
+  ► idx_booking_referral_active (referral_link_id, status) PARTIAL
+  ► idx_booking_property_dates_status (property_id, start_date, end_date, status) PARTIAL
+
+payment.booking:
+  ► idx_payment_booking_booking_id (booking_id)
+  ► idx_payment_booking_user_id (user_id)
+  ► idx_payment_booking_property_id (property_id)
+  ► idx_payment_booking_status (payment_status)
+  ► idx_payment_booking_created_at (created_at DESC)
+  ► idx_payment_booking_user_success (user_id, payment_status, paid_at DESC) PARTIAL
+  ► idx_payment_booking_pending (payment_status, created_at) PARTIAL
+  ► idx_payment_booking_transaction_id (transaction_id) PARTIAL
+
+
+================================================================================
+                          BUSINESS LOGIC FLOW
+================================================================================
+
+Step 1: User Generates Referral Link
+   ┌─────────────────────────────────────────┐
+   │ INSERT INTO referrals.referral_link     │
+   │   (user_id, property_id, ...)           │
+   └─────────────────────────────────────────┘
+
+Step 2: Client Clicks Link & Submits Booking Request
+   ┌─────────────────────────────────────────┐
+   │ INSERT INTO referrals.booking           │
+   │   status = 'REQUEST'                    │
+   └─────────────────────────────────────────┘
+
+Step 3: Property Owner Confirms Booking
+   ┌─────────────────────────────────────────┐
+   │ UPDATE referrals.booking                │
+   │   SET status = 'RESERVED'               │
+   │   WHERE status = 'REQUEST'              │
+   └─────────────────────────────────────────┘
+
+Step 4: Client Completes Stay (Checkout)
+   ┌─────────────────────────────────────────┐
+   │ UPDATE referrals.booking                │
+   │   SET status = 'FINISHED'               │
+   │   WHERE status = 'RESERVED'             │
+   └─────────────────────────────────────────┘
+                    │
+                    ▼
+   ┌─────────────────────────────────────────┐
+   │ INSERT INTO payment.booking             │
+   │   booking_id = booking.booking_id       │
+   │   user_id = referring_user.id           │
+   │   percentage_commission = plan_rate     │
+   │   commission_amount = calculated        │
+   │   payment_status = 'PENDING'            │
+   └─────────────────────────────────────────┘
+
+Step 5: Process Payment (Batch Job or Manual)
+   ┌─────────────────────────────────────────┐
+   │ UPDATE payment.booking                  │
+   │   SET payment_status = 'PROCESSING'     │
+   │   WHERE payment_status = 'PENDING'      │
+   └─────────────────────────────────────────┘
+                    │
+                    ▼
+   ┌─────────────────────────────────────────┐
+   │ Call Payment Gateway API                │
+   │ (Stripe, PayPal, etc.)                  │
+   └─────────────────────────────────────────┘
+                    │
+                    ▼
+   ┌─────────────────────────────────────────┐
+   │ UPDATE payment.booking                  │
+   │   SET payment_status = 'SUCCESS'        │
+   │       transaction_id = 'txn_...'        │
+   │       gateway_response = '{...}'        │
+   │       paid_at = CURRENT_TIMESTAMP       │
+   └─────────────────────────────────────────┘
+
+
+================================================================================
+                          SAMPLE DATA FLOW
+================================================================================
+
+Example: User "Jane Doe" (Pro Plan - 5% commission) refers property "Beach Villa"
+
+1. Referral Link Created:
+   ┌──────────────────────────────────────────────────────────┐
+   │ referrals.referral_link                                  │
+   │ id: 123                                                  │
+   │ user_id: 42 (Jane Doe)                                   │
+   │ property_id: 5 (Beach Villa)                             │
+   │ encrypted_link: "https://gydi.com/r/abc123xyz"           │
+   └──────────────────────────────────────────────────────────┘
+
+2. Client "John Smith" Books Property:
+   ┌──────────────────────────────────────────────────────────┐
+   │ referrals.booking                                        │
+   │ booking_id: 789                                          │
+   │ referral_link_id: 123                                    │
+   │ property_id: 5                                           │
+   │ start_date: 2025-12-01                                   │
+   │ end_date: 2025-12-07                                     │
+   │ client_email: john.smith@example.com                     │
+   │ total_amount: 840.00                                     │
+   │ currency: USD                                            │
+   │ status: REQUEST → RESERVED → FINISHED                    │
+   └──────────────────────────────────────────────────────────┘
+
+3. Payment Record Created (when status = FINISHED):
+   ┌──────────────────────────────────────────────────────────┐
+   │ payment.booking                                          │
+   │ payment_booking_id: 456                                  │
+   │ booking_id: 789                                          │
+   │ user_id: 42 (Jane Doe - receives commission)             │
+   │ property_id: 5                                           │
+   │ percentage_commission: 5.00 (from Pro plan)              │
+   │ commission_amount: 42.00 (840 × 5%)                      │
+   │ currency: USD                                            │
+   │ payment_status: PENDING → PROCESSING → SUCCESS           │
+   │ transaction_id: txn_1234567890                           │
+   │ paid_at: 2025-12-08 10:30:00+00                          │
+   └──────────────────────────────────────────────────────────┘
+
+Result: Jane Doe earned $42.00 commission for referring the booking!
+
+
+================================================================================
+                          QUERY EXAMPLES
+================================================================================
+
+1. Find All Bookings for a Referral Link:
+   SELECT * FROM referrals.booking
+   WHERE referral_link_id = 123
+   ORDER BY created_at DESC;
+
+2. Check Property Availability (No Overlapping Bookings):
+   SELECT NOT EXISTS (
+     SELECT 1 FROM referrals.booking
+     WHERE property_id = 5
+       AND status IN ('RESERVED', 'FINISHED')
+       AND start_date < '2025-12-15'  -- requested end_date
+       AND end_date > '2025-12-10'    -- requested start_date
+   ) AS is_available;
+
+3. Get User's Total Earnings:
+   SELECT COALESCE(SUM(commission_amount), 0) AS total_earned
+   FROM payment.booking
+   WHERE user_id = 42
+     AND payment_status = 'SUCCESS';
+
+4. Find Pending Payments for Batch Processing:
+   SELECT * FROM payment.booking
+   WHERE payment_status = 'PENDING'
+     AND created_at <= NOW() - INTERVAL '5 minutes'
+   ORDER BY created_at ASC
+   LIMIT 100;
+
+
+================================================================================
+End of ER Diagram
+================================================================================

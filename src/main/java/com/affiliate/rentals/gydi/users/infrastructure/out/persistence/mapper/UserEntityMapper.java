@@ -13,9 +13,11 @@ import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.Us
 /**
  * Manual mapper for converting between User domain model and UserEntity.
  *
- * <p>This mapper handles the bidirectional conversion between the domain layer's
+ * <p>
+ * This mapper handles the bidirectional conversion between the domain layer's
  * User aggregate and the infrastructure layer's UserEntity. It properly maps
- * value objects like Email and Role to their JPA entity representations.</p>
+ * value objects like Email and Role to their JPA entity representations.
+ * </p>
  *
  * @author GYDI Development Team
  * @see User
@@ -37,7 +39,7 @@ public class UserEntityMapper {
 
         UserEntity entity = new UserEntity();
         entity.setId(user.id());
-        entity.setName(user.name());
+
         entity.setEmail(user.email() != null ? user.email().address() : null);
         entity.setPasswordHash(user.passwordHash());
         entity.setPhoneNumber(user.phoneNumber());
@@ -61,8 +63,8 @@ public class UserEntityMapper {
         // Map roles
         if (user.roles() != null) {
             Set<RoleEntity> roleEntities = user.roles().stream()
-                .map(role -> new RoleEntity(role.id(), role.name().name()))
-                .collect(Collectors.toSet());
+                    .map(role -> new RoleEntity(role.id(), role.name().name()))
+                    .collect(Collectors.toSet());
             entity.setRoles(roleEntities);
         }
 
@@ -73,9 +75,10 @@ public class UserEntityMapper {
      * Converts a UserEntity to a User domain model.
      *
      * @param entity the UserEntity to convert
+     * @param name   the user's name (from UserProfile)
      * @return the corresponding User domain model
      */
-    public User toDomain(UserEntity entity) {
+    public User toDomain(UserEntity entity, String name) {
         if (entity == null) {
             return null;
         }
@@ -84,28 +87,26 @@ public class UserEntityMapper {
         Set<Role> roles = Set.of();
         if (entity.getRoles() != null) {
             roles = entity.getRoles().stream()
-                .map(roleEntity -> new Role(
-                    roleEntity.getId(),
-                    RoleName.fromValue(roleEntity.getName())
-                ))
-                .collect(Collectors.toSet());
+                    .map(roleEntity -> new Role(
+                            roleEntity.getId(),
+                            RoleName.fromValue(roleEntity.getName())))
+                    .collect(Collectors.toSet());
         }
 
         // Map subscription plan
         SubscriptionPlan activePlan = entity.getActivePlan() != null
-            ? SubscriptionPlan.valueOf(entity.getActivePlan().name())
-            : SubscriptionPlan.FREE;
+                ? SubscriptionPlan.valueOf(entity.getActivePlan().name())
+                : SubscriptionPlan.FREE;
 
         // Map capabilities
         UserCapabilities capabilities = UserCapabilities.of(
-            entity.getCanPublish() != null ? entity.getCanPublish() : true,
-            entity.getCanRefer() != null ? entity.getCanRefer() : true,
-            entity.getCanRent() != null ? entity.getCanRent() : true
-        );
+                entity.getCanPublish() != null ? entity.getCanPublish() : true,
+                entity.getCanRefer() != null ? entity.getCanRefer() : true,
+                entity.getCanRent() != null ? entity.getCanRent() : true);
 
         return User.builder()
                 .id(entity.getId())
-                .name(entity.getName())
+                .name(name)
                 .email(entity.getEmail() != null ? Email.of(entity.getEmail()) : null)
                 .passwordHash(entity.getPasswordHash())
                 .phoneNumber(entity.getPhoneNumber())
