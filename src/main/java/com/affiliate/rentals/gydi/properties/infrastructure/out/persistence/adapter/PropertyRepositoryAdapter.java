@@ -60,28 +60,33 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
     }
 
     @Override
+    public List<Property> findAllWithIcalUrl() {
+        return jpaRepository.findByIcalUrlAirbnbIsNotNull().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public PropertySearchResult findAll(PropertySearchSpec spec) {
         Specification<PropertyJpaEntity> specification = buildSpecification(spec);
-        
+
         Sort sort = Sort.by(
-            "DESC".equalsIgnoreCase(spec.sortDirection()) ? Sort.Direction.DESC : Sort.Direction.ASC,
-            spec.sortBy() != null ? spec.sortBy() : "createdAt"
-        );
-        
+                "DESC".equalsIgnoreCase(spec.sortDirection()) ? Sort.Direction.DESC : Sort.Direction.ASC,
+                spec.sortBy() != null ? spec.sortBy() : "createdAt");
+
         Pageable pageable = PageRequest.of(spec.page(), spec.size(), sort);
         Page<PropertyJpaEntity> page = jpaRepository.findAll(specification, pageable);
-        
+
         List<Property> properties = page.getContent().stream()
                 .map(mapper::toDomain)
                 .collect(Collectors.toList());
-        
+
         return new PropertySearchResult(
-            properties,
-            page.getTotalElements(),
-            page.getTotalPages(),
-            page.getNumber(),
-            page.getSize()
-        );
+                properties,
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.getNumber(),
+                page.getSize());
     }
 
     @Override
@@ -94,6 +99,11 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
         return jpaRepository.existsById(id.getValue());
     }
 
+    @Override
+    public boolean existsByAirbnbListingId(String airbnbListingId) {
+        return jpaRepository.existsByAirbnbListingId(airbnbListingId);
+    }
+
     private Specification<PropertyJpaEntity> buildSpecification(PropertySearchSpec spec) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
@@ -101,7 +111,7 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
             if (spec.status() != null) {
                 predicates.add(cb.equal(root.get("status"), spec.status().name()));
             }
-            
+
             if (spec.propertyType() != null) {
                 predicates.add(cb.equal(root.get("propertyType"), spec.propertyType().name()));
             }
@@ -113,37 +123,36 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
             if (spec.country() != null) {
                 predicates.add(cb.equal(root.get("country"), spec.country()));
             }
-            
+
             if (spec.city() != null) {
                 predicates.add(cb.equal(root.get("city"), spec.city()));
             }
-            
+
             if (spec.minPrice() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("priceAmount"), spec.minPrice()));
             }
-            
+
             if (spec.maxPrice() != null) {
                 predicates.add(cb.lessThanOrEqualTo(root.get("priceAmount"), spec.maxPrice()));
             }
-            
+
             if (spec.minBedrooms() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("bedrooms"), spec.minBedrooms()));
             }
-            
+
             if (spec.minBathrooms() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("bathrooms"), spec.minBathrooms()));
             }
-            
+
             if (spec.minGuests() != null) {
                 predicates.add(cb.greaterThanOrEqualTo(root.get("maxGuests"), spec.minGuests()));
             }
-            
+
             if (spec.searchText() != null && !spec.searchText().isBlank()) {
                 String searchPattern = "%" + spec.searchText().toLowerCase() + "%";
                 predicates.add(cb.or(
-                    cb.like(cb.lower(root.get("title")), searchPattern),
-                    cb.like(cb.lower(root.get("description")), searchPattern)
-                ));
+                        cb.like(cb.lower(root.get("title")), searchPattern),
+                        cb.like(cb.lower(root.get("description")), searchPattern)));
             }
 
             // Filter by amenities (ALL must be present - AND logic)

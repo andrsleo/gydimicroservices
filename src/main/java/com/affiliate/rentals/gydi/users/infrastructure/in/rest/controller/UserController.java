@@ -1,6 +1,8 @@
 package com.affiliate.rentals.gydi.users.infrastructure.in.rest.controller;
 
 import com.affiliate.rentals.gydi.shared.exception.ApiErrorResponses;
+import com.affiliate.rentals.gydi.shared.security.OwnershipValidator;
+import com.affiliate.rentals.gydi.users.application.dto.ChangePasswordRequest;
 import com.affiliate.rentals.gydi.users.application.dto.CreateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
@@ -45,6 +47,8 @@ public class UserController {
     private final GetAllUsersUseCase getAllUsersUseCase;
     private final UpdateUserUseCase updateUserUseCase;
     private final DeleteUserUseCase deleteUserUseCase;
+    private final ChangePasswordUseCase changePasswordUseCase;
+    private final OwnershipValidator ownershipValidator;
 
     /**
      * Constructs a new UserController with required use cases.
@@ -54,19 +58,25 @@ public class UserController {
      * @param getAllUsersUseCase the use case for retrieving all users
      * @param updateUserUseCase the use case for updating users
      * @param deleteUserUseCase the use case for deleting users
+     * @param changePasswordUseCase the use case for changing password
+     * @param ownershipValidator the ownership validator for getting authenticated user ID
      */
     public UserController(
             CreateUserUseCase createUserUseCase,
             GetUserByIdUseCase getUserByIdUseCase,
             GetAllUsersUseCase getAllUsersUseCase,
             UpdateUserUseCase updateUserUseCase,
-            DeleteUserUseCase deleteUserUseCase
+            DeleteUserUseCase deleteUserUseCase,
+            ChangePasswordUseCase changePasswordUseCase,
+            OwnershipValidator ownershipValidator
     ) {
         this.createUserUseCase = createUserUseCase;
         this.getUserByIdUseCase = getUserByIdUseCase;
         this.getAllUsersUseCase = getAllUsersUseCase;
         this.updateUserUseCase = updateUserUseCase;
         this.deleteUserUseCase = deleteUserUseCase;
+        this.changePasswordUseCase = changePasswordUseCase;
+        this.ownershipValidator = ownershipValidator;
     }
 
     /**
@@ -157,5 +167,36 @@ public class UserController {
     ) {
         deleteUserUseCase.execute(id);
         return ResponseEntity.noContent().build();
+    }
+
+    /**
+     * Changes the password for the authenticated user.
+     *
+     * <p>This endpoint allows an authenticated user to change their password.
+     * The user must provide their current password for verification before
+     * setting a new password.</p>
+     *
+     * <p><b>SECURITY:</b> This endpoint automatically uses the authenticated user's ID,
+     * preventing users from changing other users' passwords.</p>
+     *
+     * @param request the change password request containing current and new passwords
+     * @return HTTP 200 OK status
+     */
+    @PutMapping("/password")
+    @Operation(
+            summary = "Change password",
+            description = "Changes the authenticated user's password. Requires current password verification."
+    )
+    @ApiResponse(responseCode = "200", description = "Password changed successfully")
+    @ApiErrorResponses.BadRequest
+    @ApiErrorResponses.Unauthorized
+    public ResponseEntity<Void> changePassword(
+            @Valid @RequestBody ChangePasswordRequest request
+    ) {
+        // SECURITY: Get authenticated user's ID (prevents IDOR)
+        Long authenticatedUserId = ownershipValidator.getAuthenticatedUserId();
+
+        changePasswordUseCase.execute(authenticatedUserId, request);
+        return ResponseEntity.ok().build();
     }
 }

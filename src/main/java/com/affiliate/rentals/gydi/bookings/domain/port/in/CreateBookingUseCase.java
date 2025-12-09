@@ -21,22 +21,20 @@ public interface CreateBookingUseCase {
 
     /**
      * Command to create a booking.
+     * Financial details (totalAmount, currency) removed - tracked separately in commission_booking table.
      */
     record CreateBookingCommand(
-        Long referralLinkId,
-        Long propertyId,
-        LocalDate startDate,
-        LocalDate endDate,
-        String clientEmail,
-        String clientPhone,
-        String clientFirstName,
-        String clientLastName,
-        BigDecimal totalAmount,
-        String currency
-    ) {
+            String referralLinkId, // Can be either numeric ID or JWT token
+            Long propertyId,
+            LocalDate startDate,
+            LocalDate endDate,
+            String clientEmail,
+            String clientPhone,
+            String clientFirstName,
+            String clientLastName) {
         public CreateBookingCommand {
-            if (referralLinkId == null) {
-                throw new IllegalArgumentException("Referral link ID is required");
+            if (referralLinkId == null || referralLinkId.isBlank()) {
+                throw new IllegalArgumentException("Referral link ID or token is required");
             }
             if (propertyId == null) {
                 throw new IllegalArgumentException("Property ID is required");
@@ -53,29 +51,22 @@ public interface CreateBookingUseCase {
             if (clientLastName == null || clientLastName.isBlank()) {
                 throw new IllegalArgumentException("Client last name is required");
             }
-            if (totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
-                throw new IllegalArgumentException("Total amount must be positive");
-            }
-            if (currency == null || currency.isBlank()) {
-                throw new IllegalArgumentException("Currency is required");
-            }
         }
     }
 
     /**
      * Response after creating a booking.
+     * Financial details (totalAmount, currency) removed - tracked separately in commission_booking table.
      */
     record BookingResponse(
-        Long bookingId,
-        Long referralLinkId,
-        Long propertyId,
-        LocalDate startDate,
-        LocalDate endDate,
-        String clientEmail,
-        String clientFullName,
-        BigDecimal totalAmount,
-        String currency,
-        String status,
-        String createdAt
-    ) {}
+            Long bookingId,
+            Long referralLinkId,
+            Long propertyId,
+            LocalDate startDate,
+            LocalDate endDate,
+            String clientEmail,
+            String clientFullName,
+            String status,
+            String createdAt) {
+    }
 }

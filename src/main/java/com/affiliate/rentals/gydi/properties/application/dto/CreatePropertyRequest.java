@@ -38,5 +38,9 @@ public record CreatePropertyRequest(
 
         @NotBlank(message = "Property type is required") @Pattern(regexp = "APARTMENT|HOUSE|VILLA|CABIN|STUDIO|CONDO|BUNGALOW|OTHER", message = "Invalid property type") String propertyType,
 
-        @Pattern(regexp = "SHORT_TERM_RENTAL|SALE|BOTH", message = "Invalid listing type. Must be SHORT_TERM_RENTAL, SALE, or BOTH") String listingType) {
+        @Pattern(regexp = "SHORT_TERM_RENTAL|SALE|BOTH", message = "Invalid listing type. Must be SHORT_TERM_RENTAL, SALE, or BOTH") String listingType,
+
+        @NotBlank(message = "Airbnb URL is required") String airbnbUrl,
+
+        String icalUrlAirbnb) {
 }

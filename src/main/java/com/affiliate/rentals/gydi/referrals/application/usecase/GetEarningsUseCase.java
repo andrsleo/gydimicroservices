@@ -43,12 +43,12 @@ public class GetEarningsUseCase {
         log.debug("Getting earnings for affiliate: {}", affiliateId);
 
         // Calcular totales por estado
-        BigDecimal totalEarnings = commissionRepository.calculateTotalEarnings(affiliateId);
-        BigDecimal pendingAmount = commissionRepository.calculateEarningsByStatus(
+        BigDecimal totalEarnings = commissionRepository.calculateTotalEarningsByAffiliateId(affiliateId);
+        BigDecimal pendingAmount = commissionRepository.calculateEarningsByAffiliateIdAndStatus(
             affiliateId, CommissionStatus.PENDING);
-        BigDecimal approvedAmount = commissionRepository.calculateEarningsByStatus(
+        BigDecimal approvedAmount = commissionRepository.calculateEarningsByAffiliateIdAndStatus(
             affiliateId, CommissionStatus.APPROVED);
-        BigDecimal paidAmount = commissionRepository.calculateEarningsByStatus(
+        BigDecimal paidAmount = commissionRepository.calculateEarningsByAffiliateIdAndStatus(
             affiliateId, CommissionStatus.PAID);
 
         // Contar comisiones por estado
@@ -107,9 +107,7 @@ public class GetEarningsUseCase {
     private CommissionDto mapToDto(Commission commission) {
         return new CommissionDto(
             commission.getId(),
-            commission.getReferralLinkId(),
-            commission.getAffiliateId(),
-            commission.getPropertyId(),
+            commission.getBookingId(),
             commission.getCommissionRate(),
             commission.getCommissionAmount(),
             commission.getAffiliatePlan(),

@@ -78,12 +78,9 @@ public class GetReferralStatsUseCase {
         Map<String, Long> clicksByCountry = new HashMap<>();
         Map<String, Long> clicksByDevice = new HashMap<>();
 
-        // Estadísticas de conversiones
-        int totalConversions = allLinks.stream()
-            .mapToInt(ReferralLink::getConversionsCount)
-            .sum();
-
-        // TODO: Conversiones últimos 30 días (requiere filtro por fecha en CommissionRepository)
+        // Estadísticas de conversiones (bookings completados)
+        // TODO: Implementar conteo de bookings por affiliate_id desde tabla booking
+        int totalConversions = 0; // Se calculará desde bookings en el futuro
         int conversionsLast30Days = 0;
 
         double overallConversionRate = totalClicks > 0
@@ -91,17 +88,16 @@ public class GetReferralStatsUseCase {
             : 0.0;
 
         // Estadísticas financieras
-        BigDecimal totalEarnings = commissionRepository.calculateTotalEarnings(affiliateId);
-        BigDecimal pendingCommissions = commissionRepository.calculateEarningsByStatus(
+        BigDecimal totalEarnings = commissionRepository.calculateTotalEarningsByAffiliateId(affiliateId);
+        BigDecimal pendingCommissions = commissionRepository.calculateEarningsByAffiliateIdAndStatus(
             affiliateId, CommissionStatus.PENDING);
-        BigDecimal approvedCommissions = commissionRepository.calculateEarningsByStatus(
+        BigDecimal approvedCommissions = commissionRepository.calculateEarningsByAffiliateIdAndStatus(
             affiliateId, CommissionStatus.APPROVED);
-        BigDecimal paidCommissions = commissionRepository.calculateEarningsByStatus(
+        BigDecimal paidCommissions = commissionRepository.calculateEarningsByAffiliateIdAndStatus(
             affiliateId, CommissionStatus.PAID);
 
-        int currentYear = LocalDateTime.now().getYear();
-        Map<String, BigDecimal> earningsByMonth = commissionRepository.calculateMonthlyEarnings(
-            affiliateId, currentYear);
+        // TODO: Implementar earningsByMonth si es necesario
+        Map<String, BigDecimal> earningsByMonth = new HashMap<>();
 
         return new ReferralStatsDto(
             affiliateId,

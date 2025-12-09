@@ -103,9 +103,7 @@ public class BookingAdminController {
         UpdateBookingStatusUseCase.UpdateStatusCommand command =
             new UpdateBookingStatusUseCase.UpdateStatusCommand(
                 bookingId,
-                request.targetStatus(),
-                request.cancellationReason(),
-                request.canceledBy()
+                request.targetStatus()
             );
 
         CreateBookingUseCase.BookingResponse response = updateBookingStatusUseCase.execute(command);

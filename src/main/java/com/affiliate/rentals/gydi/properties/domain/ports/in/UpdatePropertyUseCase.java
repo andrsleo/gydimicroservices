@@ -7,7 +7,7 @@ import com.affiliate.rentals.gydi.properties.domain.model.PropertyId;
  * Use case for updating an existing property.
  */
 public interface UpdatePropertyUseCase {
-    
+
     /**
      * Updates property details.
      *
@@ -15,26 +15,29 @@ public interface UpdatePropertyUseCase {
      * @return the updated Property
      */
     Property updateProperty(UpdatePropertyCommand command);
-    
+
     /**
      * Command for updating a property
      */
     record UpdatePropertyCommand(
-        PropertyId propertyId,
-        Long requestingUserId,
-        String title,
-        String description,
-        java.math.BigDecimal priceAmount,
-        String priceCurrency,
-        java.math.BigDecimal salePrice,
-        String country,
-        String city,
-        String address,
-        String postalCode,
-        java.util.List<String> amenities,
-        Integer bedrooms,
-        Integer bathrooms,
-        Integer maxGuests,
-        String listingType
-    ) {}
+            PropertyId propertyId,
+            Long requestingUserId,
+            String title,
+            String description,
+            java.math.BigDecimal priceAmount,
+            String priceCurrency,
+            java.math.BigDecimal salePrice,
+            String country,
+            String city,
+            String address,
+            String postalCode,
+            java.util.List<String> amenities,
+            Integer bedrooms,
+            Integer bathrooms,
+            Integer maxGuests,
+            String propertyType,
+            String listingType,
+            String airbnbUrl,
+            String icalUrlAirbnb) {
+    }
 }

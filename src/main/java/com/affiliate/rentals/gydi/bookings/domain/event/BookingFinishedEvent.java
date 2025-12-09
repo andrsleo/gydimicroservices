@@ -7,13 +7,14 @@ import java.time.LocalDateTime;
 /**
  * Domain Event published when a booking is finished (completed successfully).
  * <p>
- * This event triggers the creation of a payment.booking record.
+ * This event triggers the creation of a commission.booking record.
+ * Financial details (amount, currency) are not part of the booking domain anymore.
  * </p>
  * <p>
  * <strong>Subscribers:</strong>
  * </p>
  * <ul>
- *   <li>PaymentEventHandler: Creates payment record with commission</li>
+ *   <li>PaymentEventHandler: Creates commission record (future)</li>
  *   <li>NotificationService: Sends confirmation emails (future)</li>
  *   <li>AnalyticsService: Records conversion metric (future)</li>
  * </ul>
@@ -25,8 +26,6 @@ public record BookingFinishedEvent(
     Long userId, // The referring user who will receive commission
     LocalDate startDate,
     LocalDate endDate,
-    BigDecimal totalAmount,
-    String currency,
     LocalDateTime occurredAt
 ) {
     /**
@@ -38,19 +37,11 @@ public record BookingFinishedEvent(
      * @param userId the user who created the referral link (earns commission)
      * @param startDate check-in date
      * @param endDate check-out date
-     * @param totalAmount the total booking amount
-     * @param currency the currency (USD, EUR, etc.)
      * @param occurredAt when the event occurred
      */
     public BookingFinishedEvent {
         if (bookingId == null) {
             throw new IllegalArgumentException("Booking ID cannot be null");
-        }
-        if (userId == null) {
-            throw new IllegalArgumentException("User ID cannot be null");
-        }
-        if (totalAmount == null || totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Total amount must be positive");
         }
         if (occurredAt == null) {
             occurredAt = LocalDateTime.now();

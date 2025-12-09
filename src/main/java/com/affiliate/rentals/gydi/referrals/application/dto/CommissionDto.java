@@ -10,9 +10,7 @@ import java.time.LocalDateTime;
  */
 public record CommissionDto(
         Long id,
-        Long referralLinkId,
-        Long affiliateId,
-        Long propertyId,
+        Long bookingId,
         BigDecimal commissionRate,
         BigDecimal commissionAmount,
         String affiliatePlan,

@@ -99,12 +99,7 @@ public class BookingRepositoryAdapter implements BookingRepositoryPort {
             .clientPhone(booking.getClientInfo().getPhone())
             .clientFirstName(booking.getClientInfo().getFirstName())
             .clientLastName(booking.getClientInfo().getLastName())
-            .totalAmount(booking.getTotalAmount())
-            .currency(booking.getCurrency())
-            .status(toEntityStatus(booking.getStatus()))
-            .cancellationReason(booking.getCancellationReason())
-            .canceledBy(booking.getCanceledBy())
-            .canceledAt(booking.getCanceledAt());
+            .status(toEntityStatus(booking.getStatus()));
 
         // Set ID if exists (for updates)
         if (booking.getId() != null) {
@@ -133,12 +128,7 @@ public class BookingRepositoryAdapter implements BookingRepositoryPort {
             entity.getPropertyId(),
             dateRange,
             clientInfo,
-            entity.getTotalAmount(),
-            entity.getCurrency(),
             toDomainStatus(entity.getStatus()),
-            entity.getCancellationReason(),
-            entity.getCanceledBy(),
-            entity.getCanceledAt(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()
         );

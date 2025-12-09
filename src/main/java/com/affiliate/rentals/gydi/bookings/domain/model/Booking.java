@@ -27,17 +27,8 @@ public class Booking {
     private final DateRange dateRange;
     private final ClientInfo clientInfo;
 
-    // Financial
-    private final BigDecimal totalAmount;
-    private final String currency;
-
     // State
     private BookingStatus status;
-
-    // Cancellation details (only populated when CANCELED)
-    private String cancellationReason;
-    private String canceledBy; // CLIENT, OWNER, ADMIN, SYSTEM
-    private LocalDateTime canceledAt;
 
     // Audit
     private final LocalDateTime createdAt;
@@ -51,12 +42,7 @@ public class Booking {
                     Long propertyId,
                     DateRange dateRange,
                     ClientInfo clientInfo,
-                    BigDecimal totalAmount,
-                    String currency,
                     BookingStatus status,
-                    String cancellationReason,
-                    String canceledBy,
-                    LocalDateTime canceledAt,
                     LocalDateTime createdAt,
                     LocalDateTime updatedAt) {
         this.id = id;
@@ -64,16 +50,9 @@ public class Booking {
         this.propertyId = Objects.requireNonNull(propertyId, "Property ID cannot be null");
         this.dateRange = Objects.requireNonNull(dateRange, "Date range cannot be null");
         this.clientInfo = Objects.requireNonNull(clientInfo, "Client info cannot be null");
-        this.totalAmount = Objects.requireNonNull(totalAmount, "Total amount cannot be null");
-        this.currency = Objects.requireNonNull(currency, "Currency cannot be null");
         this.status = Objects.requireNonNull(status, "Status cannot be null");
-        this.cancellationReason = cancellationReason;
-        this.canceledBy = canceledBy;
-        this.canceledAt = canceledAt;
         this.createdAt = Objects.requireNonNullElse(createdAt, LocalDateTime.now());
         this.updatedAt = Objects.requireNonNullElse(updatedAt, LocalDateTime.now());
-
-        validateBusinessRules();
     }
 
     /**
@@ -86,28 +65,19 @@ public class Booking {
      * @param propertyId the property being booked
      * @param dateRange the requested dates
      * @param clientInfo the client's information
-     * @param totalAmount the total booking amount
-     * @param currency the currency (USD, EUR, etc.)
      * @return a new Booking in REQUEST status
      */
     public static Booking createRequest(Long referralLinkId,
                                          Long propertyId,
                                          DateRange dateRange,
-                                         ClientInfo clientInfo,
-                                         BigDecimal totalAmount,
-                                         String currency) {
+                                         ClientInfo clientInfo) {
         return new Booking(
             null, // ID assigned by persistence layer
             referralLinkId,
             propertyId,
             dateRange,
             clientInfo,
-            totalAmount,
-            currency,
             BookingStatus.REQUEST, // Initial status
-            null,
-            null,
-            null,
             LocalDateTime.now(),
             LocalDateTime.now()
         );
@@ -122,12 +92,7 @@ public class Booking {
                                         Long propertyId,
                                         DateRange dateRange,
                                         ClientInfo clientInfo,
-                                        BigDecimal totalAmount,
-                                        String currency,
                                         BookingStatus status,
-                                        String cancellationReason,
-                                        String canceledBy,
-                                        LocalDateTime canceledAt,
                                         LocalDateTime createdAt,
                                         LocalDateTime updatedAt) {
         return new Booking(
@@ -136,12 +101,7 @@ public class Booking {
             propertyId,
             dateRange,
             clientInfo,
-            totalAmount,
-            currency,
             status,
-            cancellationReason,
-            canceledBy,
-            canceledAt,
             createdAt,
             updatedAt
         );
@@ -193,68 +153,17 @@ public class Booking {
      * Cannot cancel FINISHED bookings.
      * </p>
      *
-     * @param reason the cancellation reason (required)
-     * @param canceledBy who initiated the cancellation (CLIENT, OWNER, ADMIN, SYSTEM)
      * @throws InvalidBookingStateException if booking is FINISHED or already CANCELED
-     * @throws IllegalArgumentException if reason or canceledBy is null/blank
      */
-    public void cancel(String reason, String canceledBy) {
+    public void cancel() {
         if (!status.canTransitionTo(BookingStatus.CANCELED)) {
             throw new InvalidBookingStateException(
                 String.format("Cannot cancel booking in %s status", status)
             );
         }
 
-        if (reason == null || reason.isBlank()) {
-            throw new IllegalArgumentException("Cancellation reason is required");
-        }
-
-        if (canceledBy == null || canceledBy.isBlank()) {
-            throw new IllegalArgumentException("Canceled by is required");
-        }
-
-        // Validate canceledBy values
-        if (!canceledBy.matches("CLIENT|OWNER|ADMIN|SYSTEM")) {
-            throw new IllegalArgumentException(
-                "Canceled by must be one of: CLIENT, OWNER, ADMIN, SYSTEM"
-            );
-        }
-
         this.status = BookingStatus.CANCELED;
-        this.cancellationReason = reason.trim();
-        this.canceledBy = canceledBy.trim();
-        this.canceledAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
-    }
-
-    // ========== BUSINESS RULES VALIDATION ==========
-
-    private void validateBusinessRules() {
-        // Validate total amount
-        if (totalAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Total amount must be positive");
-        }
-
-        // Validate currency
-        if (!currency.matches("USD|EUR|GBP|MXN|COP")) {
-            throw new IllegalArgumentException(
-                "Invalid currency. Allowed: USD, EUR, GBP, MXN, COP"
-            );
-        }
-
-        // If status is CANCELED, must have cancellation details
-        if (status == BookingStatus.CANCELED) {
-            if (cancellationReason == null || cancellationReason.isBlank()) {
-                throw new IllegalArgumentException(
-                    "Canceled bookings must have a cancellation reason"
-                );
-            }
-            if (canceledAt == null) {
-                throw new IllegalArgumentException(
-                    "Canceled bookings must have a cancellation timestamp"
-                );
-            }
-        }
     }
 
     // ========== QUERY METHODS ==========
@@ -278,29 +187,6 @@ public class Booking {
      */
     public boolean isCanceled() {
         return status == BookingStatus.CANCELED;
-    }
-
-    /**
-     * Calculates commission amount for this booking.
-     * <p>
-     * Used when creating payment.booking record.
-     * Commission rate comes from user's subscription plan.
-     * </p>
-     *
-     * @param commissionPercentage the commission rate (e.g., 5.00 for 5%)
-     * @return the commission amount
-     */
-    public BigDecimal calculateCommission(BigDecimal commissionPercentage) {
-        if (commissionPercentage == null || commissionPercentage.compareTo(BigDecimal.ZERO) < 0) {
-            throw new IllegalArgumentException("Commission percentage must be >= 0");
-        }
-        if (commissionPercentage.compareTo(BigDecimal.valueOf(100)) > 0) {
-            throw new IllegalArgumentException("Commission percentage cannot exceed 100");
-        }
-
-        return totalAmount
-            .multiply(commissionPercentage)
-            .divide(BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
     }
 
     // ========== GETTERS ==========
@@ -333,28 +219,8 @@ public class Booking {
         return clientInfo;
     }
 
-    public BigDecimal getTotalAmount() {
-        return totalAmount;
-    }
-
-    public String getCurrency() {
-        return currency;
-    }
-
     public BookingStatus getStatus() {
         return status;
-    }
-
-    public String getCancellationReason() {
-        return cancellationReason;
-    }
-
-    public String getCanceledBy() {
-        return canceledBy;
-    }
-
-    public LocalDateTime getCanceledAt() {
-        return canceledAt;
     }
 
     public LocalDateTime getCreatedAt() {

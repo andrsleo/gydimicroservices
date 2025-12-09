@@ -75,8 +75,6 @@ public class GetBookingUseCaseImpl implements GetBookingUseCase {
             booking.getDateRange().getEndDate(),
             booking.getClientInfo().getEmail(),
             booking.getClientInfo().fullName(),
-            booking.getTotalAmount(),
-            booking.getCurrency(),
             booking.getStatus().name(),
             booking.getCreatedAt().format(DATE_TIME_FORMATTER)
         );
