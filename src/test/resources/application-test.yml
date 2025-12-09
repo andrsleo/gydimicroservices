@@ -1,4 +1,19 @@
 spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driverClassName: org.h2.Driver
+    username: sa
+    password: password
+  jpa:
+    database-platform: org.hibernate.dialect.H2Dialect
+    hibernate:
+      ddl-auto: create-drop
+    properties:
+      hibernate:
+        type:
+          preferred_enum_jdbc_type: VARCHAR
+  flyway:
+    enabled: false
   mail:
     username: test@test.com
     password: test-password
@@ -14,3 +29,19 @@ app:
   password-reset:
     token-expiration-minutes: 60
     frontend-url: http://localhost:3000
+
+security:
+  url:
+    hashids:
+      salt: test-salt-for-hashids
+      min-length: 10
+    aes:
+      secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
+jwt:
+  secret: test-jwt-secret-key-for-tests-should-be-long-enough-to-be-secure
+  expiration: 86400000 # 24 hours
+  refresh-expiration: 604800000 # 7 days
+  referral:
+    secret: test-jwt-referral-secret-key-for-tests-should-be-long-enough
+    expiration-ms: 2592000000 # 30 days

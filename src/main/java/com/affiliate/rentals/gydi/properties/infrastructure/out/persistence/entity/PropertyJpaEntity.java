@@ -8,12 +8,16 @@ import java.util.List;
 import java.util.Set;
 
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.UserEntity;
 
 import jakarta.persistence.CascadeType;
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.EnumType;
 import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -46,7 +50,7 @@ public class PropertyJpaEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "host_id", nullable = false)
-    private UserEntity host;    
+    private UserEntity host;
 
     @Column(nullable = false, length = 100)
     private String title;
@@ -79,12 +83,7 @@ public class PropertyJpaEntity {
     private String postalCode;
 
     @ManyToMany(fetch = FetchType.LAZY)
-    @JoinTable(
-        name = "property_amenities",
-        schema = "properties",
-        joinColumns = @JoinColumn(name = "property_id"),
-        inverseJoinColumns = @JoinColumn(name = "amenity_id")
-    )
+    @JoinTable(name = "property_amenities", schema = "properties", joinColumns = @JoinColumn(name = "property_id"), inverseJoinColumns = @JoinColumn(name = "amenity_id"))
     @BatchSize(size = 10)
     private Set<AmenityJpaEntity> amenities = new HashSet<>();
 
@@ -118,6 +117,23 @@ public class PropertyJpaEntity {
     @Column(name = "cover_image_id")
     private Long coverImageId;
 
+    // Airbnb import fields
+    @Column(name = "airbnb_url", length = 500)
+    private String airbnbUrl;
+
+    @Column(name = "import_mode", nullable = false, columnDefinition = "VARCHAR(20)")
+    @Enumerated(EnumType.STRING)
+    private ImportMode importMode = ImportMode.MANUAL;
+
+    @Column(name = "imported_at")
+    private LocalDateTime importedAt;
+
+    @Column(name = "airbnb_listing_id", length = 100)
+    private String airbnbListingId;
+
+    @Column(name = "ical_url_airbnb", length = 500)
+    private String icalUrlAirbnb;
+
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 10)
     @OrderBy("displayOrder ASC")
@@ -138,6 +154,5 @@ public class PropertyJpaEntity {
     protected void onUpdate() {
         updatedAt = LocalDateTime.now();
     }
-    
-    
+
 }

@@ -33,6 +33,12 @@ public class Property {
     private final List<PropertyImage> images;
     private final List<PropertyVideo> videos;
     private Long coverImageId; // Main/cover image for listings
+    // Airbnb import fields
+    private String airbnbUrl;
+    private ImportMode importMode;
+    private LocalDateTime importedAt;
+    private String airbnbListingId;
+    private String icalUrlAirbnb;
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime publishedAt;
@@ -55,6 +61,11 @@ public class Property {
         this.images = builder.images != null ? new ArrayList<>(builder.images) : new ArrayList<>();
         this.videos = builder.videos != null ? new ArrayList<>(builder.videos) : new ArrayList<>();
         this.coverImageId = builder.coverImageId;
+        this.airbnbUrl = builder.airbnbUrl;
+        this.importMode = builder.importMode != null ? builder.importMode : ImportMode.MANUAL;
+        this.importedAt = builder.importedAt;
+        this.airbnbListingId = builder.airbnbListingId;
+        this.icalUrlAirbnb = builder.icalUrlAirbnb;
         this.createdAt = builder.createdAt != null ? builder.createdAt : LocalDateTime.now();
         this.updatedAt = builder.updatedAt != null ? builder.updatedAt : LocalDateTime.now();
         this.publishedAt = builder.publishedAt;
@@ -503,6 +514,29 @@ public class Property {
         }
     }
 
+    /**
+     * Clears all amenities from the property.
+     * Used when replacing amenities during updates.
+     */
+    public void clearAmenities() {
+        if (!this.amenities.isEmpty()) {
+            this.amenities.clear();
+            this.updatedAt = LocalDateTime.now();
+        }
+    }
+
+    /**
+     * Updates the property type with validation.
+     *
+     * @param newPropertyType the new property type
+     * @throws IllegalArgumentException if newPropertyType is null
+     */
+    public void updatePropertyType(PropertyType newPropertyType) {
+        Objects.requireNonNull(newPropertyType, "Property type cannot be null");
+        this.propertyType = newPropertyType;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void deactivate() {
         this.status = PropertyStatus.INACTIVE;
         this.updatedAt = LocalDateTime.now();
@@ -552,6 +586,11 @@ public class Property {
 
     public void setSlug(String slug) {
         this.slug = slug;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public void updateIcalUrlAirbnb(String icalUrlAirbnb) {
+        this.icalUrlAirbnb = icalUrlAirbnb;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -611,6 +650,26 @@ public class Property {
         return publishedAt;
     }
 
+    public String getAirbnbUrl() {
+        return airbnbUrl;
+    }
+
+    public ImportMode getImportMode() {
+        return importMode;
+    }
+
+    public LocalDateTime getImportedAt() {
+        return importedAt;
+    }
+
+    public String getAirbnbListingId() {
+        return airbnbListingId;
+    }
+
+    public String getIcalUrlAirbnb() {
+        return icalUrlAirbnb;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o)
@@ -649,6 +708,11 @@ public class Property {
         private List<PropertyImage> images;
         private List<PropertyVideo> videos;
         private Long coverImageId;
+        private String airbnbUrl;
+        private ImportMode importMode;
+        private LocalDateTime importedAt;
+        private String airbnbListingId;
+        private String icalUrlAirbnb;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         private LocalDateTime publishedAt;
@@ -730,6 +794,31 @@ public class Property {
 
         public Builder coverImageId(Long coverImageId) {
             this.coverImageId = coverImageId;
+            return this;
+        }
+
+        public Builder airbnbUrl(String airbnbUrl) {
+            this.airbnbUrl = airbnbUrl;
+            return this;
+        }
+
+        public Builder importMode(ImportMode importMode) {
+            this.importMode = importMode;
+            return this;
+        }
+
+        public Builder importedAt(LocalDateTime importedAt) {
+            this.importedAt = importedAt;
+            return this;
+        }
+
+        public Builder airbnbListingId(String airbnbListingId) {
+            this.airbnbListingId = airbnbListingId;
+            return this;
+        }
+
+        public Builder icalUrlAirbnb(String icalUrlAirbnb) {
+            this.icalUrlAirbnb = icalUrlAirbnb;
             return this;
         }
 
