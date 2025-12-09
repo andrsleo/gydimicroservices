@@ -12,10 +12,10 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Entidad JPA para commission_ledger
+ * Entidad JPA para commission_booking
  */
 @Entity
-@Table(name = "commission_ledger", schema = "referrals")
+@Table(name = "commission_booking", schema = "referrals")
 @Getter
 @Setter
 @NoArgsConstructor
@@ -27,14 +27,8 @@ public class CommissionJpaEntity {
     @Column(name = "id", nullable = false)
     private Long id;
 
-    @Column(name = "referral_link_id", nullable = false)
-    private Long referralLinkId;
-
-    @Column(name = "affiliate_id", nullable = false)
-    private Long affiliateId;
-
-    @Column(name = "property_id", nullable = false)
-    private Long propertyId;
+    @Column(name = "booking_id", nullable = false)
+    private Long bookingId;
 
     @Column(name = "commission_rate", nullable = false, precision = 5, scale = 4)
     private BigDecimal commissionRate;

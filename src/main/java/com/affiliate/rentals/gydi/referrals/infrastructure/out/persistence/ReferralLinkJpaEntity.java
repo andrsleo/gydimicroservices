@@ -45,12 +45,6 @@ public class ReferralLinkJpaEntity {
     @Column(name = "clicks_count", nullable = false)
     private Integer clicksCount = 0;
 
-    @Column(name = "conversions_count", nullable = false)
-    private Integer conversionsCount = 0;
-
-    @Column(name = "total_commission", nullable = false, precision = 12, scale = 2)
-    private BigDecimal totalCommission = BigDecimal.ZERO;
-
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, columnDefinition = "referrals.referral_link_status")
     @JdbcType(PostgreSQLEnumJdbcType.class)

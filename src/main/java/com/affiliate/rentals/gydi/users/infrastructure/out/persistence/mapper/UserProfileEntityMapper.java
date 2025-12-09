@@ -9,9 +9,13 @@ import org.springframework.stereotype.Component;
 /**
  * Mapper for converting between UserProfile domain model and UserProfileEntity.
  *
- * <p>This mapper handles the translation between the domain layer and persistence layer,
- * ensuring proper conversion of enums and maintaining data integrity across layers.
- * Uses manual mapping to work with the immutable UserProfile builder pattern.</p>
+ * <p>
+ * This mapper handles the translation between the domain layer and persistence
+ * layer,
+ * ensuring proper conversion of enums and maintaining data integrity across
+ * layers.
+ * Uses manual mapping to work with the immutable UserProfile builder pattern.
+ * </p>
  *
  * @author GYDI Development Team
  */
@@ -37,7 +41,7 @@ public class UserProfileEntityMapper {
         entity.setDateOfBirth(profile.dateOfBirth());
         entity.setGender(mapGenderToString(profile.gender()));
         entity.setBio(emptyToNull(profile.bio()));
-        entity.setPhoneNumber(emptyToNull(profile.phoneNumber()));
+
         entity.setCountry(emptyToNull(profile.country()));
         entity.setCity(emptyToNull(profile.city()));
         entity.setAddress(emptyToNull(profile.address()));
@@ -60,10 +64,11 @@ public class UserProfileEntityMapper {
     /**
      * Converts a UserProfileEntity to a UserProfile domain model.
      *
-     * @param entity the persistence entity
+     * @param entity      the persistence entity
+     * @param phoneNumber the phone number from the User entity
      * @return the domain model
      */
-    public UserProfile toDomain(UserProfileEntity entity) {
+    public UserProfile toDomain(UserProfileEntity entity, String phoneNumber) {
         if (entity == null) {
             return null;
         }
@@ -76,7 +81,7 @@ public class UserProfileEntityMapper {
                 .dateOfBirth(entity.getDateOfBirth())
                 .gender(mapStringToGender(entity.getGender()))
                 .bio(entity.getBio())
-                .phoneNumber(entity.getPhoneNumber())
+                .phoneNumber(phoneNumber)
                 .country(entity.getCountry())
                 .city(entity.getCity())
                 .address(entity.getAddress())
@@ -138,12 +143,15 @@ public class UserProfileEntityMapper {
     /**
      * Converts empty strings to null to comply with database check constraints.
      *
-     * <p>This is necessary because database constraints like check_website_url_format
+     * <p>
+     * This is necessary because database constraints like check_website_url_format
      * only allow NULL or valid URLs (starting with http://), but frontend forms may
-     * send empty strings which violate the constraint.</p>
+     * send empty strings which violate the constraint.
+     * </p>
      *
      * @param value the string value
-     * @return null if the string is null or empty/blank, otherwise the original value
+     * @return null if the string is null or empty/blank, otherwise the original
+     *         value
      */
     private String emptyToNull(String value) {
         return (value == null || value.isBlank()) ? null : value;

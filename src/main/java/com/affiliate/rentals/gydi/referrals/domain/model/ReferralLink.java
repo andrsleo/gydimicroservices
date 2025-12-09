@@ -20,8 +20,6 @@ public class ReferralLink {
     private String encryptedToken;
     private String shortCode;
     private Integer clicksCount;
-    private Integer conversionsCount;
-    private BigDecimal totalCommission;
     private ReferralLinkStatus status;
     private LocalDateTime expiresAt;
     private LocalDateTime deletedAt;
@@ -31,8 +29,6 @@ public class ReferralLink {
     // Constructor privado - usar builder o métodos de fábrica
     private ReferralLink() {
         this.clicksCount = 0;
-        this.conversionsCount = 0;
-        this.totalCommission = BigDecimal.ZERO;
         this.status = ReferralLinkStatus.ACTIVE;
         this.createdAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
@@ -95,31 +91,6 @@ public class ReferralLink {
         this.updatedAt = LocalDateTime.now();
     }
 
-    /**
-     * Registra una conversión (suscripción referida completada)
-     */
-    public void registerConversion(BigDecimal commissionAmount) {
-        if (!isActive()) {
-            throw new IllegalStateException("Cannot register conversion on inactive link");
-        }
-        if (commissionAmount == null || commissionAmount.compareTo(BigDecimal.ZERO) <= 0) {
-            throw new IllegalArgumentException("Commission amount must be positive");
-        }
-
-        this.conversionsCount++;
-        this.totalCommission = this.totalCommission.add(commissionAmount);
-        this.updatedAt = LocalDateTime.now();
-    }
-
-    /**
-     * Calcula la tasa de conversión (conversiones / clicks)
-     */
-    public double getConversionRate() {
-        if (clicksCount == 0) {
-            return 0.0;
-        }
-        return (double) conversionsCount / clicksCount * 100;
-    }
 
     /**
      * Desactiva el enlace
@@ -211,14 +182,6 @@ public class ReferralLink {
         return clicksCount;
     }
 
-    public Integer getConversionsCount() {
-        return conversionsCount;
-    }
-
-    public BigDecimal getTotalCommission() {
-        return totalCommission;
-    }
-
     public ReferralLinkStatus getStatus() {
         return status;
     }
@@ -246,14 +209,6 @@ public class ReferralLink {
 
     public void setClicksCount(Integer clicksCount) {
         this.clicksCount = clicksCount;
-    }
-
-    public void setConversionsCount(Integer conversionsCount) {
-        this.conversionsCount = conversionsCount;
-    }
-
-    public void setTotalCommission(BigDecimal totalCommission) {
-        this.totalCommission = totalCommission;
     }
 
     public void setStatus(ReferralLinkStatus status) {

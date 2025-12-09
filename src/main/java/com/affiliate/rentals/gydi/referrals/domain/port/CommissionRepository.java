@@ -30,19 +30,14 @@ public interface CommissionRepository {
     Optional<Commission> findById(Long id);
 
     /**
-     * Busca todas las comisiones de un afiliado
+     * Busca comisiones por booking ID
      */
-    List<Commission> findByAffiliateId(Long affiliateId);
+    List<Commission> findByBookingId(Long bookingId);
 
     /**
-     * Busca comisiones de un afiliado por estado
+     * Busca comisiones por estado
      */
-    List<Commission> findByAffiliateIdAndStatus(Long affiliateId, CommissionStatus status);
-
-    /**
-     * Busca comisiones de un enlace de referido
-     */
-    List<Commission> findByReferralLinkId(Long referralLinkId);
+    List<Commission> findByStatus(CommissionStatus status);
 
     /**
      * Busca comisiones listas para aprobación (PENDING + fuera del período de hold)
@@ -55,29 +50,22 @@ public interface CommissionRepository {
     List<Commission> findApprovedForPayout();
 
     /**
-     * Busca comisiones por afiliado en un rango de fechas
+     * Busca comisiones por affiliate ID (usando JOIN con booking -> referral_link)
      */
-    List<Commission> findByAffiliateIdAndDateRange(Long affiliateId,
-            LocalDateTime from,
-            LocalDateTime to);
+    List<Commission> findByAffiliateId(Long affiliateId);
 
     /**
-     * Calcula el total de comisiones ganadas por un afiliado
+     * Calcula el total de earnings por affiliate ID
      */
-    BigDecimal calculateTotalEarnings(Long affiliateId);
+    BigDecimal calculateTotalEarningsByAffiliateId(Long affiliateId);
 
     /**
-     * Calcula comisiones por estado para un afiliado
+     * Calcula earnings por affiliate ID y status
      */
-    BigDecimal calculateEarningsByStatus(Long affiliateId, CommissionStatus status);
+    BigDecimal calculateEarningsByAffiliateIdAndStatus(Long affiliateId, CommissionStatus status);
 
     /**
-     * Cuenta comisiones por estado para un afiliado
+     * Cuenta comisiones por affiliate ID y status
      */
     long countByAffiliateIdAndStatus(Long affiliateId, CommissionStatus status);
-
-    /**
-     * Calcula comisiones totales por mes para un afiliado
-     */
-    java.util.Map<String, BigDecimal> calculateMonthlyEarnings(Long affiliateId, int year);
 }

@@ -48,338 +48,389 @@ import jakarta.validation.Valid;
 @RequestMapping("/api/properties")
 public class PropertyController {
 
-    private final CreatePropertyUseCase createPropertyUseCase;
-    private final UpdatePropertyUseCase updatePropertyUseCase;
-    private final GetPropertyByIdUseCase getPropertyByIdUseCase;
-    private final ListPropertiesUseCase listPropertiesUseCase;
-    private final PublishPropertyUseCase publishPropertyUseCase;
-    private final ActivatePropertyUseCase activatePropertyUseCase;
-    private final DeactivatePropertyUseCase deactivatePropertyUseCase;
-    private final DeletePropertyUseCase deletePropertyUseCase;
-    private final ReorderPropertyImagesUseCase reorderPropertyImagesUseCase;
-    private final DeletePropertyImageUseCase deletePropertyImageUseCase;
-    private final DeletePropertyVideoUseCase deletePropertyVideoUseCase;
-    private final PropertyRepositoryPort propertyRepository;
-    private final PropertyMapper mapper;
-    private final JwtService jwtService;
+        private final CreatePropertyUseCase createPropertyUseCase;
+        private final UpdatePropertyUseCase updatePropertyUseCase;
+        private final GetPropertyByIdUseCase getPropertyByIdUseCase;
+        private final ListPropertiesUseCase listPropertiesUseCase;
+        private final PublishPropertyUseCase publishPropertyUseCase;
+        private final ActivatePropertyUseCase activatePropertyUseCase;
+        private final DeactivatePropertyUseCase deactivatePropertyUseCase;
+        private final DeletePropertyUseCase deletePropertyUseCase;
+        private final ReorderPropertyImagesUseCase reorderPropertyImagesUseCase;
+        private final DeletePropertyImageUseCase deletePropertyImageUseCase;
+        private final DeletePropertyVideoUseCase deletePropertyVideoUseCase;
+        private final PropertyRepositoryPort propertyRepository;
+        private final PropertyMapper mapper;
+        private final JwtService jwtService;
+        private final com.affiliate.rentals.gydi.properties.application.service.ICalUrlValidator iCalUrlValidator;
+        private final com.affiliate.rentals.gydi.properties.domain.ports.in.GetPropertyCalendarBlocksUseCase getPropertyCalendarBlocksUseCase;
 
-    public PropertyController(CreatePropertyUseCase createPropertyUseCase,
-            UpdatePropertyUseCase updatePropertyUseCase,
-            GetPropertyByIdUseCase getPropertyByIdUseCase,
-            ListPropertiesUseCase listPropertiesUseCase,
-            PublishPropertyUseCase publishPropertyUseCase,
-            ActivatePropertyUseCase activatePropertyUseCase,
-            DeactivatePropertyUseCase deactivatePropertyUseCase,
-            DeletePropertyUseCase deletePropertyUseCase,
-            ReorderPropertyImagesUseCase reorderPropertyImagesUseCase,
-            DeletePropertyImageUseCase deletePropertyImageUseCase,
-            DeletePropertyVideoUseCase deletePropertyVideoUseCase,
-            PropertyRepositoryPort propertyRepository,
-            PropertyMapper mapper,
-            JwtService jwtService) {
-        this.createPropertyUseCase = createPropertyUseCase;
-        this.updatePropertyUseCase = updatePropertyUseCase;
-        this.getPropertyByIdUseCase = getPropertyByIdUseCase;
-        this.listPropertiesUseCase = listPropertiesUseCase;
-        this.publishPropertyUseCase = publishPropertyUseCase;
-        this.activatePropertyUseCase = activatePropertyUseCase;
-        this.deactivatePropertyUseCase = deactivatePropertyUseCase;
-        this.deletePropertyUseCase = deletePropertyUseCase;
-        this.reorderPropertyImagesUseCase = reorderPropertyImagesUseCase;
-        this.deletePropertyImageUseCase = deletePropertyImageUseCase;
-        this.deletePropertyVideoUseCase = deletePropertyVideoUseCase;
-        this.propertyRepository = propertyRepository;
-        this.mapper = mapper;
-        this.jwtService = jwtService;
-    }
-
-    @PostMapping
-    public ResponseEntity<PropertyResponse> createProperty(
-            @Valid @RequestBody CreatePropertyRequest request,
-            HttpServletRequest httpRequest) {
-
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
-
-        CreatePropertyUseCase.CreatePropertyCommand command = new CreatePropertyUseCase.CreatePropertyCommand(
-                userId,
-                request.title(),
-                request.description(),
-                request.pricePerNight(),
-                request.currency(),
-                request.salePrice(),
-                request.country(),
-                request.city(),
-                request.address(),
-                request.postalCode(),
-                request.amenities(),
-                request.bedrooms(),
-                request.bathrooms(),
-                request.maxGuests(),
-                request.propertyType(),
-                request.listingType());
-
-        Property property = createPropertyUseCase.createProperty(command);
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(mapper.toPropertyResponse(property));
-    }
-
-    @GetMapping("/{id}")
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public ResponseEntity<PropertyDetailResponse> getProperty(@PathVariable String id) {
-        return getPropertyByIdUseCase.getProperty(
-                new GetPropertyByIdUseCase.GetPropertyQuery(PropertyId.of(id)))
-                .map(mapper::toPropertyDetailResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    /**
-     * Get property by SEO-friendly slug.
-     * Supports optional referral token for tracking.
-     *
-     * @param slug the property slug (e.g., "beach-house-malibu-x7k2m")
-     * @param ref  optional JWT referral token
-     * @return property details
-     */
-    @GetMapping("/by-slug/{slug}")
-    @org.springframework.transaction.annotation.Transactional(readOnly = true)
-    public ResponseEntity<PropertyDetailResponse> getPropertyBySlug(
-            @PathVariable String slug,
-            @RequestParam(required = false) String ref) {
-
-        // TODO: Process referral token if present (track click, validate token)
-        // This will be implemented when updating ReferralController
-
-        return propertyRepository.findBySlug(slug)
-                .map(mapper::toPropertyDetailResponse)
-                .map(ResponseEntity::ok)
-                .orElse(ResponseEntity.notFound().build());
-    }
-
-    @GetMapping
-    public ResponseEntity<PropertyPageResponse> listProperties(
-            @RequestParam(required = false) String status,
-            @RequestParam(required = false) String propertyType,
-            @RequestParam(required = false) String listingType,
-            @RequestParam(required = false) String country,
-            @RequestParam(required = false) String city,
-            @RequestParam(required = false) BigDecimal minPrice,
-            @RequestParam(required = false) BigDecimal maxPrice,
-            @RequestParam(required = false) Integer minBedrooms,
-            @RequestParam(required = false) Integer minBathrooms,
-            @RequestParam(required = false) Integer minGuests,
-            @RequestParam(required = false) List<String> amenities,
-            @RequestParam(required = false) String searchText,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            @RequestParam(defaultValue = "createdAt") String sortBy,
-            @RequestParam(defaultValue = "DESC") String sortDirection) {
-
-        ListPropertiesUseCase.ListPropertiesQuery query = new ListPropertiesUseCase.ListPropertiesQuery(
-                status != null ? PropertyStatus.valueOf(status) : null,
-                propertyType != null ? PropertyType.valueOf(propertyType) : null,
-                listingType,
-                country, city, minPrice, maxPrice, minBedrooms, minBathrooms, minGuests,
-                amenities, searchText,
-                page, size, sortBy, sortDirection);
-
-        ListPropertiesUseCase.PropertyPage result = listPropertiesUseCase.listProperties(query);
-        List<PropertyResponse> properties = mapper.toPropertyResponseList(result.properties());
-
-        PropertyPageResponse response = new PropertyPageResponse(
-                properties, // content
-                result.totalElements(), // totalElements
-                result.totalPages(), // totalPages
-                result.currentPage(), // page
-                result.pageSize() // size
-        );
-
-        return ResponseEntity.ok(response);
-    }
-
-    @Transactional(readOnly = true)
-    @GetMapping("/my-properties")
-    public ResponseEntity<PropertyPageResponse> listMyProperties(
-            @RequestParam(required = false) String status,
-            @RequestParam(defaultValue = "0") int page,
-            @RequestParam(defaultValue = "20") int size,
-            HttpServletRequest httpRequest) {
-
-        // Extract userId from JWT
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
-
-        // Fetch properties by hostId
-        List<Property> allUserProperties = propertyRepository.findByHostId(userId);
-
-        // Apply status filter if provided
-        List<Property> filteredProperties = allUserProperties;
-        if (status != null && !status.isBlank()) {
-            PropertyStatus propertyStatus = PropertyStatus.valueOf(status);
-            filteredProperties = allUserProperties.stream()
-                    .filter(property -> property.getStatus() == propertyStatus)
-                    .toList();
+        public PropertyController(CreatePropertyUseCase createPropertyUseCase,
+                        UpdatePropertyUseCase updatePropertyUseCase,
+                        GetPropertyByIdUseCase getPropertyByIdUseCase,
+                        ListPropertiesUseCase listPropertiesUseCase,
+                        PublishPropertyUseCase publishPropertyUseCase,
+                        ActivatePropertyUseCase activatePropertyUseCase,
+                        DeactivatePropertyUseCase deactivatePropertyUseCase,
+                        DeletePropertyUseCase deletePropertyUseCase,
+                        ReorderPropertyImagesUseCase reorderPropertyImagesUseCase,
+                        DeletePropertyImageUseCase deletePropertyImageUseCase,
+                        DeletePropertyVideoUseCase deletePropertyVideoUseCase,
+                        PropertyRepositoryPort propertyRepository,
+                        PropertyMapper mapper,
+                        JwtService jwtService,
+                        com.affiliate.rentals.gydi.properties.application.service.ICalUrlValidator iCalUrlValidator,
+                        com.affiliate.rentals.gydi.properties.domain.ports.in.GetPropertyCalendarBlocksUseCase getPropertyCalendarBlocksUseCase) {
+                this.createPropertyUseCase = createPropertyUseCase;
+                this.updatePropertyUseCase = updatePropertyUseCase;
+                this.getPropertyByIdUseCase = getPropertyByIdUseCase;
+                this.listPropertiesUseCase = listPropertiesUseCase;
+                this.publishPropertyUseCase = publishPropertyUseCase;
+                this.activatePropertyUseCase = activatePropertyUseCase;
+                this.deactivatePropertyUseCase = deactivatePropertyUseCase;
+                this.deletePropertyUseCase = deletePropertyUseCase;
+                this.reorderPropertyImagesUseCase = reorderPropertyImagesUseCase;
+                this.deletePropertyImageUseCase = deletePropertyImageUseCase;
+                this.deletePropertyVideoUseCase = deletePropertyVideoUseCase;
+                this.propertyRepository = propertyRepository;
+                this.mapper = mapper;
+                this.jwtService = jwtService;
+                this.iCalUrlValidator = iCalUrlValidator;
+                this.getPropertyCalendarBlocksUseCase = getPropertyCalendarBlocksUseCase;
         }
 
-        // Calculate pagination
-        long totalElements = filteredProperties.size();
-        int totalPages = (int) Math.ceil((double) totalElements / size);
-        int skip = page * size;
+        @PostMapping
+        public ResponseEntity<PropertyResponse> createProperty(
+                        @Valid @RequestBody CreatePropertyRequest request,
+                        HttpServletRequest httpRequest) {
 
-        // Apply manual pagination (skip/limit)
-        List<Property> paginatedProperties = filteredProperties.stream()
-                .skip(skip)
-                .limit(size)
-                .toList();
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
-        // Map to response
-        List<PropertyResponse> properties = mapper.toPropertyResponseList(paginatedProperties);
+                CreatePropertyUseCase.CreatePropertyCommand command = new CreatePropertyUseCase.CreatePropertyCommand(
+                                userId,
+                                request.title(),
+                                request.description(),
+                                request.pricePerNight(),
+                                request.currency(),
+                                request.salePrice(),
+                                request.country(),
+                                request.city(),
+                                request.address(),
+                                request.postalCode(),
+                                request.amenities(),
+                                request.bedrooms(),
+                                request.bathrooms(),
+                                request.maxGuests(),
+                                request.propertyType(),
+                                request.listingType(),
+                                request.airbnbUrl(),
+                                request.icalUrlAirbnb());
 
-        PropertyPageResponse response = new PropertyPageResponse(
-                properties, // content
-                totalElements, // totalElements
-                totalPages, // totalPages
-                page, // page
-                size // size
-        );
+                Property property = createPropertyUseCase.createProperty(command);
+                return ResponseEntity.status(HttpStatus.CREATED)
+                                .body(mapper.toPropertyResponse(property));
+        }
 
-        return ResponseEntity.ok(response);
-    }
+        @GetMapping("/{id}")
+        @org.springframework.transaction.annotation.Transactional(readOnly = true)
+        public ResponseEntity<PropertyDetailResponse> getProperty(@PathVariable String id) {
+                return getPropertyByIdUseCase.getProperty(
+                                new GetPropertyByIdUseCase.GetPropertyQuery(PropertyId.of(id)))
+                                .map(mapper::toPropertyDetailResponse)
+                                .map(ResponseEntity::ok)
+                                .orElse(ResponseEntity.notFound().build());
+        }
 
-    @PutMapping("/{id}")
-    public ResponseEntity<PropertyResponse> updateProperty(
-            @PathVariable String id,
-            @Valid @RequestBody UpdatePropertyRequest request,
-            HttpServletRequest httpRequest) {
+        /**
+         * Get property by SEO-friendly slug.
+         * Supports optional referral token for tracking.
+         *
+         * @param slug the property slug (e.g., "beach-house-malibu-x7k2m")
+         * @param ref  optional JWT referral token
+         * @return property details
+         */
+        @GetMapping("/by-slug/{slug}")
+        @org.springframework.transaction.annotation.Transactional(readOnly = true)
+        public ResponseEntity<PropertyDetailResponse> getPropertyBySlug(
+                        @PathVariable String slug,
+                        @RequestParam(required = false) String ref) {
 
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+                // TODO: Process referral token if present (track click, validate token)
+                // This will be implemented when updating ReferralController
 
-        UpdatePropertyUseCase.UpdatePropertyCommand command = new UpdatePropertyUseCase.UpdatePropertyCommand(
-                PropertyId.of(id),
-                userId,
-                request.title(),
-                request.description(),
-                request.pricePerNight(),
-                request.currency(),
-                request.salePrice(),
-                request.country(),
-                request.city(),
-                request.address(),
-                request.postalCode(),
-                request.amenities(),
-                request.bedrooms(),
-                request.bathrooms(),
-                request.maxGuests(),
-                request.listingType());
+                return propertyRepository.findBySlug(slug)
+                                .map(mapper::toPropertyDetailResponse)
+                                .map(ResponseEntity::ok)
+                                .orElse(ResponseEntity.notFound().build());
+        }
 
-        Property property = updatePropertyUseCase.updateProperty(command);
-        return ResponseEntity.ok(mapper.toPropertyResponse(property));
-    }
+        @GetMapping
+        public ResponseEntity<PropertyPageResponse> listProperties(
+                        @RequestParam(required = false) String status,
+                        @RequestParam(required = false) String propertyType,
+                        @RequestParam(required = false) String listingType,
+                        @RequestParam(required = false) String country,
+                        @RequestParam(required = false) String city,
+                        @RequestParam(required = false) BigDecimal minPrice,
+                        @RequestParam(required = false) BigDecimal maxPrice,
+                        @RequestParam(required = false) Integer minBedrooms,
+                        @RequestParam(required = false) Integer minBathrooms,
+                        @RequestParam(required = false) Integer minGuests,
+                        @RequestParam(required = false) List<String> amenities,
+                        @RequestParam(required = false) String searchText,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "20") int size,
+                        @RequestParam(defaultValue = "createdAt") String sortBy,
+                        @RequestParam(defaultValue = "DESC") String sortDirection) {
 
-    @PostMapping("/{id}/publish")
-    public ResponseEntity<PropertyResponse> publishProperty(
-            @PathVariable String id,
-            HttpServletRequest httpRequest) {
+                ListPropertiesUseCase.ListPropertiesQuery query = new ListPropertiesUseCase.ListPropertiesQuery(
+                                status != null ? PropertyStatus.valueOf(status) : null,
+                                propertyType != null ? PropertyType.valueOf(propertyType) : null,
+                                listingType,
+                                country, city, minPrice, maxPrice, minBedrooms, minBathrooms, minGuests,
+                                amenities, searchText,
+                                page, size, sortBy, sortDirection);
 
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+                ListPropertiesUseCase.PropertyPage result = listPropertiesUseCase.listProperties(query);
+                List<PropertyResponse> properties = mapper.toPropertyResponseList(result.properties());
 
-        Property property = publishPropertyUseCase.publishProperty(
-                new PublishPropertyUseCase.PublishPropertyCommand(PropertyId.of(id), userId));
+                PropertyPageResponse response = new PropertyPageResponse(
+                                properties, // content
+                                result.totalElements(), // totalElements
+                                result.totalPages(), // totalPages
+                                result.currentPage(), // page
+                                result.pageSize() // size
+                );
 
-        return ResponseEntity.ok(mapper.toPropertyResponse(property));
-    }
+                return ResponseEntity.ok(response);
+        }
 
-    @PostMapping("/{id}/activate")
-    public ResponseEntity<PropertyResponse> activateProperty(
-            @PathVariable String id,
-            HttpServletRequest httpRequest) {
+        @Transactional(readOnly = true)
+        @GetMapping("/my-properties")
+        public ResponseEntity<PropertyPageResponse> listMyProperties(
+                        @RequestParam(required = false) String status,
+                        @RequestParam(defaultValue = "0") int page,
+                        @RequestParam(defaultValue = "20") int size,
+                        HttpServletRequest httpRequest) {
 
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+                // Extract userId from JWT
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
-        Property property = activatePropertyUseCase.activateProperty(
-                new ActivatePropertyUseCase.ActivatePropertyCommand(PropertyId.of(id), userId));
+                // Fetch properties by hostId
+                List<Property> allUserProperties = propertyRepository.findByHostId(userId);
 
-        return ResponseEntity.ok(mapper.toPropertyResponse(property));
-    }
+                // Apply status filter if provided
+                List<Property> filteredProperties = allUserProperties;
+                if (status != null && !status.isBlank()) {
+                        PropertyStatus propertyStatus = PropertyStatus.valueOf(status);
+                        filteredProperties = allUserProperties.stream()
+                                        .filter(property -> property.getStatus() == propertyStatus)
+                                        .toList();
+                }
 
-    @PostMapping("/{id}/deactivate")
-    public ResponseEntity<PropertyResponse> deactivateProperty(
-            @PathVariable String id,
-            HttpServletRequest httpRequest) {
+                // Calculate pagination
+                long totalElements = filteredProperties.size();
+                int totalPages = (int) Math.ceil((double) totalElements / size);
+                int skip = page * size;
 
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+                // Apply manual pagination (skip/limit)
+                List<Property> paginatedProperties = filteredProperties.stream()
+                                .skip(skip)
+                                .limit(size)
+                                .toList();
 
-        Property property = deactivatePropertyUseCase.deactivateProperty(
-                new DeactivatePropertyUseCase.DeactivatePropertyCommand(PropertyId.of(id), userId));
+                // Map to response
+                List<PropertyResponse> properties = mapper.toPropertyResponseList(paginatedProperties);
 
-        return ResponseEntity.ok(mapper.toPropertyResponse(property));
-    }
+                PropertyPageResponse response = new PropertyPageResponse(
+                                properties, // content
+                                totalElements, // totalElements
+                                totalPages, // totalPages
+                                page, // page
+                                size // size
+                );
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> deleteProperty(
-            @PathVariable String id,
-            HttpServletRequest httpRequest) {
+                return ResponseEntity.ok(response);
+        }
 
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+        @PutMapping("/{id}")
+        public ResponseEntity<PropertyResponse> updateProperty(
+                        @PathVariable String id,
+                        @Valid @RequestBody UpdatePropertyRequest request,
+                        HttpServletRequest httpRequest) {
 
-        deletePropertyUseCase.deleteProperty(
-                new DeletePropertyUseCase.DeletePropertyCommand(PropertyId.of(id), userId));
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
-        return ResponseEntity.noContent().build();
-    }
+                UpdatePropertyUseCase.UpdatePropertyCommand command = new UpdatePropertyUseCase.UpdatePropertyCommand(
+                                PropertyId.of(id),
+                                userId,
+                                request.title(),
+                                request.description(),
+                                request.pricePerNight(),
+                                request.currency(),
+                                request.salePrice(),
+                                request.country(),
+                                request.city(),
+                                request.address(),
+                                request.postalCode(),
+                                request.amenities(),
+                                request.bedrooms(),
+                                request.bathrooms(),
+                                request.maxGuests(),
+                                request.propertyType(),
+                                request.listingType(),
+                                request.airbnbUrl(),
+                                request.icalUrlAirbnb());
 
-    @org.springframework.web.bind.annotation.PatchMapping("/{id}/images/reorder")
-    public ResponseEntity<ReorderImagesResponse> reorderImages(
-            @PathVariable String id,
-            @Valid @RequestBody ReorderImagesRequest request,
-            HttpServletRequest httpRequest) {
+                Property property = updatePropertyUseCase.updateProperty(command);
+                return ResponseEntity.ok(mapper.toPropertyResponse(property));
+        }
 
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+        @PostMapping("/{id}/publish")
+        public ResponseEntity<PropertyResponse> publishProperty(
+                        @PathVariable String id,
+                        HttpServletRequest httpRequest) {
 
-        ReorderImagesResponse response = reorderPropertyImagesUseCase.execute(
-                Long.parseLong(id),
-                userId,
-                request);
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
-        return ResponseEntity.ok(response);
-    }
+                Property property = publishPropertyUseCase.publishProperty(
+                                new PublishPropertyUseCase.PublishPropertyCommand(PropertyId.of(id), userId));
 
-    @DeleteMapping("/{id}/images/{imageId}")
-    public ResponseEntity<Void> deletePropertyImage(
-            @PathVariable String id,
-            @PathVariable String imageId,
-            HttpServletRequest httpRequest) {
+                return ResponseEntity.ok(mapper.toPropertyResponse(property));
+        }
 
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+        @PostMapping("/{id}/activate")
+        public ResponseEntity<PropertyResponse> activateProperty(
+                        @PathVariable String id,
+                        HttpServletRequest httpRequest) {
 
-        deletePropertyImageUseCase.execute(
-                Long.parseLong(id),
-                Long.parseLong(imageId),
-                userId);
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
-        return ResponseEntity.noContent().build();
-    }
+                Property property = activatePropertyUseCase.activateProperty(
+                                new ActivatePropertyUseCase.ActivatePropertyCommand(PropertyId.of(id), userId));
 
-    @DeleteMapping("/{id}/videos/{videoId}")
-    public ResponseEntity<Void> deletePropertyVideo(
-            @PathVariable String id,
-            @PathVariable String videoId,
-            HttpServletRequest httpRequest) {
+                return ResponseEntity.ok(mapper.toPropertyResponse(property));
+        }
 
-        Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+        @PostMapping("/{id}/deactivate")
+        public ResponseEntity<PropertyResponse> deactivateProperty(
+                        @PathVariable String id,
+                        HttpServletRequest httpRequest) {
 
-        deletePropertyVideoUseCase.execute(
-                Long.parseLong(id),
-                Long.parseLong(videoId),
-                userId);
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
-        return ResponseEntity.noContent().build();
-    }
+                Property property = deactivatePropertyUseCase.deactivateProperty(
+                                new DeactivatePropertyUseCase.DeactivatePropertyCommand(PropertyId.of(id), userId));
 
-    record PropertyPageResponse(
-            List<PropertyResponse> content,
-            long totalElements,
-            int totalPages,
-            int page,
-            int size) {
-    }
+                return ResponseEntity.ok(mapper.toPropertyResponse(property));
+        }
+
+        @DeleteMapping("/{id}")
+        public ResponseEntity<Void> deleteProperty(
+                        @PathVariable String id,
+                        HttpServletRequest httpRequest) {
+
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+
+                deletePropertyUseCase.deleteProperty(
+                                new DeletePropertyUseCase.DeletePropertyCommand(PropertyId.of(id), userId));
+
+                return ResponseEntity.noContent().build();
+        }
+
+        @org.springframework.web.bind.annotation.PatchMapping("/{id}/images/reorder")
+        public ResponseEntity<ReorderImagesResponse> reorderImages(
+                        @PathVariable String id,
+                        @Valid @RequestBody ReorderImagesRequest request,
+                        HttpServletRequest httpRequest) {
+
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+
+                ReorderImagesResponse response = reorderPropertyImagesUseCase.execute(
+                                Long.parseLong(id),
+                                userId,
+                                request);
+
+                return ResponseEntity.ok(response);
+        }
+
+        @DeleteMapping("/{id}/images/{imageId}")
+        public ResponseEntity<Void> deletePropertyImage(
+                        @PathVariable String id,
+                        @PathVariable String imageId,
+                        HttpServletRequest httpRequest) {
+
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+
+                deletePropertyImageUseCase.execute(
+                                Long.parseLong(id),
+                                Long.parseLong(imageId),
+                                userId);
+
+                return ResponseEntity.noContent().build();
+        }
+
+        @DeleteMapping("/{id}/videos/{videoId}")
+        public ResponseEntity<Void> deletePropertyVideo(
+                        @PathVariable String id,
+                        @PathVariable String videoId,
+                        HttpServletRequest httpRequest) {
+
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+
+                deletePropertyVideoUseCase.execute(
+                                Long.parseLong(id),
+                                Long.parseLong(videoId),
+                                userId);
+
+                return ResponseEntity.noContent().build();
+        }
+
+        /**
+         * Get calendar blocks for a property.
+         * Returns blocked date ranges from external calendars (Airbnb, etc.)
+         */
+        @GetMapping("/{id}/calendar-blocks")
+        @Transactional(readOnly = true)
+        public ResponseEntity<List<com.affiliate.rentals.gydi.properties.application.dto.PropertyCalendarBlockResponse>> getCalendarBlocks(
+                        @PathVariable String id) {
+
+                List<com.affiliate.rentals.gydi.properties.domain.model.PropertyCalendarBlock> blocks = getPropertyCalendarBlocksUseCase
+                                .getBlocks(Long.parseLong(id));
+
+                List<com.affiliate.rentals.gydi.properties.application.dto.PropertyCalendarBlockResponse> response = blocks
+                                .stream()
+                                .map(block -> new com.affiliate.rentals.gydi.properties.application.dto.PropertyCalendarBlockResponse(
+                                                block.getStartDate(),
+                                                block.getEndDate(),
+                                                block.getSource()))
+                                .toList();
+
+                return ResponseEntity.ok(response);
+        }
+
+        /**
+         * Validate iCal URL.
+         * Endpoint to validate iCal URLs before property creation/update.
+         */
+        @PostMapping("/validate-ical")
+        public ResponseEntity<com.affiliate.rentals.gydi.properties.application.dto.ValidateICalUrlResponse> validateICalUrl(
+                        @Valid @RequestBody com.affiliate.rentals.gydi.properties.application.dto.ValidateICalUrlRequest request) {
+
+                com.affiliate.rentals.gydi.properties.application.service.ICalUrlValidator.ICalValidationResult result = iCalUrlValidator
+                                .validateWithFetch(request.icalUrl());
+
+                return ResponseEntity.ok(
+                                com.affiliate.rentals.gydi.properties.application.dto.ValidateICalUrlResponse.of(
+                                                result.isValid(),
+                                                result.getMessage()));
+        }
+
+        record PropertyPageResponse(
+                        List<PropertyResponse> content,
+                        long totalElements,
+                        int totalPages,
+                        int page,
+                        int size) {
+        }
 }

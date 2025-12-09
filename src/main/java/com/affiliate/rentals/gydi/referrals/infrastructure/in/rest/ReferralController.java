@@ -8,6 +8,8 @@ import com.affiliate.rentals.gydi.referrals.domain.model.ReferralLink;
 import com.affiliate.rentals.gydi.referrals.domain.port.ReferralLinkRepository;
 import com.affiliate.rentals.gydi.shared.security.JwtReferralTokenService;
 import com.affiliate.rentals.gydi.shared.security.JwtService;
+import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.UserEntity;
+import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.repository.UserJpaRepository;
 import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -54,6 +56,7 @@ public class ReferralController {
         private final JwtReferralTokenService jwtReferralTokenService;
         private final PropertyRepositoryPort propertyRepository;
         private final JwtService jwtService;
+        private final UserJpaRepository userJpaRepository;
         private final String frontendUrl;
 
         public ReferralController(
@@ -65,6 +68,7 @@ public class ReferralController {
                         JwtReferralTokenService jwtReferralTokenService,
                         PropertyRepositoryPort propertyRepository,
                         JwtService jwtService,
+                        UserJpaRepository userJpaRepository,
                         @org.springframework.beans.factory.annotation.Value("${app.frontend-url}") String frontendUrl) {
                 this.generateReferralLinkUseCase = generateReferralLinkUseCase;
                 this.trackClickUseCase = trackClickUseCase;
@@ -74,6 +78,7 @@ public class ReferralController {
                 this.jwtReferralTokenService = jwtReferralTokenService;
                 this.propertyRepository = propertyRepository;
                 this.jwtService = jwtService;
+                this.userJpaRepository = userJpaRepository;
                 this.frontendUrl = frontendUrl;
         }
 
@@ -288,6 +293,64 @@ public class ReferralController {
                 return ResponseEntity.ok(earnings);
         }
 
+        /**
+         * Obtener el ID del link de referido del sistema (orgánico) para una propiedad
+         * Este endpoint es público y se usa cuando un cliente llega sin link de referido
+         */
+        @GetMapping("/public/system-link/{propertyId}")
+        @Operation(
+            summary = "Obtener link de referido del sistema",
+            description = "Retorna el ID del link de referido genérico del sistema para tracking de tráfico orgánico (sin referido)"
+        )
+        @ApiResponses(value = {
+            @ApiResponse(responseCode = "200", description = "Link del sistema encontrado o creado"),
+            @ApiResponse(responseCode = "404", description = "Propiedad no encontrada"),
+            @ApiResponse(responseCode = "500", description = "Error al crear link del sistema")
+        })
+        public ResponseEntity<SystemLinkResponse> getSystemReferralLink(@PathVariable Long propertyId) {
+            log.info("GET /public/system-link/{} - Getting or creating system referral link", propertyId);
+
+            try {
+                // 1. Find SYSTEM user
+                UserEntity systemUser = userJpaRepository.findByEmail("system-organic@gydi.internal")
+                    .orElseThrow(() -> new IllegalStateException(
+                        "SYSTEM user not found. Please run migration V47__create_system_user_for_organic_traffic.sql"
+                    ));
+
+                Long systemUserId = systemUser.getId();
+                log.debug("SYSTEM user found with ID: {}", systemUserId);
+
+                // 2. Find or create system link for this property
+                java.util.Optional<ReferralLink> existingLink = referralLinkRepository
+                    .findActiveLink(systemUserId, propertyId);
+
+                ReferralLink systemLink;
+                if (existingLink.isPresent()) {
+                    systemLink = existingLink.get();
+                    log.debug("System link already exists with ID: {}", systemLink.getId());
+                } else {
+                    // Create new system link using GenerateReferralLinkUseCase
+                    GenerateReferralLinkRequest request = new GenerateReferralLinkRequest(propertyId, 365);
+                    GenerateReferralLinkResponse response = generateReferralLinkUseCase.execute(systemUserId, request);
+
+                    // Fetch the created link
+                    systemLink = referralLinkRepository.findById(response.id())
+                        .orElseThrow(() -> new IllegalStateException("Failed to create system link"));
+
+                    log.info("Created new system link with ID: {} for property: {}", systemLink.getId(), propertyId);
+                }
+
+                return ResponseEntity.ok(new SystemLinkResponse(systemLink.getId()));
+
+            } catch (IllegalStateException e) {
+                log.error("System configuration error: {}", e.getMessage());
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            } catch (Exception e) {
+                log.error("Error getting system referral link for property {}: {}", propertyId, e.getMessage(), e);
+                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+            }
+        }
+
         // Métodos auxiliares
 
         /**
@@ -329,12 +392,14 @@ public class ReferralController {
                                 link.getShortCode(),
                                 fullUrl,
                                 link.getClicksCount(),
-                                link.getConversionsCount(),
-                                link.getTotalCommission(),
-                                link.getConversionRate(),
                                 link.getStatus(),
                                 link.getExpiresAt(),
                                 link.getCreatedAt(),
                                 link.getUpdatedAt());
         }
+
+        /**
+         * Response DTO for system referral link
+         */
+        public record SystemLinkResponse(Long referralLinkId) {}
 }

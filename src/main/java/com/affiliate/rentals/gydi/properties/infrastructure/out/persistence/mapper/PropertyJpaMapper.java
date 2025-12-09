@@ -53,6 +53,15 @@ public class PropertyJpaMapper {
                 .images(images)
                 .videos(videos)
                 .coverImageId(entity.getCoverImageId())
+                .airbnbUrl(entity.getAirbnbUrl())
+                .importMode(
+                        entity.getImportMode() != null
+                                ? com.affiliate.rentals.gydi.properties.domain.model.ImportMode
+                                        .valueOf(entity.getImportMode().name())
+                                : null)
+                .importedAt(entity.getImportedAt())
+                .airbnbListingId(entity.getAirbnbListingId())
+                .icalUrlAirbnb(entity.getIcalUrlAirbnb())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .publishedAt(entity.getPublishedAt());
@@ -111,6 +120,14 @@ public class PropertyJpaMapper {
         entity.setListingType(domain.getListingType().name());
         entity.setStatus(domain.getStatus().name());
         entity.setCoverImageId(domain.getCoverImageId());
+        entity.setAirbnbUrl(domain.getAirbnbUrl());
+        entity.setImportMode(domain.getImportMode() != null
+                ? com.affiliate.rentals.gydi.properties.infrastructure.out.persistence.entity.ImportMode
+                        .valueOf(domain.getImportMode().name())
+                : null);
+        entity.setImportedAt(domain.getImportedAt());
+        entity.setAirbnbListingId(domain.getAirbnbListingId());
+        entity.setIcalUrlAirbnb(domain.getIcalUrlAirbnb());
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
         entity.setPublishedAt(domain.getPublishedAt());

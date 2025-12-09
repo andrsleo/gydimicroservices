@@ -226,6 +226,20 @@ public final class UserProfile {
                 .build();
     }
 
+    /**
+     * Creates a new UserProfile with updated phone number.
+     *
+     * @param newPhoneNumber the new phone number
+     * @return a new UserProfile instance with updated phone number
+     */
+    public UserProfile withPhoneNumber(String newPhoneNumber) {
+        return builder()
+                .from(this)
+                .phoneNumber(newPhoneNumber)
+                .updatedAt(LocalDateTime.now())
+                .build();
+    }
+
     public static Builder builder() {
         return new Builder();
     }

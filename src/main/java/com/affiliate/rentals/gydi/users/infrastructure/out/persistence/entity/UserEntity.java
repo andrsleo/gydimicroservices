@@ -27,13 +27,19 @@ import lombok.Setter;
 /**
  * JPA entity representing a user in the users schema.
  *
- * <p>This entity maps to the {@code users} table in the {@code users} schema.
- * It stores user information including authentication credentials, personal data,
+ * <p>
+ * This entity maps to the {@code users} table in the {@code users} schema.
+ * It stores user information including authentication credentials, personal
+ * data,
  * and role associations. The entity maintains a many-to-many relationship with
- * RoleEntity through the {@code user_roles} join table.</p>
+ * RoleEntity through the {@code user_roles} join table.
+ * </p>
  *
- * <p>This is an infrastructure-layer class that implements the persistence
- * details for the User domain model, following hexagonal architecture principles.</p>
+ * <p>
+ * This is an infrastructure-layer class that implements the persistence
+ * details for the User domain model, following hexagonal architecture
+ * principles.
+ * </p>
  *
  * @author GYDI Development Team
  * @see RoleEntity
@@ -52,13 +58,6 @@ public class UserEntity {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
-
-    /**
-     * The user's display name.
-     * Cannot be null.
-     */
-    @Column(name = "name", nullable = false, length = 255)
-    private String name;
 
     /**
      * The user's email address.
@@ -123,13 +122,8 @@ public class UserEntity {
      * The roles assigned to this user.
      * This is the owning side of the many-to-many relationship.
      */
-    @ManyToMany(fetch = FetchType.EAGER, cascade = {CascadeType.PERSIST, CascadeType.MERGE})
-    @JoinTable(
-            name = "user_roles",
-            schema = "users",
-            joinColumns = @JoinColumn(name = "user_id"),
-            inverseJoinColumns = @JoinColumn(name = "role_id")
-    )
+    @ManyToMany(fetch = FetchType.EAGER, cascade = { CascadeType.PERSIST, CascadeType.MERGE })
+    @JoinTable(name = "user_roles", schema = "users", joinColumns = @JoinColumn(name = "user_id"), inverseJoinColumns = @JoinColumn(name = "role_id"))
     private Set<RoleEntity> roles = new HashSet<>();
 
     /**
@@ -171,8 +165,10 @@ public class UserEntity {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         UserEntity that = (UserEntity) o;
         return Objects.equals(id, that.id) && Objects.equals(email, that.email);
     }
@@ -184,7 +180,7 @@ public class UserEntity {
 
     @Override
     public String toString() {
-        return "UserEntity{id=%d, name='%s', email='%s', roles=%d}"
-                .formatted(id, name, email, roles.size());
+        return "UserEntity{id=%d, email='%s', roles=%d}"
+                .formatted(id, email, roles.size());
     }
 }

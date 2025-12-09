@@ -19,66 +19,105 @@ import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 /**
  * Use case for updating an existing user.
  *
- * <p>This service handles the business logic for user updates,
- * including role management.</p>
+ * <p>
+ * This service handles the business logic for user updates,
+ * including role management.
+ * </p>
  *
- * <p><b>SECURITY: IDOR Prevention</b> - Validates that users can only update their own data.</p>
- * <p><b>NOTE:</b> Changing roles should require ADMIN permission (not yet implemented).</p>
+ * <p>
+ * <b>SECURITY: IDOR Prevention</b> - Validates that users can only update their
+ * own data.
+ * </p>
+ * <p>
+ * <b>NOTE:</b> Changing roles should require ADMIN permission (not yet
+ * implemented).
+ * </p>
  *
  * @author GYDI Development Team
  */
 @Service
 public class UpdateUserUseCase {
 
-    private final UserRepositoryPort userRepository;
-    private final UserDtoMapper mapper;
-    private final OwnershipValidator ownershipValidator;
+        private final UserRepositoryPort userRepository;
+        private final com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort userProfileRepository;
+        private final UserDtoMapper mapper;
+        private final OwnershipValidator ownershipValidator;
 
-    public UpdateUserUseCase(
-            UserRepositoryPort userRepository,
-            UserDtoMapper mapper,
-            OwnershipValidator ownershipValidator
-    ) {
-        this.userRepository = userRepository;
-        this.mapper = mapper;
-        this.ownershipValidator = ownershipValidator;
-    }
+        public UpdateUserUseCase(
+                        UserRepositoryPort userRepository,
+                        com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort userProfileRepository,
+                        UserDtoMapper mapper,
+                        OwnershipValidator ownershipValidator) {
+                this.userRepository = userRepository;
+                this.userProfileRepository = userProfileRepository;
+                this.mapper = mapper;
+                this.ownershipValidator = ownershipValidator;
+        }
 
-    /**
-     * Executes the update user use case.
-     *
-     * @param id the user ID to update
-     * @param request the update user request data
-     * @return the updated user as a UserResponse
-     * @throws UserNotFoundException if the user is not found
-     * @throws com.affiliate.rentals.gydi.shared.exception.ForbiddenException if user doesn't own the resource
-     */
-    @Transactional
-    public UserResponse execute(Long id, UpdateUserRequest request) {
-        // SECURITY: Validate ownership to prevent IDOR
-        ownershipValidator.validateOwnership(id);
+        /**
+         * Executes the update user use case.
+         *
+         * @param id      the user ID to update
+         * @param request the update user request data
+         * @return the updated user as a UserResponse
+         * @throws UserNotFoundException                                          if the
+         *                                                                        user
+         *                                                                        is not
+         *                                                                        found
+         * @throws com.affiliate.rentals.gydi.shared.exception.ForbiddenException if
+         *                                                                        user
+         *                                                                        doesn't
+         *                                                                        own
+         *                                                                        the
+         *                                                                        resource
+         */
+        @Transactional
+        public UserResponse execute(Long id, UpdateUserRequest request) {
+                // SECURITY: Validate ownership to prevent IDOR
+                ownershipValidator.validateOwnership(id);
 
-        User existingUser = userRepository.findById(id)
-                .orElseThrow(() -> UserNotFoundException.withId(id));
+                User existingUser = userRepository.findById(id)
+                                .orElseThrow(() -> UserNotFoundException.withId(id));
 
-        Set<Role> roles = request.roleNames() != null && !request.roleNames().isEmpty()
-                ? request.roleNames().stream()
-                .map(RoleName::fromValue)
-                .map(roleName -> new Role(null, roleName))
-                .collect(Collectors.toSet())
-                : existingUser.roles();
+                // Update name in UserProfile
+                if (request.name() != null && !request.name().isBlank()) {
+                        updateUserProfileName(id, request.name());
+                }
 
-        User updatedUser = User.builder()
-                .id(existingUser.id())
-                .email(existingUser.email())
-                .passwordHash(existingUser.passwordHash())
-                .name(request.name())
-                .phoneNumber(request.phoneNumber())
-                .roles(roles)
-                .createdAt(existingUser.createdAt())
-                .build();
+                Set<Role> roles = request.roleNames() != null && !request.roleNames().isEmpty()
+                                ? request.roleNames().stream()
+                                                .map(RoleName::fromValue)
+                                                .map(roleName -> new Role(null, roleName))
+                                                .collect(Collectors.toSet())
+                                : existingUser.roles();
 
-        User savedUser = userRepository.save(updatedUser);
-        return mapper.toResponse(savedUser);
-    }
+                User updatedUser = User.builder()
+                                .id(existingUser.id())
+                                .email(existingUser.email())
+                                .passwordHash(existingUser.passwordHash())
+                                .name(request.name()) // Pass new name to domain object so it's returned correctly
+                                .phoneNumber(request.phoneNumber())
+                                .roles(roles)
+                                .createdAt(existingUser.createdAt())
+                                .build();
+
+                User savedUser = userRepository.save(updatedUser);
+                return mapper.toResponse(savedUser);
+        }
+
+        private void updateUserProfileName(Long userId, String fullName) {
+                userProfileRepository.findByUserId(userId).ifPresent(profile -> {
+                        String[] parts = fullName.trim().split("\\s+", 2);
+                        String firstName = parts[0];
+                        String lastName = parts.length > 1 ? parts[1] : "";
+
+                        var updatedProfile = com.affiliate.rentals.gydi.users.domain.model.UserProfile.builder()
+                                        .from(profile)
+                                        .firstName(firstName)
+                                        .lastName(lastName)
+                                        .build();
+
+                        userProfileRepository.save(updatedProfile);
+                });
+        }
 }

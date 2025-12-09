@@ -11,9 +11,24 @@ import com.affiliate.rentals.gydi.properties.infrastructure.out.persistence.enti
 
 @Repository
 public interface PropertyJpaRepository extends JpaRepository<PropertyJpaEntity, Long>,
-                                                JpaSpecificationExecutor<PropertyJpaEntity> {
+        JpaSpecificationExecutor<PropertyJpaEntity> {
 
     List<PropertyJpaEntity> findByHostId(Long hostId);
 
     Optional<PropertyJpaEntity> findBySlug(String slug);
+
+    /**
+     * Finds all properties that have an Airbnb iCal URL configured.
+     *
+     * @return list of properties with iCal URLs
+     */
+    List<PropertyJpaEntity> findByIcalUrlAirbnbIsNotNull();
+
+    /**
+     * Checks if a property exists with the given Airbnb listing ID.
+     *
+     * @param airbnbListingId the Airbnb listing ID
+     * @return true if exists
+     */
+    boolean existsByAirbnbListingId(String airbnbListingId);
 }

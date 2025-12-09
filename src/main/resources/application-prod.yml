@@ -1,18 +1,29 @@
 # ============================================
-# PRODUCTION PROFILE
+# PRODUCTION PROFILE (Fly.io Deployment)
 # ============================================
-# Variables de entorno requeridas:
-# - DB_USERNAME
-# - DB_PASSWORD
-# - AWS_REGION
-# - AWS_S3_BUCKET_NAME
-# - AWS_S3_BASE_URL
-# - AWS_SES_FROM_EMAIL
-# - JWT_SECRET
-# - FRONTEND_URL
+# Required environment variables (set via: fly secrets set KEY=VALUE):
 #
-# SECURITY: AWS credentials are obtained via IAM roles (recommended)
-# or environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)
+# Database:
+# - DATABASE_URL          # Auto-set by Fly Postgres attach
+# - DB_USERNAME           # Database username
+# - DB_PASSWORD           # Database password (strong, random)
+#
+# Security/Encryption:
+# - JWT_SECRET            # Generate: openssl rand -base64 64
+# - JWT_REFERRAL_SECRET   # Generate: openssl rand -base64 64
+# - AES_SECRET_KEY        # Generate: openssl rand -hex 32
+# - URL_HASHIDS_SALT      # Generate: openssl rand -base64 32
+#
+# Cloud Services:
+# - CLOUDINARY_URL        # Format: cloudinary://key:secret@cloud_name
+# - RESEND_API_KEY        # From resend.com dashboard
+# - RESEND_FROM_EMAIL     # Verified email (e.g., noreply@gydi.com)
+#
+# Application:
+# - FRONTEND_URL          # e.g., https://gydi.vercel.app
+# - SENTRY_DSN            # Optional: for error tracking
+#
+# SECURITY: Never commit secrets to git. Use Fly Secrets for all sensitive data.
 # ============================================
 
 spring:
@@ -33,24 +44,61 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
-  expiration: 86400000
-  refresh-expiration: 604800000
+  expiration: 3600000  # 1 hour (reduced from 24h for production security)
+  refresh-expiration: 604800000  # 7 days
+  referral:
+    secret: ${JWT_REFERRAL_SECRET}
+    expiration-ms: 2592000000  # 30 days
 
-aws:
-  # SECURITY: Credentials obtained via DefaultCredentialsProvider
-  # (IAM roles or environment variables)
-  s3:
-    bucket-name: ${AWS_S3_BUCKET_NAME}
-    region: ${AWS_REGION}
-    base-url: ${AWS_S3_BASE_URL}
+# ============================================
+# Cloud Services (Production)
+# ============================================
+# Cloudinary for file storage (replaces AWS S3)
+cloudinary:
+  url: ${CLOUDINARY_URL}
 
-  ses:
-    region: ${AWS_REGION}
-    from-email: ${AWS_SES_FROM_EMAIL}
+# Resend for email service (replaces AWS SES)
+resend:
+  api-key: ${RESEND_API_KEY}
+  from-email: ${RESEND_FROM_EMAIL}
 
+# Storage provider
+storage:
+  provider: cloudinary  # Use Cloudinary in production
+
+# Email provider
+email:
+  provider: resend  # Use Resend in production
+
+# ============================================
+# Security Configuration
+# ============================================
+security:
+  url:
+    hashids:
+      salt: ${URL_HASHIDS_SALT}
+      min-length: 10
+    aes:
+      secret: ${AES_SECRET_KEY}
+
+# ============================================
+# Application Configuration
+# ============================================
 app:
+  frontend-url: ${FRONTEND_URL}
   password-reset:
     frontend-url: ${FRONTEND_URL}
+    token-expiration-minutes: 60
+    rate-limit-requests: 3
+    rate-limit-window-hours: 1
+
+# ============================================
+# Monitoring (Optional)
+# ============================================
+sentry:
+  dsn: ${SENTRY_DSN:}  # Optional: error tracking
+  environment: production
+  traces-sample-rate: 0.1  # Sample 10% of transactions
 
 # ============================================
 # Actuator Configuration (PRODUCTION)
