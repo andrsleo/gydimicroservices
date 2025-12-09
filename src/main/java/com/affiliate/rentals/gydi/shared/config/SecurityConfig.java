@@ -50,6 +50,20 @@ public class SecurityConfig {
     /**
      * Configures the security filter chain.
      *
+     * <p>
+     * SECURITY DECISION: CSRF protection is DISABLED for this REST API
+     *
+     * Justification:
+     * 1. Stateless JWT authentication (tokens in Authorization header, not cookies)
+     * 2. JWT must be sent explicitly by client - no automatic cookie submission
+     * 3. CORS protection restricts allowed origins (defense in depth)
+     * 4. SessionCreationPolicy.STATELESS prevents session fixation
+     * 5. OWASP recommendation for REST APIs with token-based auth
+     *
+     * Reference: https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#csrf
+     * "CSRF tokens are not applicable to REST APIs that use proper authentication mechanisms"
+     * </p>
+     *
      * @param http the HttpSecurity to configure
      * @return the configured SecurityFilterChain
      * @throws Exception if an error occurs during configuration
@@ -57,12 +71,14 @@ public class SecurityConfig {
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
         http
+                // Disable CSRF for stateless JWT REST API
                 .csrf(AbstractHttpConfigurer::disable)
                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                 .authorizeHttpRequests(auth -> auth
                         // Public endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/api/v1/referrals/resolve").permitAll()
+                        .requestMatchers("/api/v1/referrals/public/system-link/**").permitAll()
                         .requestMatchers("/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**",
                                 "/swagger-resources/**", "/webjars/**")
                         .permitAll()
@@ -164,11 +180,15 @@ public class SecurityConfig {
         // Allow all headers
         configuration.setAllowedHeaders(Arrays.asList("*"));
 
-        // Allow credentials (cookies, authorization headers)
+        // Allow credentials (cookies, authorization headers, CSRF tokens)
         configuration.setAllowCredentials(true);
 
-        // Expose authorization header to frontend
-        configuration.setExposedHeaders(Arrays.asList("Authorization"));
+        // Expose headers to frontend (Authorization for JWT, X-XSRF-TOKEN for CSRF)
+        configuration.setExposedHeaders(Arrays.asList(
+                "Authorization",
+                "X-XSRF-TOKEN",
+                "XSRF-TOKEN"
+        ));
 
         // Cache preflight response for 1 hour
         configuration.setMaxAge(3600L);

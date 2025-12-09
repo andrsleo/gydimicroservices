@@ -2,6 +2,7 @@ package com.affiliate.rentals.gydi.users.application.dto;
 
 import java.util.Set;
 
+import com.affiliate.rentals.gydi.shared.validation.StrongPassword;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
@@ -17,7 +18,7 @@ import jakarta.validation.constraints.Size;
  * as the source of truth.</p>
  *
  * @param email the user's email address (must be valid email format)
- * @param password the user's password (minimum 8 characters)
+ * @param password the user's password (must meet strong password requirements)
  * @param firstName the user's first name (stored in user_profile)
  * @param lastName the user's last name (stored in user_profile)
  * @param name the user's full name (DEPRECATED - kept for backwards compatibility only)
@@ -31,7 +32,7 @@ public record CreateUserRequest(
         String email,
 
         @NotBlank(message = "Password is required")
-        @Size(min = 8, message = "Password must be at least 8 characters")
+        @StrongPassword
         String password,
 
         @NotBlank(message = "First name is required")

@@ -11,25 +11,33 @@ import org.springframework.test.web.servlet.MockMvc;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import org.springframework.test.context.ActiveProfiles;
+
 /**
  * Integration tests for Actuator endpoint security.
  *
- * <p>These tests verify that sensitive Actuator endpoints are properly secured
- * and only accessible to ADMIN users.</p>
+ * <p>
+ * These tests verify that sensitive Actuator endpoints are properly secured
+ * and only accessible to ADMIN users.
+ * </p>
  *
- * <p><b>SECURITY: Actuator Information Disclosure Prevention Tests</b></p>
+ * <p>
+ * <b>SECURITY: Actuator Information Disclosure Prevention Tests</b>
+ * </p>
  *
  * @author GYDI Development Team
  */
 @SpringBootTest
 @AutoConfigureMockMvc
+@ActiveProfiles("test")
 @DisplayName("Actuator Security Tests")
 class ActuatorSecurityTest {
 
     @Autowired
     private MockMvc mockMvc;
 
-    // ==================== Public Endpoints (Always Accessible) ====================
+    // ==================== Public Endpoints (Always Accessible)
+    // ====================
 
     @Test
     @DisplayName("Should allow unauthenticated access to /actuator/health")
@@ -45,41 +53,42 @@ class ActuatorSecurityTest {
                 .andExpect(status().isOk());
     }
 
-    // ==================== Restricted Endpoints (Unauthenticated) ====================
+    // ==================== Restricted Endpoints (Unauthenticated)
+    // ====================
 
     @Test
     @DisplayName("Should block unauthenticated access to /actuator/env")
     void shouldBlockUnauthenticatedEnv() throws Exception {
         mockMvc.perform(get("/actuator/env"))
-                .andExpect(status().isForbidden());  // Spring Security returns 403 for protected endpoints
+                .andExpect(status().isForbidden()); // Spring Security returns 403 for protected endpoints
     }
 
     @Test
     @DisplayName("Should block unauthenticated access to /actuator/metrics")
     void shouldBlockUnauthenticatedMetrics() throws Exception {
         mockMvc.perform(get("/actuator/metrics"))
-                .andExpect(status().isForbidden());  // Spring Security returns 403 for protected endpoints
+                .andExpect(status().isForbidden()); // Spring Security returns 403 for protected endpoints
     }
 
     @Test
     @DisplayName("Should block unauthenticated access to /actuator/heapdump")
     void shouldBlockUnauthenticatedHeapdump() throws Exception {
         mockMvc.perform(get("/actuator/heapdump"))
-                .andExpect(status().isForbidden());  // Spring Security returns 403 for protected endpoints
+                .andExpect(status().isForbidden()); // Spring Security returns 403 for protected endpoints
     }
 
     @Test
     @DisplayName("Should block unauthenticated access to /actuator/threaddump")
     void shouldBlockUnauthenticatedThreaddump() throws Exception {
         mockMvc.perform(get("/actuator/threaddump"))
-                .andExpect(status().isForbidden());  // Spring Security returns 403 for protected endpoints
+                .andExpect(status().isForbidden()); // Spring Security returns 403 for protected endpoints
     }
 
     @Test
     @DisplayName("Should block unauthenticated access to /actuator/logfile")
     void shouldBlockUnauthenticatedLogfile() throws Exception {
         mockMvc.perform(get("/actuator/logfile"))
-                .andExpect(status().isForbidden());  // Spring Security returns 403 for protected endpoints
+                .andExpect(status().isForbidden()); // Spring Security returns 403 for protected endpoints
     }
 
     // ==================== Restricted Endpoints (Regular User) ====================
@@ -143,7 +152,8 @@ class ActuatorSecurityTest {
     }
 
     // NOTE: /actuator/env is not exposed in application.yml (not in 'include' list)
-    // so even ADMINs cannot access it. This is by design - env is completely disabled.
+    // so even ADMINs cannot access it. This is by design - env is completely
+    // disabled.
 
     // ==================== Attack Scenarios ====================
 
@@ -189,13 +199,13 @@ class ActuatorSecurityTest {
 
         // When: Tries to access various sensitive endpoints
         String[] sensitiveEndpoints = {
-            "/actuator/env",
-            "/actuator/heapdump",
-            "/actuator/threaddump",
-            "/actuator/metrics",
-            "/actuator/logfile",
-            "/actuator/beans",
-            "/actuator/configprops"
+                "/actuator/env",
+                "/actuator/heapdump",
+                "/actuator/threaddump",
+                "/actuator/metrics",
+                "/actuator/logfile",
+                "/actuator/beans",
+                "/actuator/configprops"
         };
 
         for (String endpoint : sensitiveEndpoints) {
@@ -217,10 +227,10 @@ class ActuatorSecurityTest {
 
         // When: Tries to access ADMIN-only endpoints
         String[] adminOnlyEndpoints = {
-            "/actuator/env",
-            "/actuator/metrics",
-            "/actuator/heapdump",
-            "/actuator/threaddump"
+                "/actuator/env",
+                "/actuator/metrics",
+                "/actuator/heapdump",
+                "/actuator/threaddump"
         };
 
         for (String endpoint : adminOnlyEndpoints) {

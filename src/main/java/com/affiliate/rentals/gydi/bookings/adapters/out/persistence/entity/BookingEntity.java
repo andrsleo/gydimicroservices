@@ -2,7 +2,9 @@ package com.affiliate.rentals.gydi.bookings.adapters.out.persistence.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -49,24 +51,10 @@ public class BookingEntity {
     @Column(name = "client_last_name", nullable = false, length = 100)
     private String clientLastName;
 
-    @Column(name = "total_amount", nullable = false, precision = 10, scale = 2)
-    private BigDecimal totalAmount;
-
-    @Column(name = "currency", nullable = false, length = 3)
-    private String currency;
-
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false, length = 20)
+    @JdbcType(PostgreSQLEnumJdbcType.class)
+    @Column(name = "status", nullable = false, columnDefinition = "referrals.booking_status")
     private BookingStatusEntity status;
-
-    @Column(name = "cancellation_reason", columnDefinition = "TEXT")
-    private String cancellationReason;
-
-    @Column(name = "canceled_by", length = 50)
-    private String canceledBy;
-
-    @Column(name = "canceled_at")
-    private LocalDateTime canceledAt;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -130,33 +118,8 @@ public class BookingEntity {
         return this;
     }
 
-    public BookingEntity totalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
-        return this;
-    }
-
-    public BookingEntity currency(String currency) {
-        this.currency = currency;
-        return this;
-    }
-
     public BookingEntity status(BookingStatusEntity status) {
         this.status = status;
-        return this;
-    }
-
-    public BookingEntity cancellationReason(String cancellationReason) {
-        this.cancellationReason = cancellationReason;
-        return this;
-    }
-
-    public BookingEntity canceledBy(String canceledBy) {
-        this.canceledBy = canceledBy;
-        return this;
-    }
-
-    public BookingEntity canceledAt(LocalDateTime canceledAt) {
-        this.canceledAt = canceledAt;
         return this;
     }
 
@@ -233,52 +196,12 @@ public class BookingEntity {
         this.clientLastName = clientLastName;
     }
 
-    public BigDecimal getTotalAmount() {
-        return totalAmount;
-    }
-
-    public void setTotalAmount(BigDecimal totalAmount) {
-        this.totalAmount = totalAmount;
-    }
-
-    public String getCurrency() {
-        return currency;
-    }
-
-    public void setCurrency(String currency) {
-        this.currency = currency;
-    }
-
     public BookingStatusEntity getStatus() {
         return status;
     }
 
     public void setStatus(BookingStatusEntity status) {
         this.status = status;
-    }
-
-    public String getCancellationReason() {
-        return cancellationReason;
-    }
-
-    public void setCancellationReason(String cancellationReason) {
-        this.cancellationReason = cancellationReason;
-    }
-
-    public String getCanceledBy() {
-        return canceledBy;
-    }
-
-    public void setCanceledBy(String canceledBy) {
-        this.canceledBy = canceledBy;
-    }
-
-    public LocalDateTime getCanceledAt() {
-        return canceledAt;
-    }
-
-    public void setCanceledAt(LocalDateTime canceledAt) {
-        this.canceledAt = canceledAt;
     }
 
     public LocalDateTime getCreatedAt() {

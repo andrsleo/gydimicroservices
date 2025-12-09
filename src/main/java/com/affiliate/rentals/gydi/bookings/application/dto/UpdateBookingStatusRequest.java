@@ -12,6 +12,10 @@ import jakarta.validation.constraints.Size;
  * - RESERVED → FINISHED (stay completed)
  * - REQUEST/RESERVED → CANCELED (booking canceled)
  * </p>
+ * <p>
+ * Cancellation details (reason, who canceled, timestamp) are not tracked in the booking table.
+ * If needed, they can be logged separately in audit systems.
+ * </p>
  */
 public record UpdateBookingStatusRequest(
 
@@ -20,26 +24,6 @@ public record UpdateBookingStatusRequest(
         regexp = "^(RESERVED|FINISHED|CANCELED)$",
         message = "Target status must be RESERVED, FINISHED, or CANCELED"
     )
-    String targetStatus,
-
-    @Size(max = 500, message = "Cancellation reason cannot exceed 500 characters")
-    String cancellationReason,
-
-    @Size(max = 50, message = "Canceled by cannot exceed 50 characters")
-    String canceledBy
+    String targetStatus
 ) {
-
-    /**
-     * Validates that cancellation fields are provided when status is CANCELED.
-     */
-    public UpdateBookingStatusRequest {
-        if ("CANCELED".equals(targetStatus)) {
-            if (cancellationReason == null || cancellationReason.isBlank()) {
-                throw new IllegalArgumentException("Cancellation reason is required when canceling a booking");
-            }
-            if (canceledBy == null || canceledBy.isBlank()) {
-                throw new IllegalArgumentException("Canceled by is required when canceling a booking");
-            }
-        }
-    }
 }

@@ -5,6 +5,10 @@ import java.time.LocalDateTime;
 /**
  * Domain Event published when a booking is canceled.
  * <p>
+ * Cancellation details (reason, who canceled) are not tracked in the booking domain anymore.
+ * If detailed cancellation tracking is needed, it can be handled in a separate audit system.
+ * </p>
+ * <p>
  * <strong>Subscribers:</strong>
  * </p>
  * <ul>
@@ -15,19 +19,11 @@ import java.time.LocalDateTime;
 public record BookingCanceledEvent(
     Long bookingId,
     Long propertyId,
-    String canceledBy, // CLIENT, OWNER, ADMIN, SYSTEM
-    String reason,
     LocalDateTime occurredAt
 ) {
     public BookingCanceledEvent {
         if (bookingId == null) {
             throw new IllegalArgumentException("Booking ID cannot be null");
-        }
-        if (canceledBy == null || canceledBy.isBlank()) {
-            throw new IllegalArgumentException("Canceled by cannot be null or empty");
-        }
-        if (reason == null || reason.isBlank()) {
-            throw new IllegalArgumentException("Cancellation reason cannot be null or empty");
         }
         if (occurredAt == null) {
             occurredAt = LocalDateTime.now();

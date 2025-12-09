@@ -7,7 +7,7 @@ import com.affiliate.rentals.gydi.properties.domain.model.PropertyId;
  * Use case for creating a new property in DRAFT status.
  */
 public interface CreatePropertyUseCase {
-    
+
     /**
      * Creates a new property.
      *
@@ -15,26 +15,28 @@ public interface CreatePropertyUseCase {
      * @return the created Property with generated ID
      */
     Property createProperty(CreatePropertyCommand command);
-    
+
     /**
      * Command for creating a property
      */
     record CreatePropertyCommand(
-        Long hostId,
-        String title,
-        String description,
-        java.math.BigDecimal priceAmount,
-        String priceCurrency,
-        java.math.BigDecimal salePrice,
-        String country,
-        String city,
-        String address,
-        String postalCode,
-        java.util.List<String> amenities,
-        int bedrooms,
-        int bathrooms,
-        int maxGuests,
-        String propertyType,
-        String listingType
-    ) {}
+            Long hostId,
+            String title,
+            String description,
+            java.math.BigDecimal priceAmount,
+            String priceCurrency,
+            java.math.BigDecimal salePrice,
+            String country,
+            String city,
+            String address,
+            String postalCode,
+            java.util.List<String> amenities,
+            int bedrooms,
+            int bathrooms,
+            int maxGuests,
+            String propertyType,
+            String listingType,
+            String airbnbUrl,
+            String icalUrlAirbnb) {
+    }
 }

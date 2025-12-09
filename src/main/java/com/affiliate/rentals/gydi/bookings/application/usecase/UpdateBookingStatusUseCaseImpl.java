@@ -69,9 +69,8 @@ public class UpdateBookingStatusUseCaseImpl implements UpdateBookingStatusUseCas
                 publishBookingFinishedEvent(booking);
             }
             case "CANCELED" -> {
-                booking.cancel(command.cancellationReason(), command.canceledBy());
-                log.info("Booking {} canceled by {}: {}",
-                    booking.getId(), command.canceledBy(), command.cancellationReason());
+                booking.cancel();
+                log.info("Booking {} canceled", booking.getId());
 
                 // Publish cancellation event
                 publishBookingCanceledEvent(booking);
@@ -95,6 +94,7 @@ public class UpdateBookingStatusUseCaseImpl implements UpdateBookingStatusUseCas
      * Publishes BookingFinishedEvent.
      * <p>
      * This event is consumed by PaymentEventHandler to create payment.booking record.
+     * Financial details (amount, currency) will be determined by the payment/commission system.
      * </p>
      */
     private void publishBookingFinishedEvent(Booking booking) {
@@ -109,8 +109,6 @@ public class UpdateBookingStatusUseCaseImpl implements UpdateBookingStatusUseCas
             null, // TODO: Fetch from referral link
             booking.getDateRange().getStartDate(),
             booking.getDateRange().getEndDate(),
-            booking.getTotalAmount(),
-            booking.getCurrency(),
             booking.getUpdatedAt()
         );
 
@@ -120,14 +118,16 @@ public class UpdateBookingStatusUseCaseImpl implements UpdateBookingStatusUseCas
 
     /**
      * Publishes BookingCanceledEvent.
+     * <p>
+     * Cancellation details (reason, who canceled, timestamp) are not tracked in the booking table.
+     * The event only contains basic cancellation information.
+     * </p>
      */
     private void publishBookingCanceledEvent(Booking booking) {
         BookingCanceledEvent event = new BookingCanceledEvent(
             booking.getId(),
             booking.getPropertyId(),
-            booking.getCanceledBy(),
-            booking.getCancellationReason(),
-            booking.getCanceledAt()
+            booking.getUpdatedAt()
         );
 
         eventPublisher.publishEvent(event);
@@ -143,8 +143,6 @@ public class UpdateBookingStatusUseCaseImpl implements UpdateBookingStatusUseCas
             booking.getDateRange().getEndDate(),
             booking.getClientInfo().getEmail(),
             booking.getClientInfo().fullName(),
-            booking.getTotalAmount(),
-            booking.getCurrency(),
             booking.getStatus().name(),
             booking.getCreatedAt().format(DATE_TIME_FORMATTER)
         );

@@ -54,27 +54,34 @@ public class BookingFinishedEventHandler {
             event.bookingId(), event.referralLinkId());
 
         try {
-            // TODO: Fetch userId and commissionPercentage from referral_link
-            // For now, using event.userId() which may be null
-            // Need to query: SELECT user_id, commission_percentage FROM referrals.referral_links WHERE id = event.referralLinkId()
+            // TODO: THIS HANDLER NEEDS TO BE REFACTORED
+            // After V48/V50 migrations:
+            // - BookingFinishedEvent no longer contains totalAmount/currency
+            // - Financial data should come from external source (property pricing API, user input, etc.)
+            // - Should create commission_booking record instead of payment record
+            // - Need to determine where to get booking amount (property service? stored elsewhere?)
 
+            log.warn("BookingFinishedEvent handler not yet implemented for new architecture. " +
+                "Booking {} finished but no commission record created. " +
+                "TODO: Implement commission_booking creation with external amount source.",
+                event.bookingId());
+
+            // Temporarily disabled - needs refactoring to work with new schema
+            /*
             if (event.userId() == null) {
                 log.error("Cannot create payment: userId is null for booking {}. " +
                     "Need to fetch from referral_link table.", event.bookingId());
-                // TODO: Implement ReferralLinkRepositoryPort and fetch user data
                 return;
             }
 
-            // TODO: Fetch actual commission percentage from user's subscription plan
-            // For now, using default PRO commission (5%)
             BigDecimal commissionPercentage = PRO_COMMISSION;
 
             CreatePaymentUseCase.CreatePaymentCommand command = new CreatePaymentUseCase.CreatePaymentCommand(
                 event.bookingId(),
                 event.referralLinkId(),
                 event.userId(),
-                event.totalAmount(),
-                event.currency(),
+                ??? // totalAmount - where does this come from now?
+                ??? // currency - where does this come from now?
                 commissionPercentage
             );
 
@@ -82,6 +89,7 @@ public class BookingFinishedEventHandler {
 
             log.info("Payment created successfully with ID {} for booking {}, commission: {}",
                 payment.id(), event.bookingId(), payment.commissionAmount());
+            */
 
         } catch (Exception e) {
             log.error("Failed to create payment for booking {}: {}",

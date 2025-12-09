@@ -18,12 +18,11 @@ public interface UpdateBookingStatusUseCase {
 
     /**
      * Command to update booking status.
+     * Cancellation details (reason, who canceled) removed - not tracked in booking domain anymore.
      */
     record UpdateStatusCommand(
         Long bookingId,
-        String targetStatus, // RESERVED, FINISHED, CANCELED
-        String cancellationReason, // Required if targetStatus = CANCELED
-        String canceledBy // Required if targetStatus = CANCELED (CLIENT, OWNER, ADMIN, SYSTEM)
+        String targetStatus // RESERVED, FINISHED, CANCELED
     ) {
         public UpdateStatusCommand {
             if (bookingId == null) {
@@ -31,20 +30,6 @@ public interface UpdateBookingStatusUseCase {
             }
             if (targetStatus == null || targetStatus.isBlank()) {
                 throw new IllegalArgumentException("Target status is required");
-            }
-
-            // Validate that if CANCELED, we have reason and canceledBy
-            if ("CANCELED".equals(targetStatus)) {
-                if (cancellationReason == null || cancellationReason.isBlank()) {
-                    throw new IllegalArgumentException(
-                        "Cancellation reason is required when canceling a booking"
-                    );
-                }
-                if (canceledBy == null || canceledBy.isBlank()) {
-                    throw new IllegalArgumentException(
-                        "Canceled by is required when canceling a booking"
-                    );
-                }
             }
         }
     }

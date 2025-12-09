@@ -17,19 +17,14 @@ import java.util.List;
 public interface CommissionJpaRepository extends JpaRepository<CommissionJpaEntity, Long> {
 
     /**
-     * Busca todas las comisiones de un afiliado
+     * Busca comisiones por booking ID
      */
-    List<CommissionJpaEntity> findByAffiliateId(Long affiliateId);
+    List<CommissionJpaEntity> findByBookingId(Long bookingId);
 
     /**
-     * Busca comisiones de un afiliado por estado
+     * Busca comisiones por estado
      */
-    List<CommissionJpaEntity> findByAffiliateIdAndStatus(Long affiliateId, CommissionStatus status);
-
-    /**
-     * Busca comisiones de un enlace de referido
-     */
-    List<CommissionJpaEntity> findByReferralLinkId(Long referralLinkId);
+    List<CommissionJpaEntity> findByStatus(CommissionStatus status);
 
     /**
      * Busca comisiones listas para aprobación (PENDING + creadas hace más de 30 días)
@@ -47,37 +42,54 @@ public interface CommissionJpaRepository extends JpaRepository<CommissionJpaEnti
     List<CommissionJpaEntity> findApprovedForPayout();
 
     /**
-     * Busca comisiones por afiliado en un rango de fechas
+     * Busca comisiones por affiliate ID (usando JOIN con booking y referral_link)
      */
-    @Query("SELECT c FROM CommissionJpaEntity c " +
-           "WHERE c.affiliateId = :affiliateId " +
-           "AND c.createdAt BETWEEN :from AND :to")
-    List<CommissionJpaEntity> findByAffiliateIdAndDateRange(
+    @Query(value = "SELECT cb.* FROM referrals.commission_booking cb " +
+           "JOIN referrals.booking b ON b.booking_id = cb.booking_id " +
+           "JOIN referrals.referral_links rl ON rl.id = b.referral_link_id " +
+           "WHERE rl.affiliate_id = :affiliateId " +
+           "ORDER BY cb.created_at DESC",
+           nativeQuery = true)
+    List<CommissionJpaEntity> findByAffiliateId(@Param("affiliateId") Long affiliateId);
+
+    /**
+     * Calcula el total de earnings por affiliate ID
+     */
+    @Query(value = "SELECT COALESCE(SUM(cb.commission_amount), 0) " +
+           "FROM referrals.commission_booking cb " +
+           "JOIN referrals.booking b ON b.booking_id = cb.booking_id " +
+           "JOIN referrals.referral_links rl ON rl.id = b.referral_link_id " +
+           "WHERE rl.affiliate_id = :affiliateId",
+           nativeQuery = true)
+    BigDecimal calculateTotalEarningsByAffiliateId(@Param("affiliateId") Long affiliateId);
+
+    /**
+     * Calcula earnings por affiliate ID y status
+     */
+    @Query(value = "SELECT COALESCE(SUM(cb.commission_amount), 0) " +
+           "FROM referrals.commission_booking cb " +
+           "JOIN referrals.booking b ON b.booking_id = cb.booking_id " +
+           "JOIN referrals.referral_links rl ON rl.id = b.referral_link_id " +
+           "WHERE rl.affiliate_id = :affiliateId " +
+           "AND cb.status = CAST(:status AS referrals.commission_status)",
+           nativeQuery = true)
+    BigDecimal calculateEarningsByAffiliateIdAndStatus(
         @Param("affiliateId") Long affiliateId,
-        @Param("from") LocalDateTime from,
-        @Param("to") LocalDateTime to
+        @Param("status") String status
     );
 
     /**
-     * Calcula el total de comisiones ganadas por un afiliado
+     * Cuenta comisiones por affiliate ID y status
      */
-    @Query("SELECT COALESCE(SUM(c.commissionAmount), 0) FROM CommissionJpaEntity c " +
-           "WHERE c.affiliateId = :affiliateId")
-    BigDecimal calculateTotalEarnings(@Param("affiliateId") Long affiliateId);
-
-    /**
-     * Calcula comisiones por estado para un afiliado
-     */
-    @Query("SELECT COALESCE(SUM(c.commissionAmount), 0) FROM CommissionJpaEntity c " +
-           "WHERE c.affiliateId = :affiliateId " +
-           "AND c.status = :status")
-    BigDecimal calculateEarningsByStatus(
+    @Query(value = "SELECT COUNT(*) " +
+           "FROM referrals.commission_booking cb " +
+           "JOIN referrals.booking b ON b.booking_id = cb.booking_id " +
+           "JOIN referrals.referral_links rl ON rl.id = b.referral_link_id " +
+           "WHERE rl.affiliate_id = :affiliateId " +
+           "AND cb.status = CAST(:status AS referrals.commission_status)",
+           nativeQuery = true)
+    long countByAffiliateIdAndStatus(
         @Param("affiliateId") Long affiliateId,
-        @Param("status") CommissionStatus status
+        @Param("status") String status
     );
-
-    /**
-     * Cuenta comisiones por estado para un afiliado
-     */
-    long countByAffiliateIdAndStatus(Long affiliateId, CommissionStatus status);
 }

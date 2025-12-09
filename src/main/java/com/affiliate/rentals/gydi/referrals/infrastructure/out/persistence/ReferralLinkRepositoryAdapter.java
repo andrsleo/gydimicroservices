@@ -111,8 +111,6 @@ public class ReferralLinkRepositoryAdapter implements ReferralLinkRepository {
         entity.setEncryptedToken(domain.getEncryptedToken());
         entity.setShortCode(domain.getShortCode());
         entity.setClicksCount(domain.getClicksCount());
-        entity.setConversionsCount(domain.getConversionsCount());
-        entity.setTotalCommission(domain.getTotalCommission());
         entity.setStatus(domain.getStatus());
         entity.setExpiresAt(domain.getExpiresAt());
         entity.setDeletedAt(domain.getDeletedAt());
@@ -130,8 +128,6 @@ public class ReferralLinkRepositoryAdapter implements ReferralLinkRepository {
                 entity.getExpiresAt());
         domain.setId(entity.getId());
         domain.setClicksCount(entity.getClicksCount());
-        domain.setConversionsCount(entity.getConversionsCount());
-        domain.setTotalCommission(entity.getTotalCommission());
         domain.setStatus(entity.getStatus());
         domain.setDeletedAt(entity.getDeletedAt());
         domain.setCreatedAt(entity.getCreatedAt());

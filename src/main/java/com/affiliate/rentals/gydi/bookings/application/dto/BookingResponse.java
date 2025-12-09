@@ -7,6 +7,7 @@ import java.time.LocalDate;
  * Response DTO for booking information.
  * <p>
  * Used for all booking-related responses (create, update, query).
+ * Financial details are not included here - they are tracked in commission_booking table.
  * </p>
  */
 public record BookingResponse(
@@ -17,8 +18,6 @@ public record BookingResponse(
     LocalDate endDate,
     String clientEmail,
     String clientFullName,
-    BigDecimal totalAmount,
-    String currency,
     String status,
     String createdAt
 ) {

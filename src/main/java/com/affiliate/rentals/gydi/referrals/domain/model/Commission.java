@@ -15,9 +15,7 @@ import java.time.LocalDateTime;
 public class Commission {
 
     private Long id;
-    private Long referralLinkId;
-    private Long affiliateId;
-    private Long propertyId;
+    private Long bookingId; // FK a referrals.booking
     private BigDecimal commissionRate; // 0.02 (2%), 0.05 (5%), 0.15 (15%)
     private BigDecimal commissionAmount;
     private String affiliatePlan; // FREE, PRO, ELITE
@@ -34,27 +32,17 @@ public class Commission {
     /**
      * Método de fábrica para crear una nueva comisión
      *
-     * @param referralLinkId ID del link de referido
-     * @param affiliateId ID del afiliado
-     * @param propertyId ID de la propiedad
+     * @param bookingId ID del booking asociado
      * @param commissionAmount Monto de comisión directa (ya calculado)
      * @param commissionRate Tasa de comisión aplicada
      * @param affiliatePlan Plan del afiliado (FREE, PRO, ELITE)
      */
-    public static Commission create(Long referralLinkId,
-            Long affiliateId,
-            Long propertyId,
+    public static Commission create(Long bookingId,
             BigDecimal commissionAmount,
             BigDecimal commissionRate,
             String affiliatePlan) {
-        if (referralLinkId == null) {
-            throw new IllegalArgumentException("ReferralLinkId cannot be null");
-        }
-        if (affiliateId == null || affiliateId <= 0) {
-            throw new IllegalArgumentException("AffiliateId must be positive");
-        }
-        if (propertyId == null) {
-            throw new IllegalArgumentException("PropertyId cannot be null");
+        if (bookingId == null || bookingId <= 0) {
+            throw new IllegalArgumentException("BookingId must be positive");
         }
         if (commissionAmount == null || commissionAmount.compareTo(BigDecimal.ZERO) <= 0) {
             throw new IllegalArgumentException("Commission amount must be positive");
@@ -68,9 +56,7 @@ public class Commission {
 
         Commission commission = new Commission();
 
-        commission.referralLinkId = referralLinkId;
-        commission.affiliateId = affiliateId;
-        commission.propertyId = propertyId;
+        commission.bookingId = bookingId;
         commission.commissionAmount = commissionAmount.setScale(2, RoundingMode.HALF_UP);
         commission.commissionRate = commissionRate;
         commission.affiliatePlan = affiliatePlan;
@@ -173,16 +159,8 @@ public class Commission {
         return id;
     }
 
-    public Long getReferralLinkId() {
-        return referralLinkId;
-    }
-
-    public Long getAffiliateId() {
-        return affiliateId;
-    }
-
-    public Long getPropertyId() {
-        return propertyId;
+    public Long getBookingId() {
+        return bookingId;
     }
 
     public BigDecimal getCommissionRate() {

@@ -47,22 +47,8 @@ public class CommissionRepositoryAdapter implements CommissionRepository {
     }
 
     @Override
-    public List<Commission> findByAffiliateId(Long affiliateId) {
-        return jpaRepository.findByAffiliateId(affiliateId).stream()
-            .map(this::toDomain)
-            .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<Commission> findByAffiliateIdAndStatus(Long affiliateId, CommissionStatus status) {
-        return jpaRepository.findByAffiliateIdAndStatus(affiliateId, status).stream()
-            .map(this::toDomain)
-            .collect(Collectors.toList());
-    }
-
-    @Override
-    public List<Commission> findByReferralLinkId(Long referralLinkId) {
-        return jpaRepository.findByReferralLinkId(referralLinkId).stream()
+    public List<Commission> findByBookingId(Long bookingId) {
+        return jpaRepository.findByBookingId(bookingId).stream()
             .map(this::toDomain)
             .collect(Collectors.toList());
     }
@@ -82,56 +68,39 @@ public class CommissionRepositoryAdapter implements CommissionRepository {
     }
 
     @Override
-    public List<Commission> findByAffiliateIdAndDateRange(Long affiliateId,
-                                                           LocalDateTime from,
-                                                           LocalDateTime to) {
-        return jpaRepository.findByAffiliateIdAndDateRange(affiliateId, from, to).stream()
+    public List<Commission> findByStatus(CommissionStatus status) {
+        return jpaRepository.findByStatus(status).stream()
             .map(this::toDomain)
             .collect(Collectors.toList());
     }
 
     @Override
-    public BigDecimal calculateTotalEarnings(Long affiliateId) {
-        return jpaRepository.calculateTotalEarnings(affiliateId);
+    public List<Commission> findByAffiliateId(Long affiliateId) {
+        return jpaRepository.findByAffiliateId(affiliateId).stream()
+            .map(this::toDomain)
+            .collect(Collectors.toList());
     }
 
     @Override
-    public BigDecimal calculateEarningsByStatus(Long affiliateId, CommissionStatus status) {
-        return jpaRepository.calculateEarningsByStatus(affiliateId, status);
+    public BigDecimal calculateTotalEarningsByAffiliateId(Long affiliateId) {
+        return jpaRepository.calculateTotalEarningsByAffiliateId(affiliateId);
+    }
+
+    @Override
+    public BigDecimal calculateEarningsByAffiliateIdAndStatus(Long affiliateId, CommissionStatus status) {
+        return jpaRepository.calculateEarningsByAffiliateIdAndStatus(affiliateId, status.name());
     }
 
     @Override
     public long countByAffiliateIdAndStatus(Long affiliateId, CommissionStatus status) {
-        return jpaRepository.countByAffiliateIdAndStatus(affiliateId, status);
-    }
-
-    @Override
-    public Map<String, BigDecimal> calculateMonthlyEarnings(Long affiliateId, int year) {
-        LocalDateTime startOfYear = LocalDateTime.of(year, 1, 1, 0, 0);
-        LocalDateTime endOfYear = LocalDateTime.of(year, 12, 31, 23, 59, 59);
-
-        List<CommissionJpaEntity> commissions = jpaRepository.findByAffiliateIdAndDateRange(
-            affiliateId, startOfYear, endOfYear);
-
-        Map<String, BigDecimal> monthlyEarnings = new HashMap<>();
-        DateTimeFormatter monthFormatter = DateTimeFormatter.ofPattern("yyyy-MM");
-
-        for (CommissionJpaEntity commission : commissions) {
-            String monthKey = commission.getCreatedAt().format(monthFormatter);
-            BigDecimal currentAmount = monthlyEarnings.getOrDefault(monthKey, BigDecimal.ZERO);
-            monthlyEarnings.put(monthKey, currentAmount.add(commission.getCommissionAmount()));
-        }
-
-        return monthlyEarnings;
+        return jpaRepository.countByAffiliateIdAndStatus(affiliateId, status.name());
     }
 
     // Mappers
     private CommissionJpaEntity toEntity(Commission domain) {
         CommissionJpaEntity entity = new CommissionJpaEntity();
         entity.setId(domain.getId());
-        entity.setReferralLinkId(domain.getReferralLinkId());
-        entity.setAffiliateId(domain.getAffiliateId());
-        entity.setPropertyId(domain.getPropertyId());
+        entity.setBookingId(domain.getBookingId());
         entity.setCommissionRate(domain.getCommissionRate());
         entity.setCommissionAmount(domain.getCommissionAmount());
         entity.setAffiliatePlan(domain.getAffiliatePlan());
@@ -143,9 +112,7 @@ public class CommissionRepositoryAdapter implements CommissionRepository {
 
     private Commission toDomain(CommissionJpaEntity entity) {
         Commission domain = Commission.create(
-            entity.getReferralLinkId(),
-            entity.getAffiliateId(),
-            entity.getPropertyId(),
+            entity.getBookingId(),
             entity.getCommissionAmount(),
             entity.getCommissionRate(),
             entity.getAffiliatePlan()

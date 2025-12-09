@@ -18,10 +18,12 @@ spring:
   # ============================================
   # PostgreSQL Database Configuration
   # ============================================
+  # SECURITY: Never hardcode credentials in configuration files
+  # Use environment variables for all sensitive data
   datasource:
-    url: jdbc:postgresql://localhost:5432/gydidb
-    username: andresvargas
-    password: Gydi2025@
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gydidb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
 
   # JPA/Hibernate Configuration
@@ -87,16 +89,21 @@ server:
 # ============================================
 # JWT Configuration
 # ============================================
-# SECURITY: JWT secret MUST be set via environment variable
+# SECURITY: JWT secrets MUST be set via environment variables in production
 # Generate strong secret: openssl rand -base64 64
-# DO NOT commit actual secrets to git
+# DO NOT commit actual production secrets to git
+#
+# For local development, set DB_PASSWORD environment variable:
+# export DB_PASSWORD="your_local_password"
+# export JWT_SECRET="$(openssl rand -base64 64)"
+# export JWT_REFERRAL_SECRET="$(openssl rand -base64 64)"
 jwt:
-  secret: ${JWT_SECRET:CHANGE_THIS_IN_PRODUCTION_USE_ENVIRONMENT_VARIABLE}
+  secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
   # JWT for referral tokens
   referral:
-    secret: ${JWT_REFERRAL_SECRET:CHANGE_ME_JWT_REFERRAL_SECRET_KEY_256_BITS_MINIMUM_32_CHARS}
+    secret: ${JWT_REFERRAL_SECRET}
     expiration-ms: ${JWT_REFERRAL_EXPIRATION:2592000000} # 30 days in milliseconds
 
 # ============================================
@@ -161,31 +168,43 @@ management:
       access: none  # Disabled - can contain sensitive logs
 
 # ============================================
-# AWS Configuration
+# Cloud Services Configuration
 # ============================================
-aws:
-  # Amazon SES for Email
-  ses:
-    region: ${AWS_REGION:us-east-1}
-    from-email: ${AWS_SES_FROM_EMAIL:noreply@gydi.com}
-    access-key: ${AWS_ACCESS_KEY_ID}
-    secret-key: ${AWS_SECRET_ACCESS_KEY}
+# NOTE: AWS services are deprecated in favor of Cloudinary (storage) and Resend (email)
+# See: docs/setup/DEPLOYMENT_PLAN_VERCEL_FLYIO.md
 
-  # Amazon S3 for File Storage (Production only)
-  s3:
-    bucket-name: ${AWS_S3_BUCKET_NAME:gydi-profile-images}
-    region: ${AWS_S3_REGION:us-east-1}
-    access-key: ${AWS_ACCESS_KEY_ID}
-    secret-key: ${AWS_SECRET_ACCESS_KEY}
-    base-url: ${AWS_S3_BASE_URL:https://gydi-profile-images.s3.amazonaws.com}
+# Cloudinary for File Storage (replaces AWS S3)
+cloudinary:
+  url: ${CLOUDINARY_URL}  # Format: cloudinary://api_key:api_secret@cloud_name
 
-# ============================================
-# Storage Configuration (Development)
-# ============================================
+# Resend for Email Service (replaces AWS SES)
+resend:
+  api-key: ${RESEND_API_KEY}
+  from-email: ${RESEND_FROM_EMAIL:noreply@gydi.com}
+
+# Storage provider selection
 storage:
+  provider: ${STORAGE_PROVIDER:local}  # Options: local, cloudinary
   local:
     directory: ./uploads
     base-url: http://localhost:8080/uploads
+
+# Email provider selection
+email:
+  provider: ${EMAIL_PROVIDER:local}  # Options: local, resend
+
+# ============================================
+# AWS Configuration (DEPRECATED - Keep for reference only)
+# ============================================
+# aws:
+#   ses:
+#     region: ${AWS_REGION:us-east-1}
+#     from-email: ${AWS_SES_FROM_EMAIL:noreply@gydi.com}
+#   s3:
+#     bucket-name: ${AWS_S3_BUCKET_NAME:gydi-profile-images}
+#     region: ${AWS_S3_REGION:us-east-1}
+#     base-url: ${AWS_S3_BASE_URL:https://gydi-profile-images.s3.amazonaws.com}
+
 
 # ============================================
 # Password Reset Configuration
@@ -202,14 +221,17 @@ app:
 # ============================================
 # URL Encryption & Security Configuration
 # ============================================
+# SECURITY: All secrets MUST be set via environment variables
+# Generate AES secret: openssl rand -hex 32
+# Generate Hashids salt: openssl rand -base64 32
 security:
   url:
     # Hashids configuration for property ID obfuscation
     hashids:
-      salt: ${URL_HASHIDS_SALT:gydi-2024-property-secure-salt-change-in-production}
+      salt: ${URL_HASHIDS_SALT}
       min-length: 10  # Minimum length of encoded property IDs
     # AES-256 configuration for user ID encryption
     aes:
-      # IMPORTANT: Must be exactly 32 characters (256 bits)
-      # Generate with: openssl rand -base64 32 | head -c 32
-      secret: ${URL_AES_SECRET:CHANGE_ME_32_CHAR_SECRET_KEY!!!}
+      # IMPORTANT: Must be exactly 64 hex characters (32 bytes = 256 bits)
+      # Generate with: openssl rand -hex 32
+      secret: ${AES_SECRET_KEY}
