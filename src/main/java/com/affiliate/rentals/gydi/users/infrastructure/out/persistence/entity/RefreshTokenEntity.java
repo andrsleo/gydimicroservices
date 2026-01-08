@@ -7,12 +7,14 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 
 import java.time.Instant;
+import java.util.UUID;
 
 /**
- * JPA entity representing a refresh token in the users schema.
+ * JPA entity representing a refresh token with rotation support in the users schema.
  *
  * <p>This entity maps to the {@code refresh_tokens} table in the {@code users} schema.
- * Refresh tokens are used to obtain new access tokens without requiring re-authentication.</p>
+ * Implements OWASP-recommended one-time use tokens with automatic rotation and
+ * token family tracking for security.</p>
  *
  * @author GYDI Development Team
  */
@@ -34,14 +36,23 @@ public class RefreshTokenEntity {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "token_family_id", nullable = false)
+    private UUID tokenFamilyId;
+
     @Column(name = "expiry_date", nullable = false)
     private Instant expiryDate;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;
 
-    @Column(name = "revoked", nullable = false)
-    private boolean revoked;
+    @Column(name = "used_at")
+    private Instant usedAt;
+
+    @Column(name = "revoked_at")
+    private Instant revokedAt;
+
+    @Column(name = "replaced_by_token")
+    private String replacedByToken;
 
     @PrePersist
     protected void onCreate() {

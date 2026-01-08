@@ -60,6 +60,9 @@ public class UserEntityMapper {
         // Map account verification
         entity.setAccountVerified(user.isAccountVerified());
 
+        // Map Stripe Customer ID
+        entity.setStripeCustomerId(user.stripeCustomerId());
+
         // Map roles
         if (user.roles() != null) {
             Set<RoleEntity> roleEntities = user.roles().stream()
@@ -114,6 +117,7 @@ public class UserEntityMapper {
                 .activePlan(activePlan)
                 .capabilities(capabilities)
                 .accountVerified(entity.getAccountVerified() != null ? entity.getAccountVerified() : false)
+                .stripeCustomerId(entity.getStripeCustomerId())
                 .createdAt(entity.getCreatedAt())
                 .build();
     }

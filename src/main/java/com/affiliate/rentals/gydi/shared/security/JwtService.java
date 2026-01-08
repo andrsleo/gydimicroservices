@@ -264,6 +264,66 @@ public class JwtService {
     }
 
     /**
+     * Validates a JWT token (checks expiration and structure).
+     *
+     * <p>This is a simplified validation that only checks token structure and expiration.
+     * For full validation including user details comparison, use {@link #isTokenValid(String, UserDetails)}.</p>
+     *
+     * @param token the JWT token
+     * @return true if the token is valid and not expired, false otherwise
+     */
+    public boolean validateToken(String token) {
+        try {
+            return !isTokenExpired(token);
+        } catch (Exception e) {
+            return false;
+        }
+    }
+
+    /**
+     * Extracts the email (username/subject) from a JWT token.
+     *
+     * @param token the JWT token
+     * @return the email address
+     */
+    public String extractEmail(String token) {
+        return extractUsername(token); // Subject is the email
+    }
+
+    /**
+     * Extracts the user's name from a JWT token.
+     *
+     * <p>Note: Currently returns the email as name since firstName/lastName
+     * are not stored in the token. Consider adding firstName/lastName claims
+     * if needed.</p>
+     *
+     * @param token the JWT token
+     * @return the user's email (as name placeholder)
+     */
+    public String extractName(String token) {
+        // TODO: Add firstName/lastName claims to token generation
+        // For now, return email as placeholder
+        return extractUsername(token);
+    }
+
+    /**
+     * Extracts the roles from a JWT token.
+     *
+     * @param token the JWT token
+     * @return list of role names
+     */
+    @SuppressWarnings("unchecked")
+    public java.util.List<String> extractRoles(String token) {
+        return extractClaim(token, claims -> {
+            Object rolesObj = claims.get("roles");
+            if (rolesObj instanceof java.util.List<?>) {
+                return (java.util.List<String>) rolesObj;
+            }
+            return java.util.List.of();
+        });
+    }
+
+    /**
      * Checks if a JWT token is expired.
      *
      * @param token the JWT token
