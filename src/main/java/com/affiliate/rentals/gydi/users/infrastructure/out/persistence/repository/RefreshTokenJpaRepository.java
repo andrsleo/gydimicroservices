@@ -10,9 +10,10 @@ import org.springframework.stereotype.Repository;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 
 /**
- * Spring Data JPA repository for RefreshTokenEntity.
+ * Spring Data JPA repository for RefreshTokenEntity with rotation support.
  *
  * @author GYDI Development Team
  */
@@ -36,17 +37,40 @@ public interface RefreshTokenJpaRepository extends JpaRepository<RefreshTokenEnt
     List<RefreshTokenEntity> findByUserId(Long userId);
 
     /**
-     * Revokes all refresh tokens for a user by setting revoked flag to true.
+     * Finds all refresh tokens in a token family.
+     *
+     * @param tokenFamilyId the token family ID
+     * @return list of refresh tokens in the family
+     */
+    List<RefreshTokenEntity> findByTokenFamilyId(UUID tokenFamilyId);
+
+    /**
+     * Revokes all refresh tokens for a user by setting revokedAt timestamp.
      *
      * <p>Using @Modifying with clearAutomatically to ensure the persistence context
      * is cleared after the update, following Spring Data JPA best practices.</p>
      *
      * @param userId the user ID
+     * @param revokedAt the timestamp to set
      * @return the number of tokens revoked
      */
     @Modifying(clearAutomatically = true)
-    @Query("UPDATE RefreshTokenEntity r SET r.revoked = true WHERE r.userId = :userId AND r.revoked = false")
-    int revokeAllByUserId(@Param("userId") Long userId);
+    @Query("UPDATE RefreshTokenEntity r SET r.revokedAt = :revokedAt WHERE r.userId = :userId AND r.revokedAt IS NULL")
+    int revokeAllByUserId(@Param("userId") Long userId, @Param("revokedAt") Instant revokedAt);
+
+    /**
+     * Revokes all refresh tokens in a token family by setting revokedAt timestamp.
+     *
+     * <p>This method is critical for security - it's invoked when token reuse is detected,
+     * revoking all tokens in the rotation chain to prevent attackers from using stolen tokens.</p>
+     *
+     * @param tokenFamilyId the token family ID
+     * @param revokedAt the timestamp to set
+     * @return the number of tokens revoked
+     */
+    @Modifying(clearAutomatically = true)
+    @Query("UPDATE RefreshTokenEntity r SET r.revokedAt = :revokedAt WHERE r.tokenFamilyId = :familyId AND r.revokedAt IS NULL")
+    int revokeAllByTokenFamily(@Param("familyId") UUID tokenFamilyId, @Param("revokedAt") Instant revokedAt);
 
     /**
      * Deletes all expired refresh tokens.

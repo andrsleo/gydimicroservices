@@ -2,9 +2,7 @@ package com.affiliate.rentals.gydi.bookings.adapters.out.persistence.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
-import org.hibernate.annotations.JdbcType;
 import org.hibernate.annotations.UpdateTimestamp;
-import org.hibernate.dialect.PostgreSQLEnumJdbcType;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -52,8 +50,7 @@ public class BookingEntity {
     private String clientLastName;
 
     @Enumerated(EnumType.STRING)
-    @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(name = "status", nullable = false, columnDefinition = "referrals.booking_status")
+    @Column(name = "status", nullable = false)
     private BookingStatusEntity status;
 
     @CreationTimestamp

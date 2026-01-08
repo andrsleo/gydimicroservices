@@ -39,6 +39,7 @@ public final class User {
     private final SubscriptionPlan activePlan;
     private final UserCapabilities capabilities;
     private final boolean accountVerified;
+    private final String stripeCustomerId;
     private final LocalDateTime createdAt;
 
     /**
@@ -58,6 +59,7 @@ public final class User {
         this.activePlan = Objects.requireNonNullElse(builder.activePlan, SubscriptionPlan.FREE);
         this.capabilities = Objects.requireNonNullElse(builder.capabilities, UserCapabilities.defaultCapabilities());
         this.accountVerified = builder.accountVerified;
+        this.stripeCustomerId = builder.stripeCustomerId;
         this.createdAt = Objects.requireNonNullElseGet(builder.createdAt, LocalDateTime::now);
     }
 
@@ -152,6 +154,15 @@ public final class User {
     }
 
     /**
+     * Returns the user's Stripe Customer ID.
+     *
+     * @return the Stripe Customer ID (cus_xxxxx), may be {@code null} if user has never used payment features
+     */
+    public String stripeCustomerId() {
+        return stripeCustomerId;
+    }
+
+    /**
      * Checks if the user has a specific role.
      *
      * @param roleName the role name to check
@@ -189,6 +200,10 @@ public final class User {
                 .passwordHash(this.passwordHash)
                 .phoneNumber(this.phoneNumber)
                 .roles(updatedRoles)
+                .activePlan(this.activePlan)
+                .capabilities(this.capabilities)
+                .accountVerified(this.accountVerified)
+                .stripeCustomerId(this.stripeCustomerId)
                 .createdAt(this.createdAt)
                 .build();
     }
@@ -211,6 +226,10 @@ public final class User {
                 .passwordHash(this.passwordHash)
                 .phoneNumber(this.phoneNumber)
                 .roles(updatedRoles)
+                .activePlan(this.activePlan)
+                .capabilities(this.capabilities)
+                .accountVerified(this.accountVerified)
+                .stripeCustomerId(this.stripeCustomerId)
                 .createdAt(this.createdAt)
                 .build();
     }
@@ -260,6 +279,7 @@ public final class User {
         private SubscriptionPlan activePlan;
         private UserCapabilities capabilities;
         private boolean accountVerified;
+        private String stripeCustomerId;
         private LocalDateTime createdAt;
 
         private Builder() {
@@ -385,6 +405,17 @@ public final class User {
          */
         public Builder accountVerified(boolean accountVerified) {
             this.accountVerified = accountVerified;
+            return this;
+        }
+
+        /**
+         * Sets the user's Stripe Customer ID.
+         *
+         * @param stripeCustomerId the Stripe Customer ID (cus_xxxxx)
+         * @return this builder instance
+         */
+        public Builder stripeCustomerId(String stripeCustomerId) {
+            this.stripeCustomerId = stripeCustomerId;
             return this;
         }
 

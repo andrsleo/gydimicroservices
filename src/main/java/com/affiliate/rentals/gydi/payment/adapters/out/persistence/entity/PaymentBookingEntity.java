@@ -61,7 +61,7 @@ public class PaymentBookingEntity {
     @Column(name = "gateway_name", length = 100)
     private String gatewayName;
 
-    @Column(name = "gateway_response", columnDefinition = "jsonb")
+    @Column(name = "gateway_response", columnDefinition = "TEXT")
     private String gatewayResponse;
 
     @Column(name = "paid_at")

@@ -9,6 +9,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.validation.FieldError;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
+
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
@@ -16,9 +17,15 @@ import com.affiliate.rentals.gydi.properties.domain.exception.PropertyCannotBePu
 import com.affiliate.rentals.gydi.properties.domain.exception.PropertyDomainException;
 import com.affiliate.rentals.gydi.users.domain.exception.DomainException;
 import com.affiliate.rentals.gydi.users.domain.exception.InvalidPasswordException;
+import com.affiliate.rentals.gydi.users.domain.exception.InvalidTokenException;
 import com.affiliate.rentals.gydi.users.domain.exception.InvalidUserDataException;
+import com.affiliate.rentals.gydi.users.domain.exception.TokenNotFoundException;
+import com.affiliate.rentals.gydi.users.domain.exception.RateLimitExceededException;
+import com.affiliate.rentals.gydi.users.domain.exception.MissingRefreshTokenException;
 
+import io.jsonwebtoken.JwtException;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.ConstraintViolation;
 import jakarta.validation.ConstraintViolationException;
 import lombok.extern.slf4j.Slf4j;
@@ -541,5 +548,164 @@ public class GlobalExceptionHandler {
                                 fieldName,
                                 violation.getInvalidValue(),
                                 violation.getMessage());
+        }
+
+        /**
+         * Handles token not found exceptions during authentication.
+         *
+         * <p>
+         * <b>SECURITY: Missing Authentication Token</b>
+         * </p>
+         *
+         * <p>
+         * This handler catches attempts to access protected resources without providing
+         * an authentication token. It returns HTTP 401 Unauthorized to indicate that
+         * authentication is required.
+         * </p>
+         *
+         * @param ex      the token not found exception
+         * @param request the HTTP request
+         * @return an UNAUTHORIZED response
+         */
+        @ExceptionHandler(TokenNotFoundException.class)
+        public ResponseEntity<ErrorResponse> handleTokenNotFound(
+                        TokenNotFoundException ex,
+                        HttpServletRequest request) {
+                log.warn("SECURITY: Token not found - {}", ex.getMessage());
+                return buildResponse(
+                                HttpStatus.UNAUTHORIZED,
+                                "Authentication Required",
+                                "No valid authentication token found. Please login.",
+                                request.getRequestURI());
+        }
+
+        /**
+         * Handles invalid token exceptions during authentication.
+         *
+         * <p>
+         * <b>SECURITY: Invalid or Expired Token</b>
+         * </p>
+         *
+         * <p>
+         * This handler catches attempts to use invalid, expired, or malformed JWT tokens.
+         * It returns HTTP 401 Unauthorized to indicate that the user needs to login again.
+         * </p>
+         *
+         * @param ex      the invalid token exception
+         * @param request the HTTP request
+         * @return an UNAUTHORIZED response
+         */
+        @ExceptionHandler(InvalidTokenException.class)
+        public ResponseEntity<ErrorResponse> handleInvalidToken(
+                        InvalidTokenException ex,
+                        HttpServletRequest request) {
+                log.warn("SECURITY: Invalid token - {}", ex.getMessage());
+                return buildResponse(
+                                HttpStatus.UNAUTHORIZED,
+                                "Invalid Token",
+                                "Your authentication token is invalid or expired. Please login again.",
+                                request.getRequestURI());
+        }
+
+        /**
+         * Handles missing refresh token exceptions.
+         *
+         * <p>
+         * <b>SECURITY: Missing Refresh Token</b>
+         * </p>
+         *
+         * <p>
+         * This handler catches attempts to refresh authentication without providing
+         * a refresh token. It returns HTTP 401 Unauthorized with a clear message.
+         * </p>
+         *
+         * @param ex      the missing refresh token exception
+         * @param request the HTTP request
+         * @return an UNAUTHORIZED response
+         */
+        @ExceptionHandler(MissingRefreshTokenException.class)
+        public ResponseEntity<ErrorResponse> handleMissingRefreshToken(
+                        MissingRefreshTokenException ex,
+                        HttpServletRequest request) {
+                log.warn("SECURITY: Missing refresh token - {}", ex.getMessage());
+                return buildResponse(
+                                HttpStatus.UNAUTHORIZED,
+                                "Missing Refresh Token",
+                                ex.getMessage(),
+                                request.getRequestURI());
+        }
+
+        /**
+         * Handles rate limit exceeded exceptions during authentication.
+         *
+         * <p>
+         * <b>SECURITY: Rate Limiting - Brute Force Prevention</b>
+         * </p>
+         *
+         * <p>
+         * This handler catches attempts to exceed the allowed rate limit for authentication.
+         * It returns HTTP 429 (Too Many Requests) with appropriate retry-after headers
+         * to inform the client when they can retry.
+         * </p>
+         *
+         * @param ex       the rate limit exceeded exception
+         * @param request  the HTTP request
+         * @param response the HTTP response for setting headers
+         * @return a TOO_MANY_REQUESTS response
+         */
+        @ExceptionHandler(RateLimitExceededException.class)
+        public ResponseEntity<ErrorResponse> handleRateLimitExceeded(
+                        RateLimitExceededException ex,
+                        HttpServletRequest request,
+                        HttpServletResponse response) {
+                log.warn("SECURITY: Rate limit exceeded - {}", ex.getMessage());
+
+                // Set rate limit headers for client transparency
+                response.setHeader("X-RateLimit-Remaining", String.valueOf(ex.getRemainingAttempts()));
+                response.setHeader("X-RateLimit-Retry-After", String.valueOf(ex.getRetryAfterSeconds()));
+                response.setHeader("X-RateLimit-Limit", "10");
+
+                return buildResponse(
+                                HttpStatus.TOO_MANY_REQUESTS,
+                                "Rate Limit Exceeded",
+                                ex.getMessage(),
+                                request.getRequestURI());
+        }
+
+        /**
+         * Handles JWT-related exceptions from the JJWT library.
+         *
+         * <p>
+         * <b>SECURITY: JWT Processing Errors</b>
+         * </p>
+         *
+         * <p>
+         * This handler catches low-level JWT processing exceptions such as:
+         * </p>
+         * <ul>
+         * <li>Malformed JWT tokens</li>
+         * <li>Expired tokens</li>
+         * <li>Invalid signatures</li>
+         * <li>Unsupported JWT operations</li>
+         * </ul>
+         *
+         * <p>
+         * It returns HTTP 401 Unauthorized to indicate authentication failure.
+         * </p>
+         *
+         * @param ex      the JWT exception
+         * @param request the HTTP request
+         * @return an UNAUTHORIZED response
+         */
+        @ExceptionHandler(JwtException.class)
+        public ResponseEntity<ErrorResponse> handleJwtException(
+                        JwtException ex,
+                        HttpServletRequest request) {
+                log.warn("SECURITY: JWT processing error - {}", ex.getMessage());
+                return buildResponse(
+                                HttpStatus.UNAUTHORIZED,
+                                "Invalid Token",
+                                "Your authentication token is invalid or expired. Please login again.",
+                                request.getRequestURI());
         }
 }

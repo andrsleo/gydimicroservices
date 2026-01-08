@@ -8,9 +8,6 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
 
-import org.hibernate.annotations.JdbcType;
-import org.hibernate.dialect.PostgreSQLEnumJdbcType;
-
 import java.time.LocalDateTime;
 
 /**
@@ -45,8 +42,7 @@ public class ReferralClickJpaEntity {
     private String countryCode;
 
     @Enumerated(EnumType.STRING)
-    @JdbcType(PostgreSQLEnumJdbcType.class)
-    @Column(name = "device_type", nullable = false, columnDefinition = "referrals.device_type")
+    @Column(name = "device_type", nullable = false)
     private DeviceType deviceType = DeviceType.UNKNOWN;
 
     @Column(name = "bot_score")

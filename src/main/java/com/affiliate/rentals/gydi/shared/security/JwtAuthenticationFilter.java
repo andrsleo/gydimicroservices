@@ -18,8 +18,17 @@ import java.io.IOException;
 /**
  * JWT Authentication Filter for processing JWT tokens in requests.
  *
- * <p>This filter intercepts every request to extract and validate JWT tokens
- * from the Authorization header, setting up the security context for authenticated requests.</p>
+ * <p>This filter intercepts every request to extract and validate JWT tokens,
+ * setting up the security context for authenticated requests.</p>
+ *
+ * <p><b>Dual-Mode Token Extraction:</b></p>
+ * <ul>
+ *   <li><b>Production:</b> Extracts token from httpOnly cookie (XSS-proof)</li>
+ *   <li><b>Development:</b> Extracts token from Authorization header (Bearer token)</li>
+ * </ul>
+ *
+ * <p>The filter tries cookies first, then falls back to Authorization header.
+ * This design automatically adapts to the environment without explicit checks.</p>
  *
  * @author GYDI Development Team
  */

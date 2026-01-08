@@ -1,6 +1,7 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
 import java.time.LocalDateTime;
+import java.util.Optional;
 import java.util.Set;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -12,13 +13,16 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.argThat;
-import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
+import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentGatewayPort;
+import com.affiliate.rentals.gydi.subscriptions.domain.ports.PlanRepositoryPort;
+import com.affiliate.rentals.gydi.subscriptions.domain.ports.SubscriptionTransactionRepositoryPort;
+import com.affiliate.rentals.gydi.subscriptions.domain.ports.UserSubscriptionRepositoryPort;
 import com.affiliate.rentals.gydi.users.application.dto.CreateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
@@ -60,7 +64,15 @@ class CreateUserUseCaseTest {
     @Mock
     private UserDtoMapper mapper;
 
-    @InjectMocks
+    @Mock
+    private PlanRepositoryPort planRepository;
+
+    @Mock
+    private UserSubscriptionRepositoryPort subscriptionRepository;
+
+    @Mock
+    private SubscriptionTransactionRepositoryPort transactionRepository;
+
     private CreateUserUseCase createUserUseCase;
 
     private CreateUserRequest validRequest;
@@ -69,6 +81,19 @@ class CreateUserUseCaseTest {
 
     @BeforeEach
     void setUp() {
+        // Create CreateUserUseCase with Optional.empty() for PaymentGatewayPort
+        // This simulates tests running without Stripe and subscription integration configured
+        createUserUseCase = new CreateUserUseCase(
+                userRepository,
+                userProfileRepository,
+                passwordEncoder,
+                mapper,
+                Optional.empty(),
+                planRepository,
+                subscriptionRepository,
+                transactionRepository
+        );
+
         validRequest = new CreateUserRequest(
                 "john.doe@example.com",
                 "SecurePassword123",
