@@ -21,7 +21,7 @@ spring:
   # SECURITY: Never hardcode credentials in configuration files
   # Use environment variables for all sensitive data
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gydidb}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gydidb?stringtype=unspecified}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -36,7 +36,7 @@ spring:
         type:
           preferred_jsonb_jdbc_type: 1111
     hibernate:
-      ddl-auto: validate
+      ddl-auto: none
     open-in-view: false
 
   # ============================================
@@ -46,7 +46,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
-    schemas: users,properties,audit,referrals,payment
+    schemas: users,properties,audit,referrals,payment,subscriptions
     validate-on-migrate: false
     out-of-order: true
 
@@ -101,10 +101,10 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
-  # JWT for referral tokens
+  # JWT for referral tokens (can be overridden per-link, max 365 days)
   referral:
     secret: ${JWT_REFERRAL_SECRET}
-    expiration-ms: ${JWT_REFERRAL_EXPIRATION:2592000000} # 30 days in milliseconds
+    expiration-ms: ${JWT_REFERRAL_EXPIRATION:31536000000} # 365 days in milliseconds (default max, actual expiration set per-link)
 
 # ============================================
 # Logging Configuration
@@ -192,6 +192,19 @@ storage:
 # Email provider selection
 email:
   provider: ${EMAIL_PROVIDER:local}  # Options: local, resend
+
+# ============================================
+# Stripe Payment Gateway Configuration
+# ============================================
+# SECURITY: Stripe API keys MUST be set via environment variables
+# Get your keys from: https://dashboard.stripe.com/apikeys
+# Use test keys for development: sk_test_... and pk_test_...
+# NEVER commit production keys to git
+stripe:
+  api-key: ${STRIPE_API_KEY}  # Secret Key: sk_test_... or sk_live_...
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY}  # Publishable Key: pk_test_... or pk_live_...
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET}  # Webhook signing secret: whsec_...
+  currency: ${STRIPE_CURRENCY:USD}
 
 # ============================================
 # AWS Configuration (DEPRECATED - Keep for reference only)

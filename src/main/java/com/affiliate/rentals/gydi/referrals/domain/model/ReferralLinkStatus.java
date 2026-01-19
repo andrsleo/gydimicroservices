@@ -12,7 +12,7 @@ public enum ReferralLinkStatus {
     /**
      * Enlace desactivado temporalmente por el usuario
      */
-    INACTIVE,
+    PAUSED,
 
     /**
      * Enlace expirado por fecha
@@ -22,5 +22,5 @@ public enum ReferralLinkStatus {
     /**
      * Enlace eliminado (soft delete)
      */
-    DELETED
+    DISABLED
 }
