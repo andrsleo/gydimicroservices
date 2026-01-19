@@ -6,26 +6,29 @@ import com.affiliate.rentals.gydi.subscriptions.application.mapper.SubscriptionD
 import com.affiliate.rentals.gydi.subscriptions.domain.exception.*;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.*;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.*;
+import com.affiliate.rentals.gydi.users.domain.model.User;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.Optional;
 
 /**
  * Use case for changing a user's subscription plan (upgrade or downgrade).
  *
- * <p>This service handles the plan change flow:
+ * <p>
+ * This service handles the plan change flow:
  * <ul>
- *   <li>Validates user has an active subscription</li>
- *   <li>Validates new plan exists and is different from current</li>
- *   <li>For upgrades (e.g., FREE → PRO): applies immediately with prorated payment</li>
- *   <li>For downgrades (e.g., PRO → FREE): applies at end of billing period</li>
- *   <li>Updates subscription and records transaction</li>
- *   <li>Validates payment method for upgrades to paid plans</li>
+ * <li>Validates user has an active subscription</li>
+ * <li>Validates new plan exists and is different from current</li>
+ * <li>For upgrades (e.g., FREE → PRO): applies immediately with prorated
+ * payment</li>
+ * <li>For downgrades (e.g., PRO → FREE): applies at end of billing period</li>
+ * <li>Updates subscription and records transaction</li>
+ * <li>Validates payment method for upgrades to paid plans</li>
  * </ul>
  *
  * @author GYDI Development Team
@@ -41,6 +44,7 @@ public class ChangePlanUseCase {
     private final SubscriptionTransactionRepositoryPort transactionRepository;
     private final SubscriptionDtoMapper mapper;
     private final Optional<PaymentGatewayPort> paymentGateway;
+    private final UserRepositoryPort userRepository;
 
     public ChangePlanUseCase(
             UserSubscriptionRepositoryPort subscriptionRepository,
@@ -48,23 +52,25 @@ public class ChangePlanUseCase {
             PaymentMethodRepositoryPort paymentMethodRepository,
             SubscriptionTransactionRepositoryPort transactionRepository,
             SubscriptionDtoMapper mapper,
-            Optional<PaymentGatewayPort> paymentGateway) {
+            Optional<PaymentGatewayPort> paymentGateway,
+            UserRepositoryPort userRepository) {
         this.subscriptionRepository = subscriptionRepository;
         this.planRepository = planRepository;
         this.paymentMethodRepository = paymentMethodRepository;
         this.transactionRepository = transactionRepository;
         this.mapper = mapper;
         this.paymentGateway = paymentGateway;
+        this.userRepository = userRepository;
     }
 
     /**
      * Executes the change plan use case.
      *
-     * @param userId the ID of the user changing their plan
+     * @param userId  the ID of the user changing their plan
      * @param request the plan change request
      * @return the updated subscription
-     * @throws SubscriptionNotFoundException if user has no subscription
-     * @throws PlanNotFoundException if target plan doesn't exist
+     * @throws SubscriptionNotFoundException  if user has no subscription
+     * @throws PlanNotFoundException          if target plan doesn't exist
      * @throws InvalidPlanTransitionException if plan change is not allowed
      */
     @Transactional
@@ -136,14 +142,45 @@ public class ChangePlanUseCase {
             }
         }
 
-        // 7. Update subscription
+        // 7. Sync with Stripe and get updated subscription details
         LocalDateTime now = LocalDateTime.now();
-        LocalDateTime newExpiresAt = newPlan.isFree() ? null : now.plusMonths(1);
+        LocalDateTime defaultExpiresAt = newPlan.isFree() ? null : now.plusMonths(1);
+        LocalDateTime newExpiresAt = defaultExpiresAt;
+        String updatedStripeSubscriptionId = currentSubscription.stripeSubscriptionId();
+
+        // Handle downgrade to FREE: cancel Stripe subscription
+        if (newPlan.isFree() && currentSubscription.stripeSubscriptionId() != null) {
+            logger.info("⬇️ Downgrading to FREE plan - cancelling Stripe subscription");
+            boolean cancelled = cancelStripeSubscription(currentSubscription.stripeSubscriptionId());
+
+            // NOTE: We keep the stripeSubscriptionId even after cancel-at-period-end
+            // This allows us to reactivate if user upgrades before period ends
+            // Stripe webhooks will eventually remove it when truly cancelled
+            if (cancelled) {
+                logger.info("✅ Stripe subscription set to cancel at period end");
+                // Keep updatedStripeSubscriptionId as-is (don't set to null)
+            } else {
+                logger.warn("⚠️ Failed to cancel Stripe subscription - proceeding with local downgrade");
+            }
+        }
+        // Handle paid plan changes: sync with Stripe
+        else if (!newPlan.isFree()) {
+            StripeUpdateResult stripeResult = syncWithStripe(currentSubscription, newPlan);
+            if (stripeResult.periodEnd() != null) {
+                newExpiresAt = stripeResult.periodEnd();
+            }
+            if (stripeResult.subscriptionId() != null) {
+                updatedStripeSubscriptionId = stripeResult.subscriptionId();
+            }
+        }
+
         LocalDateTime newNextBillingDate = newPlan.isFree() ? null : newExpiresAt;
 
+        // 8. Update Subscription Entity with ALL changes in a single save
         UserSubscription updatedSubscription = UserSubscription.builder()
                 .from(currentSubscription)
                 .planId(newPlan.id())
+                .stripeSubscriptionId(updatedStripeSubscriptionId) // ✅ Update Stripe ID here
                 .expiresAt(newExpiresAt)
                 .nextBillingDate(newNextBillingDate)
                 .paymentMethodId(paymentMethod != null ? paymentMethod.id() : currentSubscription.paymentMethodId())
@@ -152,7 +189,7 @@ public class ChangePlanUseCase {
 
         UserSubscription savedSubscription = subscriptionRepository.save(updatedSubscription);
 
-        // 8. Create transaction record
+        // 9. Create transaction record
         SubscriptionTransaction transaction = SubscriptionTransaction.builder()
                 .userSubscriptionId(savedSubscription.id())
                 .userId(userId)
@@ -170,79 +207,191 @@ public class ChangePlanUseCase {
 
         transactionRepository.save(transaction);
 
-        // 9. Update Stripe subscription for paid plans (non-blocking - fails gracefully)
-        UserSubscription finalSubscription = updateStripeSubscriptionIfAvailable(
-                savedSubscription,
-                newPlan
-        );
-
-        return mapper.toUserSubscriptionResponse(finalSubscription, newPlan);
+        return mapper.toUserSubscriptionResponse(savedSubscription, newPlan);
     }
 
     /**
-     * Updates a Stripe subscription when changing plans.
-     *
-     * <p>This method attempts to update the Stripe Subscription when a user changes their plan.
-     * If the PaymentGateway is not available or the update fails, the error is logged
-     * and the plan change proceeds normally. The Stripe subscription can be updated later
-     * when needed.</p>
-     *
-     * <p><strong>Why fail gracefully:</strong></p>
-     * <ul>
-     *   <li>Stripe might be temporarily unavailable</li>
-     *   <li>API keys might not be configured in development environments</li>
-     *   <li>Plan changes should not be blocked by payment system issues</li>
-     * </ul>
-     *
-     * @param subscription the updated local subscription record
-     * @param newPlan the new subscription plan
-     * @return the subscription with updated Stripe subscription if successful, otherwise the original subscription
+     * Result record for Stripe synchronization operations.
+     * Contains both the updated period end date and the Stripe subscription ID.
      */
-    private UserSubscription updateStripeSubscriptionIfAvailable(
-            UserSubscription subscription,
-            Plan newPlan) {
-
-        // Skip if subscription doesn't have Stripe subscription ID
-        if (subscription.stripeSubscriptionId() == null) {
-            logger.debug("Subscription {} does not have Stripe subscription ID - skipping Stripe update",
-                    subscription.id());
-            return subscription;
+    private record StripeUpdateResult(LocalDateTime periodEnd, String subscriptionId) {
+        static StripeUpdateResult empty() {
+            return new StripeUpdateResult(null, null);
         }
+
+        static StripeUpdateResult of(LocalDateTime periodEnd, String subscriptionId) {
+            return new StripeUpdateResult(periodEnd, subscriptionId);
+        }
+    }
+
+    /**
+     * Synchronizes the subscription with Stripe.
+     * Creates a new subscription, updates existing one, or reactivates a canceled one.
+     *
+     * <p>
+     * <strong>Important:</strong> This method does NOT save to database.
+     * It only communicates with Stripe and returns the result data.
+     * The caller is responsible for persisting the changes.
+     *
+     * <p>
+     * <strong>Reactivation Logic:</strong> If a subscription exists in Stripe and is
+     * scheduled to cancel at period end (cancel_at_period_end=true), updating it with
+     * a new price automatically reactivates it. This allows users to upgrade from FREE
+     * back to a paid plan without creating duplicate subscriptions.
+     *
+     * @param subscription the current local subscription
+     * @param newPlan      the target plan
+     * @return StripeUpdateResult containing period end and subscription ID
+     */
+    private StripeUpdateResult syncWithStripe(UserSubscription subscription, Plan newPlan) {
 
         // Check if PaymentGateway is available
         if (paymentGateway.isEmpty()) {
-            logger.debug("PaymentGateway not available - skipping Stripe subscription update");
-            return subscription;
+            logger.debug("PaymentGateway not available - skipping Stripe subscription sync");
+            return StripeUpdateResult.empty();
         }
 
         // Check if new plan has Stripe Price ID
         if (newPlan.stripePriceId() == null) {
-            logger.warn("New plan {} does not have stripePriceId configured - skipping Stripe subscription update",
+            logger.warn("New plan {} does not have stripePriceId configured - skipping Stripe sync",
                     newPlan.planCode());
-            return subscription;
+            return StripeUpdateResult.empty();
         }
 
         try {
-            logger.info("Updating Stripe subscription {} to plan {}",
-                    subscription.stripeSubscriptionId(), newPlan.planCode());
+            // Get user's Stripe Customer ID
+            User user = userRepository.findById(subscription.userId())
+                    .orElseThrow(() -> new RuntimeException("User not found: " + subscription.userId()));
 
-            // Update Stripe subscription with new price
-            PaymentGatewayPort.SubscriptionResult updatedStripeSubscription = paymentGateway.get()
-                    .updateSubscription(
-                            subscription.stripeSubscriptionId(),
-                            newPlan.stripePriceId()
-                    );
+            if (user.stripeCustomerId() == null) {
+                logger.error("❌ User {} does not have Stripe Customer ID - cannot sync with Stripe",
+                        subscription.userId());
+                return StripeUpdateResult.empty();
+            }
 
-            logger.info("Stripe subscription updated successfully: {} to plan {}",
-                    updatedStripeSubscription.id(), newPlan.planCode());
+            PaymentGatewayPort.SubscriptionResult stripeSubscription;
 
-            return subscription;
+            // ========== CRITICAL DECISION POINT ==========
+            // Check if we have a Stripe subscription ID in our database
+            if (subscription.stripeSubscriptionId() != null) {
+                // We have a subscription ID - check its current state in Stripe
+                logger.info("🔍 Checking existing Stripe subscription: {}", subscription.stripeSubscriptionId());
+
+                try {
+                    // Get current subscription state from Stripe
+                    PaymentGatewayPort.SubscriptionResult existingSubscription =
+                            paymentGateway.get().getSubscription(subscription.stripeSubscriptionId());
+
+                    logger.info("   → Status: {}", existingSubscription.status());
+
+                    // Check subscription status
+                    if ("active".equals(existingSubscription.status()) ||
+                        "trialing".equals(existingSubscription.status()) ||
+                        "past_due".equals(existingSubscription.status())) {
+                        // Subscription is still active (may be scheduled to cancel) - UPDATE it
+                        // Note: Updating a subscription that's cancel_at_period_end automatically reactivates it
+                        logger.info("🔄 Updating/reactivating Stripe subscription {} to plan {}",
+                                subscription.stripeSubscriptionId(), newPlan.planCode());
+
+                        stripeSubscription = paymentGateway.get().updateSubscription(
+                                subscription.stripeSubscriptionId(),
+                                newPlan.stripePriceId());
+
+                        logger.info("✅ Stripe subscription updated successfully!");
+                        logger.info("   → Status: {}", stripeSubscription.status());
+                        logger.info("   → Period end: {}", stripeSubscription.currentPeriodEnd());
+
+                        // Return result (subscription ID unchanged)
+                        return StripeUpdateResult.of(
+                                stripeSubscription.currentPeriodEnd(),
+                                subscription.stripeSubscriptionId());
+
+                    } else {
+                        // Subscription is canceled, incomplete, or unpaid - CREATE NEW
+                        logger.warn("⚠️ Subscription {} has status '{}' - creating new subscription",
+                                subscription.stripeSubscriptionId(), existingSubscription.status());
+                        // Fall through to create new subscription below
+                    }
+
+                } catch (Exception e) {
+                    // Failed to get subscription (maybe it was deleted in Stripe) - CREATE NEW
+                    logger.warn("⚠️ Failed to retrieve Stripe subscription {}: {} - creating new",
+                            subscription.stripeSubscriptionId(), e.getMessage());
+                    // Fall through to create new subscription below
+                }
+            }
+
+            // Create NEW subscription (either no ID exists, or existing one is invalid)
+            logger.info("🚀 Creating NEW Stripe subscription");
+            logger.info("   → Customer: {}, Plan: {}, Price: {}",
+                    user.stripeCustomerId(), newPlan.planCode(), newPlan.stripePriceId());
+
+            // Get payment method token for the subscription
+            String paymentMethodToken = null;
+            if (subscription.paymentMethodId() != null) {
+                paymentMethodToken = paymentMethodRepository.findById(subscription.paymentMethodId())
+                        .map(PaymentMethod::gatewayToken)
+                        .orElse(null);
+            }
+
+            // Create NEW subscription in Stripe
+            stripeSubscription = paymentGateway.get().createSubscription(
+                    user.stripeCustomerId(),
+                    newPlan.stripePriceId(),
+                    paymentMethodToken);
+
+            logger.info("✅ Stripe subscription created successfully!");
+            logger.info("   → Subscription ID: {}", stripeSubscription.id());
+            logger.info("   → Status: {}", stripeSubscription.status());
+
+            // Return result WITH new subscription ID
+            return StripeUpdateResult.of(
+                    stripeSubscription.currentPeriodEnd(),
+                    stripeSubscription.id());
 
         } catch (Exception e) {
-            // Log error but don't fail plan change
-            logger.error("Failed to update Stripe subscription {} to plan {} - plan change will proceed without Stripe sync. Error: {}",
-                    subscription.stripeSubscriptionId(), newPlan.planCode(), e.getMessage(), e);
-            return subscription;
+            logger.error("❌ CRITICAL: Failed to sync Stripe subscription for user {} to plan {}",
+                    subscription.userId(), newPlan.planCode());
+            logger.error("   → Error: {}", e.getMessage(), e);
+            logger.error("   → Plan change will proceed WITHOUT Stripe sync!");
+            return StripeUpdateResult.empty();
+        }
+    }
+
+    /**
+     * Cancels a Stripe subscription at period end.
+     *
+     * <p>
+     * This is called when a user downgrades to the FREE plan.
+     * We use cancel_at_period_end to allow the user to continue
+     * accessing the paid features until their billing period ends,
+     * and to allow reactivation if they upgrade before the period ends.
+     * </p>
+     *
+     * @param stripeSubscriptionId the Stripe subscription ID to cancel
+     * @return true if cancelled successfully, false otherwise
+     */
+    private boolean cancelStripeSubscription(String stripeSubscriptionId) {
+        if (paymentGateway.isEmpty()) {
+            logger.warn("PaymentGateway not available - cannot cancel Stripe subscription");
+            return false;
+        }
+
+        try {
+            logger.info("Cancelling Stripe subscription at period end: {}", stripeSubscriptionId);
+
+            paymentGateway.get().cancelSubscription(
+                    stripeSubscriptionId,
+                    true // Cancel at period end (not immediately)
+            );
+
+            logger.info("Stripe subscription {} set to cancel at period end", stripeSubscriptionId);
+            return true;
+
+        } catch (Exception e) {
+            logger.error("Failed to cancel Stripe subscription {}: {}",
+                    stripeSubscriptionId, e.getMessage(), e);
+            return false;
         }
     }
 }

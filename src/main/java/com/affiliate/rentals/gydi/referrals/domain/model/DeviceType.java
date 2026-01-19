@@ -20,6 +20,11 @@ public enum DeviceType {
     TABLET,
 
     /**
+     * Tráfico automatizado (Bots/Crawlers)
+     */
+    BOT,
+
+    /**
      * Dispositivo desconocido o no clasificable
      */
     UNKNOWN

@@ -1,8 +1,10 @@
 package com.affiliate.rentals.gydi.subscriptions.infrastructure.out.persistence.mapper;
 
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethod;
+import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethodStatus;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethodType;
 import com.affiliate.rentals.gydi.subscriptions.infrastructure.out.persistence.entity.PaymentMethodEntity;
+import com.affiliate.rentals.gydi.subscriptions.infrastructure.out.persistence.entity.PaymentMethodEntity.PaymentMethodStatusEntity;
 import com.affiliate.rentals.gydi.subscriptions.infrastructure.out.persistence.entity.PaymentMethodEntity.PaymentMethodTypeEntity;
 import org.springframework.stereotype.Component;
 
@@ -46,7 +48,8 @@ public class PaymentMethodEntityMapper {
         entity.setCardExpYear(paymentMethod.cardExpYear());
         entity.setBillingEmail(paymentMethod.billingEmail());
         entity.setIsDefault(paymentMethod.isDefault());
-        entity.setIsActive(paymentMethod.isActive());
+        entity.setStatus(toEntityStatus(paymentMethod.status()));
+        entity.setDeletedAt(paymentMethod.deletedAt());
         entity.setCreatedAt(paymentMethod.createdAt());
         entity.setUpdatedAt(paymentMethod.updatedAt());
 
@@ -76,7 +79,8 @@ public class PaymentMethodEntityMapper {
                 .cardExpYear(entity.getCardExpYear())
                 .billingEmail(entity.getBillingEmail())
                 .isDefault(entity.getIsDefault())
-                .isActive(entity.getIsActive())
+                .status(toDomainStatus(entity.getStatus()))
+                .deletedAt(entity.getDeletedAt())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
                 .build();
@@ -100,5 +104,25 @@ public class PaymentMethodEntityMapper {
             return null;
         }
         return PaymentMethodType.valueOf(type.name());
+    }
+
+    /**
+     * Converts domain PaymentMethodStatus to entity PaymentMethodStatusEntity.
+     */
+    private PaymentMethodStatusEntity toEntityStatus(PaymentMethodStatus status) {
+        if (status == null) {
+            return PaymentMethodStatusEntity.ACTIVE;
+        }
+        return PaymentMethodStatusEntity.valueOf(status.name());
+    }
+
+    /**
+     * Converts entity PaymentMethodStatusEntity to domain PaymentMethodStatus.
+     */
+    private PaymentMethodStatus toDomainStatus(PaymentMethodStatusEntity status) {
+        if (status == null) {
+            return PaymentMethodStatus.ACTIVE;
+        }
+        return PaymentMethodStatus.valueOf(status.name());
     }
 }

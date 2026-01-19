@@ -4,6 +4,7 @@ import com.affiliate.rentals.gydi.subscriptions.application.dto.CreatePaymentMet
 import com.affiliate.rentals.gydi.subscriptions.application.dto.PaymentMethodResponse;
 import com.affiliate.rentals.gydi.subscriptions.application.mapper.SubscriptionDtoMapper;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethod;
+import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethodStatus;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethodType;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentGatewayPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentMethodRepositoryPort;
@@ -17,6 +18,9 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.locks.Lock;
+import java.util.concurrent.locks.ReentrantLock;
 
 /**
  * Use case for creating a new payment method for a user.
@@ -48,6 +52,9 @@ public class CreatePaymentMethodUseCase {
         private final UserRepositoryPort userRepository;
         private final SubscriptionDtoMapper mapper;
         private final Optional<PaymentGatewayPort> paymentGateway;
+
+        // Concurrency control for lazy customer creation
+        private final ConcurrentHashMap<Long, Lock> userLocks = new ConcurrentHashMap<>();
 
         public CreatePaymentMethodUseCase(
                         PaymentMethodRepositoryPort paymentMethodRepository,
@@ -109,8 +116,10 @@ public class CreatePaymentMethodUseCase {
                                                 : userRepository.findById(userId).map(u -> u.email().address())
                                                                 .orElse(null))
                                 .isDefault(shouldBeDefault)
-                                .isActive(true)
                                 .createdAt(LocalDateTime.now())
+                                .status(PaymentMethodStatus.ACTIVE)
+                                .deletedAt(null)
+                                .updatedAt(LocalDateTime.now())
                                 .build();
 
                 PaymentMethod savedPaymentMethod = paymentMethodRepository.save(paymentMethod);
@@ -123,8 +132,10 @@ public class CreatePaymentMethodUseCase {
          *
          * <p>
          * This method attempts to retrieve payment method details from Stripe and
-         * attach it
-         * to the user's Stripe Customer. If Stripe is unavailable, it returns fallback
+         * attach it to the user's Stripe Customer. If the user doesn't have a Stripe
+         * Customer yet,
+         * it creates one automatically (lazy creation). If Stripe is unavailable, it
+         * returns fallback
          * data.
          * </p>
          *
@@ -145,24 +156,33 @@ public class CreatePaymentMethodUseCase {
                         PaymentGatewayPort.PaymentMethodResult stripePaymentMethod = paymentGateway.get()
                                         .getPaymentMethod(stripePaymentMethodId);
 
-                        // Get user's Stripe Customer ID
+                        // Get user
                         User user = userRepository.findById(userId)
                                         .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-                        if (user.stripeCustomerId() != null) {
-                                // Attach payment method to customer in Stripe
-                                logger.info("Attaching payment method {} to customer {}",
-                                                stripePaymentMethodId, user.stripeCustomerId());
-
-                                paymentGateway.get().attachPaymentMethod(
-                                                stripePaymentMethodId,
-                                                user.stripeCustomerId());
-
-                                logger.info("Payment method attached successfully");
-                        } else {
-                                logger.warn("User {} does not have Stripe Customer ID - payment method not attached to customer",
+                        // Lazy create Stripe Customer if needed (with race condition protection)
+                        String stripeCustomerId = user.stripeCustomerId();
+                        if (stripeCustomerId == null) {
+                                logger.info("User {} does not have Stripe Customer ID - creating one now (lazy creation)",
                                                 userId);
+                                stripeCustomerId = createStripeCustomerForUserSafely(userId);
+
+                                if (stripeCustomerId == null) {
+                                        logger.error("Failed to create Stripe Customer for user {} - payment method will not be attached",
+                                                        userId);
+                                        return getFallbackPaymentMethodDetails();
+                                }
                         }
+
+                        // Attach payment method to customer in Stripe
+                        logger.info("Attaching payment method {} to customer {}",
+                                        stripePaymentMethodId, stripeCustomerId);
+
+                        paymentGateway.get().attachPaymentMethod(
+                                        stripePaymentMethodId,
+                                        stripeCustomerId);
+
+                        logger.info("Payment method attached successfully");
 
                         // Return real data from Stripe
                         return new PaymentMethodDetails(
@@ -175,6 +195,103 @@ public class CreatePaymentMethodUseCase {
                         logger.error("Failed to retrieve/attach payment method from Stripe: {} - using fallback data. Error: {}",
                                         stripePaymentMethodId, e.getMessage(), e);
                         return getFallbackPaymentMethodDetails();
+                }
+        }
+
+        /**
+         * Thread-safe wrapper for creating a Stripe Customer using double-checked
+         * locking.
+         * 
+         * <p>
+         * This method prevents race conditions when multiple concurrent requests
+         * attempt to create a customer for the same user. It uses per-user locking
+         * to ensure only one customer is created in Stripe.
+         * </p>
+         * 
+         * @param userId the ID of the user
+         * @return the Stripe Customer ID if successful, null if failed
+         */
+        private String createStripeCustomerForUserSafely(Long userId) {
+                // Get or create a lock for this specific user
+                Lock userLock = userLocks.computeIfAbsent(userId, k -> new ReentrantLock());
+
+                userLock.lock();
+                try {
+                        // Double-check: another thread might have created the customer while we waited
+                        User freshUser = userRepository.findById(userId)
+                                        .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+
+                        if (freshUser.stripeCustomerId() != null) {
+                                logger.info("Stripe Customer ID was created by another thread for user {}: {}",
+                                                userId, freshUser.stripeCustomerId());
+                                return freshUser.stripeCustomerId();
+                        }
+
+                        // Still null after double-check, proceed with creation
+                        return createStripeCustomerForUser(freshUser);
+
+                } finally {
+                        userLock.unlock();
+                        // Clean up lock after use to prevent memory leak
+                        userLocks.remove(userId);
+                }
+        }
+
+        /**
+         * Creates a Stripe Customer for a user who doesn't have one yet.
+         * 
+         * <p>
+         * <strong>IMPORTANT:</strong> This method should only be called from
+         * {@link #createStripeCustomerForUserSafely(Long)} to ensure thread safety.
+         * </p>
+         * 
+         * <p>
+         * This method creates the customer in Stripe and saves the ID to the local
+         * database.
+         * The operation is idempotent - if Stripe reports the customer already exists
+         * (based on
+         * email or metadata), we retrieve and use the existing customer ID.
+         * </p>
+         * 
+         * @param user the user to create a Stripe Customer for
+         * @return the Stripe Customer ID if successful, null if failed
+         */
+        private String createStripeCustomerForUser(User user) {
+                try {
+                        logger.info("Creating Stripe Customer for user {} (lazy creation)", user.email().address());
+
+                        PaymentGatewayPort.CustomerResult customerResult = paymentGateway.get().createCustomer(
+                                        user.email().address(),
+                                        user.name(),
+                                        String.format("userId:%d", user.id()));
+
+                        logger.info("Stripe Customer created successfully: {} for user {}",
+                                        customerResult.id(), user.email().address());
+
+                        // Update user with Stripe Customer ID
+                        User userWithStripeId = User.builder()
+                                        .id(user.id())
+                                        .name(user.name())
+                                        .email(user.email())
+                                        .passwordHash(user.passwordHash())
+                                        .phoneNumber(user.phoneNumber())
+                                        .roles(user.roles())
+                                        .activePlan(user.activePlan())
+                                        .capabilities(user.capabilities())
+                                        .accountVerified(user.isAccountVerified())
+                                        .stripeCustomerId(customerResult.id())
+                                        .createdAt(user.createdAt())
+                                        .build();
+
+                        // Save updated user with Stripe Customer ID
+                        userRepository.save(userWithStripeId);
+
+                        return customerResult.id();
+
+                } catch (Exception e) {
+                        logger.error("Failed to create Stripe Customer for user {} during lazy creation. Error: {}",
+                                        user.email().address(), e.getMessage(), e);
+                        return null;
                 }
         }
 

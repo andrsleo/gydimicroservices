@@ -24,6 +24,7 @@ import jakarta.validation.constraints.Size;
  * @param name the user's full name (DEPRECATED - kept for backwards compatibility only)
  * @param phoneNumber the user's phone number (optional)
  * @param roleNames the set of role names to assign to the user
+ * @param selectedPlanCode the plan code selected during registration (optional, e.g., "FREE", "PRO", "ELITE")
  * @author GYDI Development Team
  */
 public record CreateUserRequest(
@@ -47,6 +48,8 @@ public record CreateUserRequest(
 
         String phoneNumber,
 
-        Set<String> roleNames
+        Set<String> roleNames,
+
+        String selectedPlanCode
 ) {
 }

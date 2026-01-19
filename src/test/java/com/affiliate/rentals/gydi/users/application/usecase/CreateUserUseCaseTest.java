@@ -19,10 +19,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import org.mockito.junit.jupiter.MockitoExtension;
 
-import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentGatewayPort;
-import com.affiliate.rentals.gydi.subscriptions.domain.ports.PlanRepositoryPort;
-import com.affiliate.rentals.gydi.subscriptions.domain.ports.SubscriptionTransactionRepositoryPort;
-import com.affiliate.rentals.gydi.subscriptions.domain.ports.UserSubscriptionRepositoryPort;
 import com.affiliate.rentals.gydi.users.application.dto.CreateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
 import com.affiliate.rentals.gydi.users.application.mapper.UserDtoMapper;
@@ -65,13 +61,7 @@ class CreateUserUseCaseTest {
     private UserDtoMapper mapper;
 
     @Mock
-    private PlanRepositoryPort planRepository;
-
-    @Mock
-    private UserSubscriptionRepositoryPort subscriptionRepository;
-
-    @Mock
-    private SubscriptionTransactionRepositoryPort transactionRepository;
+    private UserInitializationService initializationService;
 
     private CreateUserUseCase createUserUseCase;
 
@@ -81,17 +71,14 @@ class CreateUserUseCaseTest {
 
     @BeforeEach
     void setUp() {
-        // Create CreateUserUseCase with Optional.empty() for PaymentGatewayPort
-        // This simulates tests running without Stripe and subscription integration configured
+        // Create CreateUserUseCase with mocked UserInitializationService
+        // Initialization tasks (Stripe customer and FREE subscription) are handled in separate transactions
         createUserUseCase = new CreateUserUseCase(
                 userRepository,
                 userProfileRepository,
                 passwordEncoder,
                 mapper,
-                Optional.empty(),
-                planRepository,
-                subscriptionRepository,
-                transactionRepository
+                initializationService
         );
 
         validRequest = new CreateUserRequest(
@@ -101,7 +88,8 @@ class CreateUserUseCaseTest {
                 "Doe",             // lastName
                 null,              // name (deprecated)
                 "+1234567890",
-                Set.of("USER")
+                Set.of("USER"),
+                null               // selectedPlanCode
         );
 
         savedUser = User.builder()
@@ -130,6 +118,7 @@ class CreateUserUseCaseTest {
         when(userRepository.existsByEmail(any(Email.class))).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(initializationService.createStripeCustomerIfAvailable(any(User.class))).thenReturn(null); // No Stripe customer created
         when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
 
         // Act
@@ -146,6 +135,8 @@ class CreateUserUseCaseTest {
         verify(userRepository).existsByEmail(any(Email.class));
         verify(passwordEncoder).encode("SecurePassword123");
         verify(userRepository).save(any(User.class));
+        verify(initializationService).createStripeCustomerIfAvailable(any(User.class));
+        verify(initializationService).createDefaultFreeSubscription(any(User.class));
         verify(mapper).toResponse(savedUser);
     }
 
@@ -177,7 +168,8 @@ class CreateUserUseCaseTest {
                 "Doe",             // lastName
                 null,              // name (deprecated)
                 "+1987654321",
-                null               // roleNames
+                null,              // roleNames
+                null               // selectedPlanCode
         );
 
         User userWithGuestRole = User.builder()
@@ -201,6 +193,7 @@ class CreateUserUseCaseTest {
         when(userRepository.existsByEmail(any(Email.class))).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(userWithGuestRole);
+        when(initializationService.createStripeCustomerIfAvailable(any(User.class))).thenReturn(null);
         when(mapper.toResponse(any(User.class))).thenReturn(response);
 
         // Act
@@ -226,7 +219,8 @@ class CreateUserUseCaseTest {
                 "User",            // lastName
                 null,              // name (deprecated)
                 "+1111111111",
-                Set.of("USER")
+                Set.of("USER"),
+                null               // selectedPlanCode
         );
 
         User adminUser = User.builder()
@@ -253,6 +247,7 @@ class CreateUserUseCaseTest {
         when(userRepository.existsByEmail(any(Email.class))).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(adminUser);
+        when(initializationService.createStripeCustomerIfAvailable(any(User.class))).thenReturn(null);
         when(mapper.toResponse(any(User.class))).thenReturn(adminResponse);
 
         // Act
@@ -279,12 +274,14 @@ class CreateUserUseCaseTest {
                 "User",            // lastName
                 null,              // name (deprecated)
                 "+1234567890",
-                Set.of("USER")
+                Set.of("USER"),
+                null               // selectedPlanCode
         );
 
         when(userRepository.existsByEmail(any(Email.class))).thenReturn(false);
         when(passwordEncoder.encode(rawPassword)).thenReturn(encodedPassword);
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(initializationService.createStripeCustomerIfAvailable(any(User.class))).thenReturn(null);
         when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
 
         // Act
@@ -304,6 +301,7 @@ class CreateUserUseCaseTest {
         when(userRepository.existsByEmail(any(Email.class))).thenReturn(false);
         when(passwordEncoder.encode(anyString())).thenReturn("$2a$10$encodedPassword");
         when(userRepository.save(any(User.class))).thenReturn(savedUser);
+        when(initializationService.createStripeCustomerIfAvailable(any(User.class))).thenReturn(null);
         when(mapper.toResponse(any(User.class))).thenReturn(expectedResponse);
 
         // Act

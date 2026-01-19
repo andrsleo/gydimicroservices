@@ -29,8 +29,7 @@ import lombok.extern.slf4j.Slf4j;
  * (AES-256-GCM).</li>
  * <li><b>Integrity:</b> GCM mode provides authenticated encryption
  * (tamper-proof).</li>
- * <li><b>Expiration:</b> Tokens expire after a configured duration (default 30
- * days).</li>
+ * <li><b>Expiration:</b> Tokens expire after a configured duration (customizable per-link, default max 365 days).</li>
  * <li><b>Uniqueness:</b> Uses JTI (JWT ID) to prevent replay attacks if
  * tracked.</li>
  * </ul>
@@ -56,7 +55,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 public class JwtReferralTokenService {
 
-    private static final long DEFAULT_EXPIRATION_MS = 30L * 24 * 60 * 60 * 1000; // 30 days
+    private static final long DEFAULT_EXPIRATION_MS = 365L * 24 * 60 * 60 * 1000; // 365 days (max default)
     private static final String CLAIM_PROPERTY_ID = "propertyId";
 
     private final SecretKey encryptionKey;
@@ -86,20 +85,34 @@ public class JwtReferralTokenService {
     }
 
     /**
-     * Generates an encrypted JWE referral token.
+     * Generates an encrypted JWE referral token with default expiration.
      *
      * @param userId     the ID of the user generating the referral link
      * @param propertyId the Long of the property being referred
      * @return encrypted JWE token string
      */
     public String generateReferralToken(Long userId, Long propertyId) {
+        return generateReferralToken(userId, propertyId, this.expirationMs);
+    }
+
+    /**
+     * Generates an encrypted JWE referral token with custom expiration.
+     *
+     * @param userId          the ID of the user generating the referral link
+     * @param propertyId      the Long of the property being referred
+     * @param customExpirationMs custom expiration duration in milliseconds
+     * @return encrypted JWE token string
+     */
+    public String generateReferralToken(Long userId, Long propertyId, long customExpirationMs) {
         if (userId == null)
             throw new IllegalArgumentException("User ID cannot be null");
         if (propertyId == null)
             throw new IllegalArgumentException("Property ID cannot be null");
+        if (customExpirationMs <= 0)
+            throw new IllegalArgumentException("Expiration time must be positive");
 
         Date now = new Date();
-        Date expiration = new Date(now.getTime() + expirationMs);
+        Date expiration = new Date(now.getTime() + customExpirationMs);
         String jti = UUID.randomUUID().toString();
 
         // Create JWE
@@ -114,8 +127,8 @@ public class JwtReferralTokenService {
                 .encryptWith(encryptionKey, Jwts.ENC.A256GCM) // Encrypts payload
                 .compact();
 
-        log.debug("Generated JWE referral token for userId={}, propertyId={}, jti={}",
-                userId, propertyId, jti);
+        log.debug("Generated JWE referral token for userId={}, propertyId={}, jti={}, expirationDays={}",
+                userId, propertyId, jti, customExpirationMs / (24 * 60 * 60 * 1000));
 
         return token;
     }

@@ -61,9 +61,11 @@ public class PaymentMethodEntity {
     /**
      * The type of payment method.
      * Uses STRING mapping for H2 compatibility (tests) and PostgreSQL (production).
+     * JdbcTypeCode VARCHAR allows PostgreSQL to auto-cast to ENUM during UPDATE.
      */
     @Enumerated(EnumType.STRING)
-    @Column(name = "method_type", nullable = false, length = 20)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.VARCHAR)
+    @Column(name = "method_type", nullable = false)
     private PaymentMethodTypeEntity methodType;
 
     /**
@@ -116,10 +118,22 @@ public class PaymentMethodEntity {
     private Boolean isDefault = false;
 
     /**
-     * Flag indicating if this payment method is active and can be used.
+     * The current status of the payment method (ACTIVE, INACTIVE, EXPIRED, FAILED,
+     * REPLACED).
+     * This field implements soft delete functionality and lifecycle management.
+     * JdbcTypeCode VARCHAR allows PostgreSQL to auto-cast to ENUM during UPDATE.
      */
-    @Column(name = "is_active", nullable = false)
-    private Boolean isActive = true;
+    @Enumerated(EnumType.STRING)
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.VARCHAR)
+    @Column(name = "status", nullable = false, length = 20)
+    private PaymentMethodStatusEntity status = PaymentMethodStatusEntity.ACTIVE;
+
+    /**
+     * Timestamp when this payment method was soft deleted (status set to INACTIVE).
+     * Null if payment method has never been deleted.
+     */
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
 
     /**
      * Timestamp when this payment method was created.
@@ -155,5 +169,18 @@ public class PaymentMethodEntity {
      */
     public enum PaymentMethodTypeEntity {
         CREDIT_CARD, DEBIT_CARD, PAYPAL, STRIPE, OTHER
+    }
+
+    /**
+     * Enum for payment method status (mirrors database enum).
+     * This enum supports soft delete functionality and payment method lifecycle
+     * management.
+     */
+    public enum PaymentMethodStatusEntity {
+        ACTIVE, // Available for payments
+        INACTIVE, // Soft deleted
+        EXPIRED, // Card expired
+        FAILED, // Gateway validation failed
+        REPLACED // Replaced by another payment method
     }
 }

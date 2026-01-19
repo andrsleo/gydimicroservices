@@ -20,13 +20,14 @@ import java.util.Optional;
 /**
  * Use case for subscribing a user to a subscription plan.
  *
- * <p>This service handles the complete subscription flow:
+ * <p>
+ * This service handles the complete subscription flow:
  * <ul>
- *   <li>Validates the plan exists and is active</li>
- *   <li>Checks if user already has an active subscription</li>
- *   <li>For FREE plan: creates subscription immediately</li>
- *   <li>For paid plans: validates payment method and processes payment</li>
- *   <li>Records transaction for audit trail</li>
+ * <li>Validates the plan exists and is active</li>
+ * <li>Checks if user already has an active subscription</li>
+ * <li>For FREE plan: creates subscription immediately</li>
+ * <li>For paid plans: validates payment method and processes payment</li>
+ * <li>Records transaction for audit trail</li>
  * </ul>
  *
  * @author GYDI Development Team
@@ -64,12 +65,15 @@ public class SubscribeToPlanUseCase {
     /**
      * Executes the subscribe to plan use case.
      *
-     * @param userId the ID of the user subscribing
-     * @param request the subscription request containing plan code and payment details
+     * @param userId  the ID of the user subscribing
+     * @param request the subscription request containing plan code and payment
+     *                details
      * @return the created subscription
-     * @throws PlanNotFoundException if plan doesn't exist
-     * @throws InvalidSubscriptionStateException if user already has active subscription
-     * @throws PaymentMethodNotFoundException if payment method required but not found
+     * @throws PlanNotFoundException             if plan doesn't exist
+     * @throws InvalidSubscriptionStateException if user already has active
+     *                                           subscription
+     * @throws PaymentMethodNotFoundException    if payment method required but not
+     *                                           found
      */
     @Transactional
     public UserSubscriptionResponse execute(Long userId, SubscribeToPlanRequest request) {
@@ -119,6 +123,8 @@ public class SubscribeToPlanUseCase {
                 .planId(plan.id())
                 .status(SubscriptionStatus.ACTIVE)
                 .startedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
                 .expiresAt(expiresAt)
                 .paymentMethodId(paymentMethod != null ? paymentMethod.id() : null)
                 .autoRenew(request.autoRenew())
@@ -140,17 +146,19 @@ public class SubscribeToPlanUseCase {
                 .periodStart(now)
                 .periodEnd(expiresAt)
                 .processedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
                 .build();
 
         transactionRepository.save(transaction);
 
-        // 6. For paid plans, create Stripe subscription (non-blocking - fails gracefully)
+        // 6. For paid plans, create Stripe subscription (non-blocking - fails
+        // gracefully)
         UserSubscription finalSubscription = createStripeSubscriptionIfAvailable(
                 savedSubscription,
                 plan,
                 userId,
-                paymentMethod != null ? paymentMethod.gatewayToken() : null
-        );
+                paymentMethod != null ? paymentMethod.gatewayToken() : null);
 
         return mapper.toUserSubscriptionResponse(finalSubscription, plan);
     }
@@ -158,23 +166,31 @@ public class SubscribeToPlanUseCase {
     /**
      * Creates a Stripe subscription for paid plans.
      *
-     * <p>This method attempts to create a Stripe Subscription immediately during subscription.
-     * If the PaymentGateway is not available or the creation fails, the error is logged
-     * and the subscription proceeds normally. The Stripe subscription can be created later
-     * when needed.</p>
+     * <p>
+     * This method attempts to create a Stripe Subscription immediately during
+     * subscription.
+     * If the PaymentGateway is not available or the creation fails, the error is
+     * logged
+     * and the subscription proceeds normally. The Stripe subscription can be
+     * created later
+     * when needed.
+     * </p>
      *
-     * <p><strong>Why fail gracefully:</strong></p>
+     * <p>
+     * <strong>Why fail gracefully:</strong>
+     * </p>
      * <ul>
-     *   <li>Stripe might be temporarily unavailable</li>
-     *   <li>API keys might not be configured in development environments</li>
-     *   <li>User subscription should not be blocked by payment system issues</li>
+     * <li>Stripe might be temporarily unavailable</li>
+     * <li>API keys might not be configured in development environments</li>
+     * <li>User subscription should not be blocked by payment system issues</li>
      * </ul>
      *
-     * @param subscription the local subscription record
-     * @param plan the subscription plan
-     * @param userId the user ID
+     * @param subscription          the local subscription record
+     * @param plan                  the subscription plan
+     * @param userId                the user ID
      * @param stripePaymentMethodId the Stripe payment method ID
-     * @return the subscription with stripeSubscriptionId set if successful, otherwise the original subscription
+     * @return the subscription with stripeSubscriptionId set if successful,
+     *         otherwise the original subscription
      */
     private UserSubscription createStripeSubscriptionIfAvailable(
             UserSubscription subscription,
@@ -184,19 +200,23 @@ public class SubscribeToPlanUseCase {
 
         // Skip for FREE plans
         if (plan.isFree()) {
-            logger.debug("Skipping Stripe subscription creation for FREE plan");
+            logger.info("✅ Skipping Stripe subscription creation for FREE plan");
             return subscription;
         }
 
         // Check if PaymentGateway is available
         if (paymentGateway.isEmpty()) {
-            logger.debug("PaymentGateway not available - skipping Stripe subscription creation");
+            logger.error("❌ CRITICAL: PaymentGateway not available - skipping Stripe subscription creation");
+            logger.error("   → Check if Stripe API keys are configured in application.properties");
             return subscription;
         }
 
         // Check if plan has Stripe Price ID
         if (plan.stripePriceId() == null) {
-            logger.warn("Plan {} does not have stripePriceId configured - skipping Stripe subscription creation",
+            logger.error(
+                    "❌ CRITICAL: Plan {} does not have stripePriceId configured - skipping Stripe subscription creation",
+                    plan.planCode());
+            logger.error("   → Run UPDATE subscriptions.plans SET stripe_price_id = 'price_xxx' WHERE plan_code = '{}'",
                     plan.planCode());
             return subscription;
         }
@@ -207,21 +227,28 @@ public class SubscribeToPlanUseCase {
                     .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
             if (user.stripeCustomerId() == null) {
-                logger.error("User {} does not have Stripe Customer ID - cannot create subscription", userId);
+                logger.error("❌ CRITICAL: User {} does not have Stripe Customer ID - cannot create subscription",
+                        userId);
+                logger.error(
+                        "   → This should have been created during registration or lazy-created when adding payment method");
                 return subscription;
             }
 
-            logger.info("Creating Stripe subscription for user {} on plan {}", userId, plan.planCode());
+            logger.info("🚀 Creating Stripe subscription for user {} (customer: {}) on plan {} (price: {})",
+                    userId, user.stripeCustomerId(), plan.planCode(), plan.stripePriceId());
+            logger.info("   → Payment Method: {}", stripePaymentMethodId != null ? stripePaymentMethodId : "default");
 
             // Create Stripe subscription
             PaymentGatewayPort.SubscriptionResult stripeSubscription = paymentGateway.get().createSubscription(
                     user.stripeCustomerId(),
                     plan.stripePriceId(),
-                    stripePaymentMethodId
-            );
+                    stripePaymentMethodId);
 
-            logger.info("Stripe subscription created successfully: {} for user {}",
-                    stripeSubscription.id(), userId);
+            logger.info("✅ Stripe subscription created successfully!");
+            logger.info("   → Subscription ID: {}", stripeSubscription.id());
+            logger.info("   → Status: {}", stripeSubscription.status());
+            logger.info("   → Period: {} to {}", stripeSubscription.currentPeriodStart(),
+                    stripeSubscription.currentPeriodEnd());
 
             // Update subscription with Stripe subscription ID
             UserSubscription updatedSubscription = UserSubscription.builder()
@@ -233,9 +260,13 @@ public class SubscribeToPlanUseCase {
             return subscriptionRepository.save(updatedSubscription);
 
         } catch (Exception e) {
-            // Log error but don't fail subscription
-            logger.error("Failed to create Stripe subscription for user {} on plan {} - subscription will proceed without Stripe integration. Error: {}",
-                    userId, plan.planCode(), e.getMessage(), e);
+            // Log error with full stack trace
+            logger.error("❌ CRITICAL ERROR: Failed to create Stripe subscription for user {} on plan {}",
+                    userId, plan.planCode());
+            logger.error("   → Error Type: {}", e.getClass().getSimpleName());
+            logger.error("   → Error Message: {}", e.getMessage());
+            logger.error("   → Full Stack Trace:", e);
+            logger.error("   → Subscription will proceed WITHOUT Stripe integration!");
             return subscription;
         }
     }

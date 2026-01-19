@@ -9,8 +9,10 @@ import java.util.Optional;
 /**
  * Repository port for PaymentMethod aggregate.
  *
- * <p>This interface defines the contract for payment method persistence operations
- * following the hexagonal architecture pattern.</p>
+ * <p>
+ * This interface defines the contract for payment method persistence operations
+ * following the hexagonal architecture pattern.
+ * </p>
  *
  * @author GYDI Development Team
  */
@@ -60,14 +62,15 @@ public interface PaymentMethodRepositoryPort {
      * Finds the default payment method for a user.
      *
      * @param userId the user ID
-     * @return an Optional containing the default payment method if found, empty otherwise
+     * @return an Optional containing the default payment method if found, empty
+     *         otherwise
      */
     Optional<PaymentMethod> findDefaultByUserId(Long userId);
 
     /**
      * Retrieves all payment methods of a specific type for a user.
      *
-     * @param userId the user ID
+     * @param userId     the user ID
      * @param methodType the payment method type
      * @return a list of payment methods matching the criteria
      */
@@ -76,7 +79,7 @@ public interface PaymentMethodRepositoryPort {
     /**
      * Retrieves all payment methods expiring in the current month.
      *
-     * @param year the year
+     * @param year  the year
      * @param month the month (1-12)
      * @return a list of expiring payment methods
      */

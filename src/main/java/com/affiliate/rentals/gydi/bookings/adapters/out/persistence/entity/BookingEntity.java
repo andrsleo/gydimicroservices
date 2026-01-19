@@ -3,6 +3,8 @@ package com.affiliate.rentals.gydi.bookings.adapters.out.persistence.entity;
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
@@ -13,7 +15,8 @@ import java.util.Objects;
  * JPA Entity for referrals.booking table.
  * <p>
  * This is an infrastructure concern, separate from the domain model.
- * Mapping between BookingEntity and Booking (domain) is done by BookingRepositoryAdapter.
+ * Mapping between BookingEntity and Booking (domain) is done by
+ * BookingRepositoryAdapter.
  * </p>
  */
 @Entity
@@ -50,6 +53,7 @@ public class BookingEntity {
     private String clientLastName;
 
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     @Column(name = "status", nullable = false)
     private BookingStatusEntity status;
 
@@ -219,8 +223,10 @@ public class BookingEntity {
 
     @Override
     public boolean equals(Object o) {
-        if (this == o) return true;
-        if (o == null || getClass() != o.getClass()) return false;
+        if (this == o)
+            return true;
+        if (o == null || getClass() != o.getClass())
+            return false;
         BookingEntity that = (BookingEntity) o;
         return Objects.equals(id, that.id);
     }
@@ -233,12 +239,12 @@ public class BookingEntity {
     @Override
     public String toString() {
         return "BookingEntity{" +
-            "id=" + id +
-            ", propertyId=" + propertyId +
-            ", startDate=" + startDate +
-            ", endDate=" + endDate +
-            ", status=" + status +
-            '}';
+                "id=" + id +
+                ", propertyId=" + propertyId +
+                ", startDate=" + startDate +
+                ", endDate=" + endDate +
+                ", status=" + status +
+                '}';
     }
 
     /**

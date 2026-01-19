@@ -67,8 +67,15 @@ public final class SubscriptionTransaction {
             throw new IllegalArgumentException("Transaction amount cannot be negative");
         }
 
-        if (transactionType.changesPlanTier() && (fromPlanId == null || toPlanId == null)) {
+        // Only UPGRADE and DOWNGRADE require both fromPlanId and toPlanId
+        // INITIAL_SUBSCRIPTION only needs toPlanId (no "from" plan exists)
+        if (transactionType.isPlanChange() && (fromPlanId == null || toPlanId == null)) {
             throw new IllegalArgumentException("Plan change transactions must have both from and to plan IDs");
+        }
+
+        // INITIAL_SUBSCRIPTION must have toPlanId
+        if (transactionType == TransactionType.INITIAL_SUBSCRIPTION && toPlanId == null) {
+            throw new IllegalArgumentException("Initial subscription transactions must have a target plan ID");
         }
 
         if (transactionStatus == TransactionStatus.FAILED && failureReason == null) {

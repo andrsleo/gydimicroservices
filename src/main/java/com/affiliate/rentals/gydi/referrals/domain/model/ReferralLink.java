@@ -1,6 +1,5 @@
 package com.affiliate.rentals.gydi.referrals.domain.model;
 
-import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -91,15 +90,14 @@ public class ReferralLink {
         this.updatedAt = LocalDateTime.now();
     }
 
-
     /**
      * Desactiva el enlace
      */
     public void deactivate() {
-        if (status == ReferralLinkStatus.DELETED) {
+        if (status == ReferralLinkStatus.DISABLED) {
             throw new IllegalStateException("Cannot deactivate a deleted link");
         }
-        this.status = ReferralLinkStatus.INACTIVE;
+        this.status = ReferralLinkStatus.PAUSED;
         this.updatedAt = LocalDateTime.now();
     }
 
@@ -107,7 +105,7 @@ public class ReferralLink {
      * Reactiva el enlace
      */
     public void activate() {
-        if (status == ReferralLinkStatus.DELETED) {
+        if (status == ReferralLinkStatus.DISABLED) {
             throw new IllegalStateException("Cannot activate a deleted link");
         }
         if (isExpired()) {
@@ -121,7 +119,7 @@ public class ReferralLink {
      * Marca el enlace como expirado
      */
     public void markAsExpired() {
-        if (status != ReferralLinkStatus.DELETED) {
+        if (status != ReferralLinkStatus.DISABLED) {
             this.status = ReferralLinkStatus.EXPIRED;
             this.updatedAt = LocalDateTime.now();
         }
@@ -131,7 +129,7 @@ public class ReferralLink {
      * Soft delete del enlace
      */
     public void delete() {
-        this.status = ReferralLinkStatus.DELETED;
+        this.status = ReferralLinkStatus.DISABLED;
         this.deletedAt = LocalDateTime.now();
         this.updatedAt = LocalDateTime.now();
     }
@@ -143,7 +141,7 @@ public class ReferralLink {
         if (newExpiresAt == null || newExpiresAt.isBefore(LocalDateTime.now())) {
             throw new IllegalArgumentException("New expiration date must be in the future");
         }
-        if (status == ReferralLinkStatus.DELETED) {
+        if (status == ReferralLinkStatus.DISABLED) {
             throw new IllegalStateException("Cannot extend expiration of a deleted link");
         }
 

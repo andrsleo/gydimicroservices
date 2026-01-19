@@ -1,4 +1,4 @@
-package com.affiliate.rentals.gydi.subscriptions.infrastructure.in.rest;
+package com.affiliate.rentals.gydi.subscriptions.infrastructure.in.rest.controller;
 
 import com.affiliate.rentals.gydi.subscriptions.application.dto.PlanResponse;
 import com.affiliate.rentals.gydi.subscriptions.application.usecase.GetAllActivePlansUseCase;
@@ -16,15 +16,22 @@ import java.util.List;
 /**
  * REST controller for subscription plan operations.
  *
- * <p>This controller exposes endpoints for retrieving subscription plans.
- * Plans define the pricing tiers and commission rates for the affiliate program.</p>
+ * <p>
+ * This controller exposes endpoints for retrieving subscription plans.
+ * Plans define the pricing tiers and commission rates for the affiliate
+ * program.
+ * </p>
  *
- * <p><b>Endpoints:</b></p>
+ * <p>
+ * <b>Endpoints:</b>
+ * </p>
  * <ul>
- *   <li>GET /api/plans - Get all active subscription plans</li>
+ * <li>GET /api/plans - Get all active subscription plans</li>
  * </ul>
  *
- * <p><b>Access:</b> Public - No authentication required</p>
+ * <p>
+ * <b>Access:</b> Public - No authentication required
+ * </p>
  *
  * @author GYDI Development Team
  */
@@ -42,10 +49,15 @@ public class PlanController {
     /**
      * Retrieves all active subscription plans.
      *
-     * <p>Returns a list of all currently available subscription plans with their
-     * pricing, commission rates, and feature limits.</p>
+     * <p>
+     * Returns a list of all currently available subscription plans with their
+     * pricing, commission rates, and feature limits.
+     * </p>
      *
-     * <p><b>Example response:</b></p>
+     * <p>
+     * <b>Example response:</b>
+     * </p>
+     * 
      * <pre>
      * [
      *   {
@@ -74,14 +86,12 @@ public class PlanController {
      * @return list of active subscription plans
      */
     @GetMapping
-    @Operation(
-        summary = "Get all active subscription plans",
-        description = "Retrieves all currently available subscription plans with pricing and features. " +
-                     "This endpoint is public and does not require authentication."
-    )
+    @Operation(summary = "Get all active subscription plans", description = "Retrieves all currently available subscription plans with pricing and features. "
+            +
+            "This endpoint is public and does not require authentication.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Plans retrieved successfully"),
-        @ApiResponse(responseCode = "500", description = "Internal server error")
+            @ApiResponse(responseCode = "200", description = "Plans retrieved successfully"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     public ResponseEntity<List<PlanResponse>> getAllActivePlans() {
         List<PlanResponse> plans = getAllActivePlansUseCase.execute();

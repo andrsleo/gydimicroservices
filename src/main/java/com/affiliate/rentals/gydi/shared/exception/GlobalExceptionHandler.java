@@ -15,6 +15,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.affiliate.rentals.gydi.properties.domain.exception.PropertyCannotBePublishedException;
 import com.affiliate.rentals.gydi.properties.domain.exception.PropertyDomainException;
+import com.affiliate.rentals.gydi.subscriptions.domain.exception.SubscriptionDomainException;
 import com.affiliate.rentals.gydi.users.domain.exception.DomainException;
 import com.affiliate.rentals.gydi.users.domain.exception.InvalidPasswordException;
 import com.affiliate.rentals.gydi.users.domain.exception.InvalidTokenException;
@@ -176,6 +177,54 @@ public class GlobalExceptionHandler {
                                                         request.getRequestURI(),
                                                         fieldErrors));
                 }
+
+                return buildResponse(status, errorType, ex.getMessage(), request.getRequestURI());
+        }
+
+        /**
+         * Handles subscription domain exceptions using annotation-based HTTP status mapping.
+         *
+         * <p>
+         * This handler specifically manages exceptions from the subscriptions bounded context,
+         * following the same pattern as the users and properties domain exception handlers.
+         * It extracts HTTP status and error type from the {@link HttpStatusMapping} annotation.
+         * </p>
+         *
+         * <p>
+         * Handles subscription-specific business rules such as:
+         * </p>
+         * <ul>
+         *   <li>Payment method deletion restrictions for paid subscriptions</li>
+         *   <li>Plan transition validation</li>
+         *   <li>Payment processing failures</li>
+         *   <li>Subscription state violations</li>
+         * </ul>
+         *
+         * @param ex      the subscription domain exception
+         * @param request the HTTP request
+         * @return an appropriate error response based on the exception's annotation
+         */
+        @ExceptionHandler(SubscriptionDomainException.class)
+        public ResponseEntity<ErrorResponse> handleSubscriptionDomainException(
+                        SubscriptionDomainException ex,
+                        HttpServletRequest request) {
+                log.warn("Subscription domain exception: {}", ex.getMessage());
+
+                // Extract HTTP status and error type from annotation
+                HttpStatusMapping mapping = ex.getClass().getAnnotation(HttpStatusMapping.class);
+
+                if (mapping == null) {
+                        log.error("Subscription domain exception {} is missing @HttpStatusMapping annotation",
+                                        ex.getClass().getSimpleName());
+                        return buildResponse(
+                                        HttpStatus.INTERNAL_SERVER_ERROR,
+                                        "Internal Error",
+                                        "An unexpected error occurred",
+                                        request.getRequestURI());
+                }
+
+                HttpStatus status = mapping.status();
+                String errorType = mapping.errorType();
 
                 return buildResponse(status, errorType, ex.getMessage(), request.getRequestURI());
         }

@@ -18,7 +18,9 @@ public sealed abstract class SubscriptionDomainException extends RuntimeExceptio
                 PaymentMethodNotFoundException,
                 InvalidSubscriptionStateException,
                 PaymentFailedException,
-                InvalidPlanTransitionException {
+                InvalidPlanTransitionException,
+                CannotDeletePaymentMethodException,
+                PaymentGatewayException {
 
     /**
      * Constructs a new domain exception with the specified detail message.

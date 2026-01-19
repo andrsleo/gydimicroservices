@@ -35,7 +35,8 @@ public final class PaymentMethod {
     private final Integer cardExpYear;
     private final String billingEmail;
     private final boolean isDefault;
-    private final boolean isActive;
+    private final PaymentMethodStatus status;
+    private final LocalDateTime deletedAt;
     private final LocalDateTime createdAt;
     private final LocalDateTime updatedAt;
 
@@ -51,7 +52,8 @@ public final class PaymentMethod {
         this.cardExpYear = builder.cardExpYear;
         this.billingEmail = builder.billingEmail;
         this.isDefault = builder.isDefault;
-        this.isActive = builder.isActive;
+        this.status = Objects.requireNonNullElse(builder.status, PaymentMethodStatus.ACTIVE);
+        this.deletedAt = builder.deletedAt;
         this.createdAt = Objects.requireNonNullElseGet(builder.createdAt, LocalDateTime::now);
         this.updatedAt = builder.updatedAt;
 
@@ -121,16 +123,20 @@ public final class PaymentMethod {
         return isDefault;
     }
 
-    public boolean isActive() {
-        return isActive;
-    }
-
     public LocalDateTime createdAt() {
         return createdAt;
     }
 
     public LocalDateTime updatedAt() {
         return updatedAt;
+    }
+
+    public PaymentMethodStatus status() {
+        return status;
+    }
+
+    public LocalDateTime deletedAt() {
+        return deletedAt;
     }
 
     // Business methods
@@ -177,12 +183,32 @@ public final class PaymentMethod {
                 .build();
     }
 
+    /**
+     * Creates a new PaymentMethod with status set to INACTIVE (soft delete).
+     * This implements the soft delete pattern by marking the payment method as
+     * inactive
+     * without physically removing it from the database.
+     *
+     * @return a new PaymentMethod instance with INACTIVE status and deletedAt
+     *         timestamp
+     */
     public PaymentMethod deactivate() {
         return builder()
                 .from(this)
-                .isActive(false)
+                .status(PaymentMethodStatus.INACTIVE)
+                .deletedAt(LocalDateTime.now())
                 .updatedAt(LocalDateTime.now())
                 .build();
+    }
+
+    /**
+     * Checks if this payment method can be used for processing payments.
+     * A payment method is usable if it has ACTIVE status and is not expired.
+     *
+     * @return true if payment method can be used, false otherwise
+     */
+    public boolean isUsable() {
+        return status == PaymentMethodStatus.ACTIVE && !isExpired();
     }
 
     @Override
@@ -209,7 +235,10 @@ public final class PaymentMethod {
                 ", gatewayProvider='" + gatewayProvider + '\'' +
                 ", cardLastFour='" + cardLastFour + '\'' +
                 ", isDefault=" + isDefault +
-                ", isActive=" + isActive +
+                ", status=" + status +
+                ", deletedAt=" + deletedAt +
+                ", createdAt=" + createdAt +
+                ", updatedAt=" + updatedAt +
                 '}';
     }
 
@@ -225,7 +254,8 @@ public final class PaymentMethod {
         private Integer cardExpYear;
         private String billingEmail;
         private boolean isDefault = false;
-        private boolean isActive = true;
+        private PaymentMethodStatus status = PaymentMethodStatus.ACTIVE;
+        private LocalDateTime deletedAt;
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
 
@@ -287,11 +317,6 @@ public final class PaymentMethod {
             return this;
         }
 
-        public Builder isActive(boolean isActive) {
-            this.isActive = isActive;
-            return this;
-        }
-
         public Builder createdAt(LocalDateTime createdAt) {
             this.createdAt = createdAt;
             return this;
@@ -299,6 +324,16 @@ public final class PaymentMethod {
 
         public Builder updatedAt(LocalDateTime updatedAt) {
             this.updatedAt = updatedAt;
+            return this;
+        }
+
+        public Builder status(PaymentMethodStatus status) {
+            this.status = status;
+            return this;
+        }
+
+        public Builder deletedAt(LocalDateTime deletedAt) {
+            this.deletedAt = deletedAt;
             return this;
         }
 
@@ -314,7 +349,8 @@ public final class PaymentMethod {
             this.cardExpYear = paymentMethod.cardExpYear;
             this.billingEmail = paymentMethod.billingEmail;
             this.isDefault = paymentMethod.isDefault;
-            this.isActive = paymentMethod.isActive;
+            this.status = paymentMethod.status;
+            this.deletedAt = paymentMethod.deletedAt;
             this.createdAt = paymentMethod.createdAt;
             return this;
         }
