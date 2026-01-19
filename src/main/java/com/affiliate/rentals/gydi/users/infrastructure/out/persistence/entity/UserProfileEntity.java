@@ -127,19 +127,19 @@ public class UserProfileEntity {
     private String websiteUrl;
 
     /**
-     * Social media links stored as JSONB.
+     * Social media links stored as JSON/JSONB (PostgreSQL) or TEXT (H2).
      * Example: {"linkedin": "url", "twitter": "@handle"}
      */
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "social_links", columnDefinition = "jsonb")
+    @Column(name = "social_links")
     private Map<String, String> socialLinks;
 
     /**
-     * User preferences stored as JSONB.
+     * User preferences stored as JSON/JSONB (PostgreSQL) or TEXT (H2).
      * Example: {"theme": "dark", "notifications": {...}}
      */
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "preferences", columnDefinition = "jsonb")
+    @Column(name = "preferences")
     private Map<String, Object> preferences;
 
     /**
@@ -161,10 +161,10 @@ public class UserProfileEntity {
     private Boolean smsNotificationsEnabled;
 
     /**
-     * Extensible metadata stored as JSONB.
+     * Extensible metadata stored as JSON/JSONB (PostgreSQL) or TEXT (H2).
      */
     @JdbcTypeCode(SqlTypes.JSON)
-    @Column(name = "metadata", columnDefinition = "jsonb")
+    @Column(name = "metadata")
     private Map<String, Object> metadata;
 
     /**

@@ -6,12 +6,11 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.security.test.context.support.WithMockUser;
+import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
-
-import org.springframework.test.context.ActiveProfiles;
 
 /**
  * Integration tests for Actuator endpoint security.
@@ -23,6 +22,12 @@ import org.springframework.test.context.ActiveProfiles;
  *
  * <p>
  * <b>SECURITY: Actuator Information Disclosure Prevention Tests</b>
+ * </p>
+ *
+ * <p>
+ * Uses H2 in-memory database for testing. Entity mappings are database-agnostic
+ * using {@code @JdbcTypeCode(SqlTypes.JSON)} for JSON fields, which Hibernate
+ * automatically adapts to JSONB (PostgreSQL) or TEXT (H2).
  * </p>
  *
  * @author GYDI Development Team

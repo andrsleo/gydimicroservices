@@ -18,6 +18,7 @@ public sealed abstract class DomainException extends RuntimeException
                 InvalidCredentialsException,
                 InvalidUserDataException,
                 InvalidRefreshTokenException,
+                RefreshTokenReusedException,
                 PermissionDeniedException {
 
     /**

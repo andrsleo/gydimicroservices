@@ -27,9 +27,12 @@ public class RefreshTokenEntityMapper {
         entity.setId(refreshToken.getId());
         entity.setToken(refreshToken.getToken());
         entity.setUserId(refreshToken.getUserId());
+        entity.setTokenFamilyId(refreshToken.getTokenFamilyId());
         entity.setExpiryDate(refreshToken.getExpiryDate());
         entity.setCreatedAt(refreshToken.getCreatedAt());
-        entity.setRevoked(refreshToken.isRevoked());
+        entity.setUsedAt(refreshToken.getUsedAt());
+        entity.setRevokedAt(refreshToken.getRevokedAt());
+        entity.setReplacedByToken(refreshToken.getReplacedByToken());
         return entity;
     }
 
@@ -48,9 +51,12 @@ public class RefreshTokenEntityMapper {
                 entity.getId(),
                 entity.getToken(),
                 entity.getUserId(),
+                entity.getTokenFamilyId(),
                 entity.getExpiryDate(),
                 entity.getCreatedAt(),
-                entity.isRevoked()
+                entity.getUsedAt(),
+                entity.getRevokedAt(),
+                entity.getReplacedByToken()
         );
     }
 }

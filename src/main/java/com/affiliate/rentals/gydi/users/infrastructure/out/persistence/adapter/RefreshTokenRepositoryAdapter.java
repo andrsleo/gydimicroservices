@@ -3,6 +3,7 @@ package com.affiliate.rentals.gydi.users.infrastructure.out.persistence.adapter;
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
+import java.util.UUID;
 import java.util.stream.Collectors;
 
 import org.springframework.stereotype.Component;
@@ -14,10 +15,11 @@ import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.mapper.Re
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.repository.RefreshTokenJpaRepository;
 
 /**
- * Adapter implementation of RefreshTokenRepository port.
+ * Adapter implementation of RefreshTokenRepository port with rotation support.
  *
  * <p>This adapter implements the RefreshTokenRepository port using Spring Data JPA,
- * bridging the domain layer with the persistence infrastructure.</p>
+ * bridging the domain layer with the persistence infrastructure. Supports OWASP-recommended
+ * token rotation and reuse detection.</p>
  *
  * @author GYDI Development Team
  */
@@ -59,9 +61,23 @@ public class RefreshTokenRepositoryAdapter implements RefreshTokenRepositoryPort
     }
 
     @Override
+    @Transactional(readOnly = true)
+    public List<RefreshToken> findByTokenFamilyId(UUID tokenFamilyId) {
+        return jpaRepository.findByTokenFamilyId(tokenFamilyId).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     @Transactional
     public int revokeAllByUserId(Long userId) {
-        return jpaRepository.revokeAllByUserId(userId);
+        return jpaRepository.revokeAllByUserId(userId, Instant.now());
+    }
+
+    @Override
+    @Transactional
+    public int revokeAllByTokenFamily(UUID tokenFamilyId) {
+        return jpaRepository.revokeAllByTokenFamily(tokenFamilyId, Instant.now());
     }
 
     @Override

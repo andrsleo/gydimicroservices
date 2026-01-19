@@ -1,8 +1,11 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
+import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,16 +22,29 @@ import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
 
+import lombok.extern.slf4j.Slf4j;
+
 /**
  * Use case for creating a new user.
  *
  * <p>
  * This service handles the business logic for user registration, including
- * password encoding, email validation, and role assignment.
+ * password encoding, email validation, role assignment, and user profile
+ * creation.
+ * </p>
+ *
+ * <p>
+ * Additional initialization tasks (Stripe Customer creation and FREE
+ * subscription setup)
+ * are delegated to {@link UserInitializationService} which handles them in
+ * separate
+ * transactions (REQUIRES_NEW) to prevent rollback of user registration if they
+ * fail.
  * </p>
  *
  * @author GYDI Development Team
  */
+@Slf4j
 @Service
 public class CreateUserUseCase {
 
@@ -36,16 +52,19 @@ public class CreateUserUseCase {
     private final UserProfileRepositoryPort userProfileRepository;
     private final PasswordEncoder passwordEncoder;
     private final UserDtoMapper mapper;
+    private final UserInitializationService initializationService;
 
     public CreateUserUseCase(
             UserRepositoryPort userRepository,
             UserProfileRepositoryPort userProfileRepository,
             PasswordEncoder passwordEncoder,
-            UserDtoMapper mapper) {
+            UserDtoMapper mapper,
+            UserInitializationService initializationService) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.mapper = mapper;
+        this.initializationService = initializationService;
     }
 
     /**
@@ -90,7 +109,49 @@ public class CreateUserUseCase {
         // Create UserProfile with names (this is now the source of truth for names)
         createDefaultUserProfile(savedUser, request.firstName(), request.lastName(), request.phoneNumber());
 
-        return mapper.toResponse(savedUser);
+        // Create Stripe Customer in separate transaction (non-blocking - fails
+        // gracefully)
+        // Returns the Stripe Customer ID if successful, null otherwise
+        String stripeCustomerId = initializationService.createStripeCustomerIfAvailable(savedUser);
+
+        // Update user with Stripe Customer ID if it was created successfully
+        User userWithStripeCustomer = savedUser;
+        if (stripeCustomerId != null) {
+            userWithStripeCustomer = User.builder()
+                    .id(savedUser.id())
+                    .name(savedUser.name())
+                    .email(savedUser.email())
+                    .passwordHash(savedUser.passwordHash())
+                    .phoneNumber(savedUser.phoneNumber())
+                    .roles(savedUser.roles())
+                    .activePlan(savedUser.activePlan())
+                    .capabilities(savedUser.capabilities())
+                    .accountVerified(savedUser.isAccountVerified())
+                    .stripeCustomerId(stripeCustomerId)
+                    .createdAt(savedUser.createdAt())
+                    .build();
+
+            // Save user with Stripe Customer ID in the main transaction
+            userWithStripeCustomer = userRepository.save(userWithStripeCustomer);
+        }
+
+        // Create FREE subscription only if:
+        // 1. No plan was selected during registration (selectedPlanCode is null), OR
+        // 2. User explicitly selected the FREE plan
+        // For paid plans (PRO, ELITE), subscription will be created after payment
+        boolean shouldCreateFreeSubscription = request.selectedPlanCode() == null
+                || "FREE".equalsIgnoreCase(request.selectedPlanCode());
+
+        if (shouldCreateFreeSubscription) {
+            log.info("Creating FREE subscription for user {} (selectedPlanCode: {})",
+                    userWithStripeCustomer.email().address(), request.selectedPlanCode());
+            initializationService.createDefaultFreeSubscription(userWithStripeCustomer);
+        } else {
+            log.info("Skipping FREE subscription for user {} - paid plan selected: {}",
+                    userWithStripeCustomer.email().address(), request.selectedPlanCode());
+        }
+
+        return mapper.toResponse(userWithStripeCustomer);
     }
 
     /**

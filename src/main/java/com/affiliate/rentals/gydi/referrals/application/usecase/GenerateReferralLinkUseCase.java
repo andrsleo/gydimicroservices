@@ -81,16 +81,18 @@ public class GenerateReferralLinkUseCase {
                     link.getCreatedAt());
         }
 
-        // 2. Generar token encriptado (JWE)
+        // 2. Calcular fecha de expiración en milisegundos (debe coincidir con expiración del JWT)
+        long expirationMs = request.expirationDays() * 24L * 60 * 60 * 1000;
+        LocalDateTime expiresAt = LocalDateTime.now().plusDays(request.expirationDays());
+
+        // 3. Generar token encriptado (JWE) con expiración personalizada
         String encryptedToken = jwtReferralTokenService.generateReferralToken(
                 affiliateId,
-                request.propertyId());
+                request.propertyId(),
+                expirationMs);
 
-        // 3. Generar código corto único (para persistencia y uso legacy si aplica)
+        // 4. Generar código corto único (para persistencia y uso legacy si aplica)
         String shortCode = generateUniqueShortCode();
-
-        // 4. Calcular fecha de expiración
-        LocalDateTime expiresAt = LocalDateTime.now().plusDays(request.expirationDays());
 
         // 5. Crear enlace de referido
         ReferralLink referralLink = ReferralLink.create(
@@ -103,8 +105,8 @@ public class GenerateReferralLinkUseCase {
         // 6. Persistir
         ReferralLink savedLink = referralLinkRepository.save(referralLink);
 
-        log.info("Referral link created successfully. ID: {}, ShortCode: {}",
-                savedLink.getId(), savedLink.getShortCode());
+        log.info("Referral link created successfully. ID: {}, ShortCode: {}, ExpirationDays: {}",
+                savedLink.getId(), savedLink.getShortCode(), request.expirationDays());
 
         // 7. Construir respuesta
         String fullUrl = buildFullUrl(encryptedToken);

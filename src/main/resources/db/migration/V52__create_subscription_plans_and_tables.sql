@@ -92,17 +92,11 @@ CREATE TABLE subscriptions.user_subscriptions (
         REFERENCES users.users(id) ON DELETE CASCADE,
     CONSTRAINT fk_user_subscription_plan FOREIGN KEY (plan_id)
         REFERENCES subscriptions.subscription_plans(id) ON DELETE RESTRICT,
-    CONSTRAINT fk_user_subscription_payment_method FOREIGN KEY (payment_method_id)
-        REFERENCES subscriptions.payment_methods(id) ON DELETE SET NULL,
+    -- Note: FK to payment_methods will be added after payment_methods table is created
 
     -- Business rules
-    CONSTRAINT chk_free_plan_no_expiry CHECK (
-        -- If plan is FREE, expires_at must be NULL
-        -- If plan is paid (PRO/ELITE), expires_at must be NOT NULL
-        (plan_id = (SELECT id FROM subscriptions.subscription_plans WHERE plan_code = 'FREE')
-         AND expires_at IS NULL) OR
-        (plan_id != (SELECT id FROM subscriptions.subscription_plans WHERE plan_code = 'FREE'))
-    ),
+    -- NOTE: Cannot use subquery in CHECK constraint
+    -- Plan-specific rules will be enforced by application logic or triggers
     CONSTRAINT chk_canceled_status CHECK (
         (status = 'CANCELED' AND canceled_at IS NOT NULL) OR
         (status != 'CANCELED' AND canceled_at IS NULL)
@@ -239,11 +233,8 @@ CREATE TABLE subscriptions.subscription_transactions (
         (transaction_status = 'COMPLETED' AND completed_at IS NOT NULL) OR
         (transaction_status != 'COMPLETED')
     ),
-    CONSTRAINT chk_free_plan_zero_amount CHECK (
-        (to_plan_id = (SELECT id FROM subscriptions.subscription_plans WHERE plan_code = 'FREE')
-         AND amount = 0) OR
-        (to_plan_id != (SELECT id FROM subscriptions.subscription_plans WHERE plan_code = 'FREE'))
-    ),
+    -- NOTE: Cannot use subquery in CHECK constraint
+    -- Free plan zero amount rule will be enforced by application logic
     CONSTRAINT chk_paid_plan_payment_method CHECK (
         (amount > 0 AND payment_method_id IS NOT NULL) OR
         (amount = 0)
@@ -465,6 +456,15 @@ COMMENT ON FUNCTION subscriptions.auto_expire_subscriptions IS
 
 COMMENT ON FUNCTION subscriptions.get_user_plan IS
 'Get current plan details for a user. Usage: SELECT * FROM subscriptions.get_user_plan(123);';
+
+-- ============================================================================
+-- ADD FOREIGN KEY TO PAYMENT_METHODS (after all tables are created)
+-- ============================================================================
+ALTER TABLE subscriptions.user_subscriptions
+    ADD CONSTRAINT fk_user_subscription_payment_method
+    FOREIGN KEY (payment_method_id)
+    REFERENCES subscriptions.payment_methods(id)
+    ON DELETE SET NULL;
 
 COMMIT;
 

@@ -349,7 +349,6 @@ import { fetchCsrfToken, getCsrfToken } from '@/lib/utils/csrf';
 
 // Fetch new token
 const csrfData = await fetchCsrfToken();
-console.log('Token:', csrfData.token);
 
 // Read existing token from cookie
 const token = getCsrfToken();
