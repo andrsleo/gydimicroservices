@@ -121,8 +121,9 @@ public class PropertyJpaEntity {
     @Column(name = "airbnb_url", length = 500)
     private String airbnbUrl;
 
-    @Column(name = "import_mode", nullable = false, columnDefinition = "VARCHAR(20)")
+    @Column(name = "import_mode", nullable = false)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private ImportMode importMode = ImportMode.MANUAL;
 
     @Column(name = "imported_at")

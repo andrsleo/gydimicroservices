@@ -101,10 +101,10 @@ jwt:
   secret: ${JWT_SECRET}
   expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
-  # JWT for referral tokens
+  # JWT for referral tokens (can be overridden per-link, max 365 days)
   referral:
     secret: ${JWT_REFERRAL_SECRET}
-    expiration-ms: ${JWT_REFERRAL_EXPIRATION:2592000000} # 30 days in milliseconds
+    expiration-ms: ${JWT_REFERRAL_EXPIRATION:31536000000} # 365 days in milliseconds (default max, actual expiration set per-link)
 
 # ============================================
 # Logging Configuration

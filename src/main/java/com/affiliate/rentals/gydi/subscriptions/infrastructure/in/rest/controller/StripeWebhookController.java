@@ -1,4 +1,4 @@
-package com.affiliate.rentals.gydi.subscriptions.infrastructure.in.rest;
+package com.affiliate.rentals.gydi.subscriptions.infrastructure.in.rest.controller;
 
 import com.affiliate.rentals.gydi.subscriptions.application.service.StripeWebhookService;
 import com.stripe.exception.SignatureVerificationException;
@@ -22,32 +22,44 @@ import java.util.Map;
 /**
  * REST controller for receiving Stripe webhook events.
  *
- * <p>This controller handles asynchronous events from Stripe, including:</p>
+ * <p>
+ * This controller handles asynchronous events from Stripe, including:
+ * </p>
  * <ul>
- *   <li>Payment intents (succeeded, failed, canceled)</li>
- *   <li>Subscriptions (created, updated, deleted)</li>
- *   <li>Invoices (payment succeeded, payment failed)</li>
- *   <li>Payment methods (attached, detached)</li>
+ * <li>Payment intents (succeeded, failed, canceled)</li>
+ * <li>Subscriptions (created, updated, deleted)</li>
+ * <li>Invoices (payment succeeded, payment failed)</li>
+ * <li>Payment methods (attached, detached)</li>
  * </ul>
  *
- * <p><b>Security:</b> This endpoint validates the Stripe webhook signature
- * to ensure events are genuine and haven't been tampered with.</p>
+ * <p>
+ * <b>Security:</b> This endpoint validates the Stripe webhook signature
+ * to ensure events are genuine and haven't been tampered with.
+ * </p>
  *
- * <p><b>Configuration:</b> The webhook secret must be configured in application.yml:</p>
+ * <p>
+ * <b>Configuration:</b> The webhook secret must be configured in
+ * application.yml:
+ * </p>
+ * 
  * <pre>
  * stripe:
  *   webhook-secret: whsec_...
  * </pre>
  *
- * <p><b>Stripe Dashboard Setup:</b></p>
+ * <p>
+ * <b>Stripe Dashboard Setup:</b>
+ * </p>
  * <ol>
- *   <li>Go to Developers → Webhooks in Stripe Dashboard</li>
- *   <li>Add endpoint: https://yourdomain.com/api/webhooks/stripe</li>
- *   <li>Select events to listen to</li>
- *   <li>Copy the webhook signing secret to application.yml</li>
+ * <li>Go to Developers → Webhooks in Stripe Dashboard</li>
+ * <li>Add endpoint: https://yourdomain.com/api/webhooks/stripe</li>
+ * <li>Select events to listen to</li>
+ * <li>Copy the webhook signing secret to application.yml</li>
  * </ol>
  *
- * <p><b>Access:</b> Public endpoint (authenticated via webhook signature)</p>
+ * <p>
+ * <b>Access:</b> Public endpoint (authenticated via webhook signature)
+ * </p>
  *
  * @author GYDI Development Team
  */
@@ -70,47 +82,50 @@ public class StripeWebhookController {
     /**
      * Receives and processes Stripe webhook events.
      *
-     * <p>This endpoint is called by Stripe when events occur (e.g., payment succeeded,
-     * subscription canceled). It validates the signature and processes the event.</p>
+     * <p>
+     * This endpoint is called by Stripe when events occur (e.g., payment succeeded,
+     * subscription canceled). It validates the signature and processes the event.
+     * </p>
      *
-     * <p><b>Important:</b> This endpoint must return a 200 status code within 30 seconds
-     * or Stripe will consider it failed and retry the webhook.</p>
+     * <p>
+     * <b>Important:</b> This endpoint must return a 200 status code within 30
+     * seconds
+     * or Stripe will consider it failed and retry the webhook.
+     * </p>
      *
-     * <p><b>Supported Events:</b></p>
+     * <p>
+     * <b>Supported Events:</b>
+     * </p>
      * <ul>
-     *   <li>payment_intent.succeeded</li>
-     *   <li>payment_intent.payment_failed</li>
-     *   <li>payment_intent.canceled</li>
-     *   <li>customer.subscription.created</li>
-     *   <li>customer.subscription.updated</li>
-     *   <li>customer.subscription.deleted</li>
-     *   <li>invoice.payment_succeeded</li>
-     *   <li>invoice.payment_failed</li>
-     *   <li>payment_method.attached</li>
-     *   <li>payment_method.detached</li>
+     * <li>payment_intent.succeeded</li>
+     * <li>payment_intent.payment_failed</li>
+     * <li>payment_intent.canceled</li>
+     * <li>customer.subscription.created</li>
+     * <li>customer.subscription.updated</li>
+     * <li>customer.subscription.deleted</li>
+     * <li>invoice.payment_succeeded</li>
+     * <li>invoice.payment_failed</li>
+     * <li>payment_method.attached</li>
+     * <li>payment_method.detached</li>
      * </ul>
      *
-     * @param payload the raw webhook payload from Stripe
+     * @param payload         the raw webhook payload from Stripe
      * @param signatureHeader the Stripe-Signature header for validation
      * @return success response or error
      */
     @PostMapping("/stripe")
-    @Operation(
-        summary = "Receive Stripe webhook events",
-        description = "This endpoint receives asynchronous events from Stripe. " +
-                     "It validates the webhook signature and processes the event. " +
-                     "This endpoint is public but authenticated via Stripe's webhook signature."
-    )
+    @Operation(summary = "Receive Stripe webhook events", description = "This endpoint receives asynchronous events from Stripe. "
+            +
+            "It validates the webhook signature and processes the event. " +
+            "This endpoint is public but authenticated via Stripe's webhook signature.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Webhook processed successfully"),
-        @ApiResponse(responseCode = "400", description = "Invalid webhook signature or payload"),
-        @ApiResponse(responseCode = "500", description = "Internal server error while processing webhook")
+            @ApiResponse(responseCode = "200", description = "Webhook processed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid webhook signature or payload"),
+            @ApiResponse(responseCode = "500", description = "Internal server error while processing webhook")
     })
     public ResponseEntity<Map<String, String>> handleStripeWebhook(
             @RequestBody String payload,
-            @RequestHeader("Stripe-Signature")
-            @Parameter(description = "Stripe webhook signature for validation", required = true)
-            String signatureHeader) {
+            @RequestHeader("Stripe-Signature") @Parameter(description = "Stripe webhook signature for validation", required = true) String signatureHeader) {
 
         log.info("Received Stripe webhook event");
 
@@ -121,7 +136,7 @@ public class StripeWebhookController {
             event = Webhook.constructEvent(payload, signatureHeader, webhookSecret);
 
             log.info("Webhook signature validated successfully for event: {} (ID: {})",
-                event.getType(), event.getId());
+                    event.getType(), event.getId());
 
         } catch (SignatureVerificationException e) {
             log.error("Invalid webhook signature: {}", e.getMessage());
@@ -131,8 +146,8 @@ public class StripeWebhookController {
             errorResponse.put("message", "Webhook signature verification failed");
 
             return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(errorResponse);
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(errorResponse);
         } catch (Exception e) {
             log.error("Error parsing webhook payload: {}", e.getMessage(), e);
 
@@ -141,8 +156,8 @@ public class StripeWebhookController {
             errorResponse.put("message", "Failed to parse webhook payload");
 
             return ResponseEntity
-                .status(HttpStatus.BAD_REQUEST)
-                .body(errorResponse);
+                    .status(HttpStatus.BAD_REQUEST)
+                    .body(errorResponse);
         }
 
         try {
@@ -178,18 +193,17 @@ public class StripeWebhookController {
     /**
      * Health check endpoint for webhook monitoring.
      *
-     * <p>This endpoint can be used to verify that the webhook endpoint is reachable
-     * and the server is running.</p>
+     * <p>
+     * This endpoint can be used to verify that the webhook endpoint is reachable
+     * and the server is running.
+     * </p>
      *
      * @return health status
      */
     @GetMapping("/stripe/health")
-    @Operation(
-        summary = "Webhook health check",
-        description = "Verifies that the Stripe webhook endpoint is reachable and operational."
-    )
+    @Operation(summary = "Webhook health check", description = "Verifies that the Stripe webhook endpoint is reachable and operational.")
     @ApiResponses(value = {
-        @ApiResponse(responseCode = "200", description = "Webhook endpoint is healthy")
+            @ApiResponse(responseCode = "200", description = "Webhook endpoint is healthy")
     })
     public ResponseEntity<Map<String, String>> healthCheck() {
         Map<String, String> response = new HashMap<>();

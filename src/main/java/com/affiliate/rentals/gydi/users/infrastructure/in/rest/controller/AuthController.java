@@ -182,13 +182,12 @@ public class AuthController {
         httpResponse.setHeader("X-RateLimit-Remaining", String.valueOf(remainingAttempts));
         httpResponse.setHeader("X-RateLimit-Limit", "10");
 
-        // SECURITY: In production, set httpOnly cookie (XSS-proof)
-        // In development, return token in body (cross-origin workaround for localhost)
-        if (isProduction()) {
-            // Production: Set httpOnly cookies using CookieService
-            cookieService.setAuthCookies(httpResponse, response.token(), response.refreshToken());
+        // SECURITY: Set httpOnly cookies in BOTH production and development
+        // This allows Next.js middleware to verify authentication in both environments
+        cookieService.setAuthCookies(httpResponse, response.token(), response.refreshToken());
 
-            // Return response WITHOUT tokens in body (security)
+        if (isProduction()) {
+            // Production: Return response WITHOUT tokens in body (security)
             return ResponseEntity.ok(AuthResponse.builder()
                     .token(null) // Don't expose in body
                     .refreshToken(null) // Don't expose in body
@@ -196,7 +195,8 @@ public class AuthController {
                     .user(response.user())
                     .build());
         } else {
-            // Development: Return tokens in body (for Authorization header)
+            // Development: ALSO return tokens in body (for localStorage fallback)
+            // AND set cookies (for middleware verification)
             return ResponseEntity.ok(response);
         }
     }
@@ -260,10 +260,8 @@ public class AuthController {
             performSimpleLogout(token);
         }
 
-        // Production: Clear authentication cookies
-        if (isProduction()) {
-            cookieService.clearAuthCookies(response);
-        }
+        // SECURITY: Clear authentication cookies in BOTH production and development
+        cookieService.clearAuthCookies(response);
 
         return ResponseEntity.ok().build();
     }
@@ -360,12 +358,17 @@ public class AuthController {
         String refreshToken = null;
 
         if (isProduction()) {
-            // Production: Extract refresh token from cookie
+            // Production: Extract refresh token from cookie only
             refreshToken = cookieService.extractRefreshToken(httpRequest);
         } else {
-            // Development: Extract refresh token from request body
+            // Development: Extract refresh token from request body first
             if (requestBody != null && requestBody.refreshToken() != null) {
                 refreshToken = requestBody.refreshToken();
+            }
+
+            // Development fallback: Try cookie if not in body
+            if (refreshToken == null || refreshToken.isBlank()) {
+                refreshToken = cookieService.extractRefreshToken(httpRequest);
             }
         }
 
@@ -378,11 +381,11 @@ public class AuthController {
         RefreshTokenRequest request = new RefreshTokenRequest(refreshToken);
         AuthResponse response = refreshTokenUseCase.execute(request);
 
-        if (isProduction()) {
-            // Production: Update httpOnly cookies with new tokens
-            cookieService.setAuthCookies(httpResponse, response.token(), response.refreshToken());
+        // SECURITY: Set httpOnly cookies in BOTH production and development
+        cookieService.setAuthCookies(httpResponse, response.token(), response.refreshToken());
 
-            // Return response WITHOUT tokens in body (security)
+        if (isProduction()) {
+            // Production: Return response WITHOUT tokens in body (security)
             return ResponseEntity.ok(AuthResponse.builder()
                     .token(null) // Don't expose in body
                     .refreshToken(null) // Don't expose in body
@@ -390,7 +393,8 @@ public class AuthController {
                     .user(response.user())
                     .build());
         } else {
-            // Development: Return tokens in body (for Authorization header)
+            // Development: ALSO return tokens in body (for localStorage fallback)
+            // AND set cookies (for middleware verification)
             return ResponseEntity.ok(response);
         }
     }
@@ -525,19 +529,26 @@ public class AuthController {
     /**
      * Extracts JWT token from request using dual-mode strategy.
      * Production: Reads from httpOnly cookie (access_token)
-     * Development: Reads from Authorization header (Bearer token)
+     * Development: Reads from Authorization header (Bearer token) OR cookie (fallback)
      */
     private String extractToken(
             HttpServletRequest request,
             String authHeader) {
         if (isProduction()) {
-            // Production: Extract from cookie
+            // Production: Extract from cookie only
             return cookieService.extractAccessToken(request);
         } else {
-            // Development: Extract from Authorization header
+            // Development: Try Authorization header first
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
                 return authHeader.substring(7);
             }
+
+            // Development fallback: Try cookie (for middleware verification)
+            String cookieToken = cookieService.extractAccessToken(request);
+            if (cookieToken != null && !cookieToken.isBlank()) {
+                return cookieToken;
+            }
+
             return null;
         }
     }

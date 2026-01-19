@@ -7,8 +7,11 @@ import org.springframework.stereotype.Component;
 /**
  * Manual mapper for converting between subscription domain models and DTOs.
  *
- * <p>This mapper provides mapping between domain models and application layer DTOs,
- * maintaining type safety and clean separation of concerns.</p>
+ * <p>
+ * This mapper provides mapping between domain models and application layer
+ * DTOs,
+ * maintaining type safety and clean separation of concerns.
+ * </p>
  *
  * @author GYDI Development Team
  */
@@ -40,15 +43,14 @@ public class SubscriptionDtoMapper {
                 plan.isFeatured(),
                 plan.displayOrder(),
                 plan.createdAt(),
-                plan.updatedAt()
-        );
+                plan.updatedAt());
     }
 
     /**
      * Maps a UserSubscription domain model to a UserSubscriptionResponse DTO.
      *
      * @param subscription the domain subscription
-     * @param plan the related plan (for including plan details in response)
+     * @param plan         the related plan (for including plan details in response)
      * @return the corresponding UserSubscriptionResponse DTO
      */
     public UserSubscriptionResponse toUserSubscriptionResponse(UserSubscription subscription, Plan plan) {
@@ -72,8 +74,7 @@ public class SubscriptionDtoMapper {
                 subscription.nextBillingDate(),
                 subscription.stripeSubscriptionId(),
                 subscription.createdAt(),
-                subscription.updatedAt()
-        );
+                subscription.updatedAt());
     }
 
     /**
@@ -97,19 +98,22 @@ public class SubscriptionDtoMapper {
                 paymentMethod.cardExpYear(),
                 paymentMethod.billingEmail(),
                 paymentMethod.isDefault(),
-                paymentMethod.isActive(),
                 paymentMethod.isExpired(),
                 paymentMethod.getDisplayName(),
-                paymentMethod.createdAt()
-        );
+                paymentMethod.createdAt(),
+                paymentMethod.updatedAt(),
+                paymentMethod.deletedAt(),
+                paymentMethod.status());
     }
 
     /**
-     * Maps a SubscriptionTransaction domain model to a SubscriptionTransactionResponse DTO.
+     * Maps a SubscriptionTransaction domain model to a
+     * SubscriptionTransactionResponse DTO.
      *
      * @param transaction the domain transaction
-     * @param fromPlan the plan being changed from (for plan changes, can be null)
-     * @param toPlan the plan being changed to (can be null)
+     * @param fromPlan    the plan being changed from (for plan changes, can be
+     *                    null)
+     * @param toPlan      the plan being changed to (can be null)
      * @return the corresponding SubscriptionTransactionResponse DTO
      */
     public SubscriptionTransactionResponse toTransactionResponse(
@@ -135,8 +139,7 @@ public class SubscriptionDtoMapper {
                 transaction.stripeChargeId(),
                 transaction.failureReason(),
                 transaction.processedAt(),
-                transaction.createdAt()
-        );
+                transaction.createdAt());
     }
 
     /**
