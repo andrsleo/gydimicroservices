@@ -8,8 +8,6 @@ import java.util.List;
 import java.util.Set;
 
 import org.hibernate.annotations.BatchSize;
-import org.hibernate.annotations.JdbcTypeCode;
-import org.hibernate.type.SqlTypes;
 
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.UserEntity;
 
@@ -123,7 +121,6 @@ public class PropertyJpaEntity {
 
     @Column(name = "import_mode", nullable = false)
     @Enumerated(EnumType.STRING)
-    @JdbcTypeCode(SqlTypes.NAMED_ENUM)
     private ImportMode importMode = ImportMode.MANUAL;
 
     @Column(name = "imported_at")
