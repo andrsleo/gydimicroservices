@@ -25,9 +25,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
  * </p>
  *
  * <p>
- * Uses H2 in-memory database for testing. Entity mappings are database-agnostic
- * using {@code @JdbcTypeCode(SqlTypes.JSON)} for JSON fields, which Hibernate
- * automatically adapts to JSONB (PostgreSQL) or TEXT (H2).
+ * Uses H2 in-memory database for testing. ENUMs are stored as VARCHAR for H2 compatibility.
  * </p>
  *
  * @author GYDI Development Team
