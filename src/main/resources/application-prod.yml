@@ -1,77 +1,133 @@
 # ============================================
-# PRODUCTION PROFILE (Fly.io Deployment)
+# PRODUCTION PROFILE (Railway Production Environment)
 # ============================================
-# Required environment variables (set via: fly secrets set KEY=VALUE):
+# Deployed to: https://api.gydi.com (custom domain)
+# Deploy trigger: Manual deployment from main branch (after approval)
+# Purpose: Live application serving real users
 #
-# Database:
-# - DATABASE_URL          # Auto-set by Fly Postgres attach
-# - DB_USERNAME           # Database username
-# - DB_PASSWORD           # Database password (strong, random)
+# Required environment variables (set via Railway Dashboard or CLI):
+# Database (Spring Boot standard names - auto-detected by Railway):
+# - SPRING_DATASOURCE_URL          # Supabase Production connection string (SEPARATE, highly available)
+# - SPRING_DATASOURCE_USERNAME     # Database username
+# - SPRING_DATASOURCE_PASSWORD     # Database password (STRONG, 32+ chars, rotated every 90 days)
 #
-# Security/Encryption:
-# - JWT_SECRET            # Generate: openssl rand -base64 64
-# - JWT_REFERRAL_SECRET   # Generate: openssl rand -base64 64
-# - AES_SECRET_KEY        # Generate: openssl rand -hex 32
-# - URL_HASHIDS_SALT      # Generate: openssl rand -base64 32
+# Security:
+# - JWT_SECRET            # Generate: openssl rand -base64 64 (STRONG, UNIQUE, ROTATED)
+# - JWT_REFERRAL_SECRET   # Generate: openssl rand -base64 64 (DIFFERENT from dev/staging)
+# - AES_SECRET_KEY        # Generate: openssl rand -hex 32 (STRONG, UNIQUE)
+# - URL_HASHIDS_SALT      # Generate: openssl rand -base64 32 (UNIQUE)
 #
 # Cloud Services:
-# - CLOUDINARY_URL        # Format: cloudinary://key:secret@cloud_name
-# - RESEND_API_KEY        # From resend.com dashboard
-# - RESEND_FROM_EMAIL     # Verified email (e.g., noreply@gydi.com)
+# - CLOUDINARY_URL        # Cloudinary connection string (production folder)
+# - RESEND_API_KEY        # Resend API key (PRODUCTION API key)
+# - RESEND_FROM_EMAIL     # From email (e.g., noreply@gydi.com, verified domain)
+#
+# Payment:
+# - STRIPE_API_KEY        # Stripe LIVE secret key (sk_live_...)
+# - STRIPE_PUBLISHABLE_KEY  # Stripe LIVE publishable key (pk_live_...)
+# - STRIPE_WEBHOOK_SECRET   # Stripe webhook secret (whsec_...)
 #
 # Application:
-# - FRONTEND_URL          # e.g., https://gydi.vercel.app
-# - SENTRY_DSN            # Optional: for error tracking
+# - FRONTEND_URL          # Frontend URL (e.g., https://app.gydi.com)
+# - ALLOWED_ORIGINS       # CORS allowed origins (production domains only)
 #
-# SECURITY: Never commit secrets to git. Use Fly Secrets for all sensitive data.
+# CRITICAL SECURITY REQUIREMENTS:
+# 1. ALL secrets MUST be unique (never reuse from dev/staging)
+# 2. ALL secrets MUST be strong (minimum lengths enforced)
+# 3. Secrets MUST be rotated every 90 days (JWT, AES) or 180 days (API keys)
+# 4. NEVER commit secrets to git or expose in logs
+# 5. Use Railway Secrets (encrypted at rest)
 # ============================================
 
 spring:
+  # ============================================
+  # Database Configuration (Production)
+  # ============================================
   datasource:
-    url: ${DATABASE_URL}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
     hikari:
+      # Production pool settings for high availability
       maximum-pool-size: 20
       minimum-idle: 5
       connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+      # Connection health check
+      connection-test-query: SELECT 1
 
+  # ============================================
+  # JPA/Hibernate Configuration (Production)
+  # ============================================
   jpa:
-    show-sql: false
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false  # NEVER log SQL in production
     properties:
       hibernate:
         format_sql: false
+        type:
+          preferred_jsonb_jdbc_type: 1111
+        generate_statistics: false  # Disabled for performance
+        # Query plan cache
+        query:
+          plan_cache_max_size: 2048
+    hibernate:
+      ddl-auto: validate  # STRICT validation, no auto schema changes
+    open-in-view: false
 
+  # ============================================
+  # Flyway Configuration (Production)
+  # ============================================
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    schemas: users,properties,audit,referrals,payment,subscriptions
+    validate-on-migrate: true  # STRICT validation
+    out-of-order: false  # STRICT ordering
+    clean-disabled: true  # NEVER allow clean in production!
+
+# ============================================
+# Server Configuration (Production)
+# ============================================
+server:
+  port: ${PORT:8080}  # Railway auto-assigns PORT
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+  error:
+    # NEVER expose sensitive information in production errors
+    include-message: never
+    include-stacktrace: never
+    include-exception: false
+    include-binding-errors: never
+  # Connection timeouts
+  tomcat:
+    connection-timeout: 20000  # 20 seconds
+    max-connections: 10000
+    threads:
+      max: 200
+      min-spare: 10
+
+# ============================================
+# JWT Configuration (Production)
+# ============================================
 jwt:
   secret: ${JWT_SECRET}
-  expiration: 3600000  # 1 hour (reduced from 24h for production security)
-  refresh-expiration: 604800000  # 7 days
+  expiration: ${JWT_EXPIRATION:3600000}  # 1 hour (security best practice)
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 days
   referral:
     secret: ${JWT_REFERRAL_SECRET}
-    expiration-ms: 2592000000  # 30 days
+    expiration-ms: ${JWT_REFERRAL_EXPIRATION:2592000000}  # 30 days
 
 # ============================================
-# Cloud Services (Production)
-# ============================================
-# Cloudinary for file storage (replaces AWS S3)
-cloudinary:
-  url: ${CLOUDINARY_URL}
-
-# Resend for email service (replaces AWS SES)
-resend:
-  api-key: ${RESEND_API_KEY}
-  from-email: ${RESEND_FROM_EMAIL}
-
-# Storage provider
-storage:
-  provider: cloudinary  # Use Cloudinary in production
-
-# Email provider
-email:
-  provider: resend  # Use Resend in production
-
-# ============================================
-# Security Configuration
+# Security Configuration (Production)
 # ============================================
 security:
   url:
@@ -82,77 +138,170 @@ security:
       secret: ${AES_SECRET_KEY}
 
 # ============================================
-# Application Configuration
+# Cloud Services Configuration (Production)
+# ============================================
+# Cloudinary for file storage (production folder with backups)
+cloudinary:
+  url: ${CLOUDINARY_URL}
+
+# Resend for email service (production API key, verified domain)
+resend:
+  api-key: ${RESEND_API_KEY}
+  from-email: ${RESEND_FROM_EMAIL:noreply@gydi.com}
+
+# Storage provider
+storage:
+  provider: cloudinary
+
+# Email provider
+email:
+  provider: resend
+
+# ============================================
+# Stripe Payment Configuration (LIVE MODE - Real money!)
+# ============================================
+stripe:
+  api-key: ${STRIPE_API_KEY}  # sk_live_...
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY}  # pk_live_...
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET}  # whsec_...
+  currency: ${STRIPE_CURRENCY:USD}
+
+# ============================================
+# Application Configuration (Production)
 # ============================================
 app:
   frontend-url: ${FRONTEND_URL}
   password-reset:
-    frontend-url: ${FRONTEND_URL}
     token-expiration-minutes: 60
-    rate-limit-requests: 3
+    rate-limit-requests: 3  # Strict rate limiting
     rate-limit-window-hours: 1
+    frontend-url: ${FRONTEND_URL}
+  dev-email-recipient: ${SUPPORT_EMAIL:support@gydi.com}
 
 # ============================================
-# Monitoring (Optional)
+# CORS Configuration (Production - Strict whitelist)
 # ============================================
-sentry:
-  dsn: ${SENTRY_DSN:}  # Optional: error tracking
-  environment: production
-  traces-sample-rate: 0.1  # Sample 10% of transactions
+cors:
+  allowed-origins: ${ALLOWED_ORIGINS}  # Only production domains!
 
 # ============================================
-# Actuator Configuration (PRODUCTION)
+# Logging Configuration (Production - WARN level)
 # ============================================
-# SECURITY: Minimum endpoints exposed in production
+logging:
+  level:
+    root: ${LOG_LEVEL:WARN}
+    com.affiliate.rentals.gydi: INFO  # Application logs at INFO
+    org.springframework.security: WARN
+    org.springframework.web: WARN
+    org.hibernate.SQL: ERROR  # Only log SQL errors
+    org.hibernate.type.descriptor.sql.BasicBinder: ERROR
+    org.flywaydb: WARN
+  pattern:
+    # Structured logging for production (JSON format ideal)
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+  # File logging (if using external log aggregation)
+  file:
+    name: ${LOG_FILE:/var/log/gydi/application.log}
+    max-size: 100MB
+    max-history: 30  # Keep 30 days of logs
+
+# ============================================
+# Actuator Configuration (Production - MINIMAL exposure)
+# ============================================
 management:
   endpoints:
     web:
       exposure:
-        # Only health and info in production
+        # Only health and info exposed publicly
         include: health,info
+      base-path: /actuator
   endpoint:
     health:
-      # Never show details publicly in production
-      show-details: never
+      # NEVER show details publicly in production
+      show-details: ${HEALTH_DETAILS:never}
+      # Health check includes DB, Cloudinary, etc.
+      probes:
+        enabled: true
     info:
-      # Use new syntax instead of enabled (deprecated)
       access: unrestricted
-    # Disable all dangerous endpoints in production
+    # DISABLE all dangerous endpoints in production
     shutdown:
-      access: none
+      access: none  # Can shutdown the application
     env:
-      access: none
+      access: none  # Exposes environment variables
     metrics:
-      access: none
+      access: none  # Sensitive performance data
     threaddump:
-      access: none
+      access: none  # Can reveal sensitive data
     heapdump:
-      access: none
+      access: none  # Contains all application memory
     logfile:
-      access: none
+      access: none  # Can contain sensitive logs
+  metrics:
+    export:
+      prometheus:
+        enabled: true  # For monitoring (restricted access)
 
 # ============================================
-# Error Handling (PRODUCTION)
-# ============================================
-server:
-  error:
-    # Never expose sensitive information in error responses
-    include-message: never
-    include-stacktrace: never
-    include-exception: false
-    include-binding-errors: never
-
-# ============================================
-# Swagger/OpenAPI (PRODUCTION)
+# OpenAPI/Swagger Configuration (DISABLED in production)
 # ============================================
 springdoc:
-  # Disable Swagger UI in production for security
-  swagger-ui:
-    enabled: false
   api-docs:
-    enabled: false
+    enabled: false  # NEVER expose API docs in production
+  swagger-ui:
+    enabled: false  # NEVER expose Swagger UI in production
 
-logging:
-  level:
-    root: WARN
-    com.affiliate.rentals.gydi: INFO
+# ============================================
+# Feature Flags (Production - Controlled rollouts)
+# ============================================
+features:
+  # ML recommendations (gradual rollout)
+  ml-recommendations: ${FEATURE_ML_RECOMMENDATIONS:false}
+
+  # Referral analytics (stable feature)
+  referral-analytics: ${FEATURE_REFERRAL_ANALYTICS:true}
+
+  # New payment flow (test in staging first)
+  new-payment-flow: ${FEATURE_NEW_PAYMENT:false}
+
+  # A/B testing (not in production yet)
+  ab-testing: ${FEATURE_AB_TESTING:false}
+
+  # Multi-region support (future feature)
+  multi-region: ${FEATURE_MULTI_REGION:false}
+
+# ============================================
+# Monitoring & Observability (Production)
+# ============================================
+sentry:
+  dsn: ${SENTRY_DSN:}  # Sentry DSN for error tracking
+  environment: production
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}  # Sample 10% of requests
+  send-default-pii: false  # NEVER send PII to Sentry
+  # Release tracking
+  release: ${APP_VERSION:unknown}
+  # Performance monitoring
+  enable-tracing: true
+  # Filters
+  before-send: com.affiliate.rentals.gydi.shared.config.SentryBeforeSendCallback
+
+# ============================================
+# Cache Configuration (Production)
+# ============================================
+spring:
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=600s
+
+# ============================================
+# Connection Pool Monitoring
+# ============================================
+management:
+  metrics:
+    enable:
+      hikaricp: true
+      jdbc: true
+      jvm: true
+      logback: true
+      system: true

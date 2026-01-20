@@ -5,9 +5,10 @@ spring:
   application:
     name: gydi-rentals
 
-  # Set default profile to 'dev' for development
+  # Set default profile based on environment
+  # Override with: SPRING_PROFILES_ACTIVE environment variable
   profiles:
-    active: dev
+    active: ${SPRING_PROFILES_ACTIVE:local}
 
   # Disable MongoDB autoconfiguration
   autoconfigure:
