@@ -59,6 +59,6 @@ COMMENT ON VIEW referrals.v_click_analytics_30d IS
 'Real-time click analytics for last 30 days. Used for fraud detection and pattern analysis.';
 
 -- Restore permissions
-GRANT SELECT ON referrals.v_click_analytics_30d TO andresvargas;
+
 
 COMMIT;

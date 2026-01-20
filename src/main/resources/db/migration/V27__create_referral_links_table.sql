@@ -131,8 +131,7 @@ COMMENT ON COLUMN referrals.referral_links.deleted_at IS
 -- GRANT PERMISSIONS
 -- =====================================================================
 
-GRANT SELECT, INSERT, UPDATE ON referrals.referral_links TO andresvargas;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA referrals TO andresvargas;
+
 
 COMMIT;
 

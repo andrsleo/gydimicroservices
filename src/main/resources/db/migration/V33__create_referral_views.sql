@@ -335,16 +335,7 @@ COMMENT ON FUNCTION referrals.refresh_all_materialized_views IS
 -- GRANT PERMISSIONS
 -- =====================================================================
 
-GRANT SELECT ON referrals.mv_affiliate_performance TO andresvargas;
-GRANT SELECT ON referrals.mv_fraud_metrics TO andresvargas;
-GRANT SELECT ON referrals.v_top_links TO andresvargas;
-GRANT SELECT ON referrals.v_pending_payouts TO andresvargas;
-GRANT SELECT ON referrals.v_property_referral_stats TO andresvargas;
-GRANT SELECT ON referrals.v_click_analytics_30d TO andresvargas;
-GRANT SELECT ON referrals.v_affiliate_earnings_history TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.refresh_affiliate_performance TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.refresh_fraud_metrics TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.refresh_all_materialized_views TO andresvargas;
+
 
 COMMIT;
 

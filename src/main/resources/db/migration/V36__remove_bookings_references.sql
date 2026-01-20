@@ -303,13 +303,7 @@ COMMENT ON VIEW referrals.v_affiliate_earnings_history IS
 -- STEP 12: GRANT PERMISSIONS
 -- =====================================================================
 
-GRANT SELECT ON referrals.v_property_referral_stats TO andresvargas;
-GRANT SELECT ON referrals.v_affiliate_earnings_history TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.generate_verification_hash TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.verify_ledger_integrity TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.auto_generate_verification_hash TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.enforce_ledger_immutability TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.audit_commission_status_change TO andresvargas;
+
 
 COMMIT;
 
