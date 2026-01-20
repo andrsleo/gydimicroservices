@@ -47,9 +47,9 @@ RUN apk --no-cache add curl wget && \
 # Copy the JAR from build stage
 COPY --from=build /app/target/*.jar app.jar
 
-# Create non-root user for security
-RUN addgroup -S spring && adduser -S spring -G spring
-USER spring:spring
+# Create non-root user for security (Disabled for troubleshooting startup issues)
+# RUN addgroup -S spring && adduser -S spring -G spring
+# USER spring:spring
 
 # Expose port (Railway will override with $PORT)
 EXPOSE 8080
