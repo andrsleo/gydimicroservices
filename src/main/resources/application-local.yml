@@ -1,0 +1,222 @@
+# ============================================
+# LOCAL DEVELOPMENT PROFILE
+# ============================================
+# For use on developer machines (localhost)
+#
+# Required environment variables (.env.local file recommended):
+# - DB_PASSWORD           # Local PostgreSQL password
+# - JWT_SECRET            # Dev JWT secret (insecure OK for local)
+# - JWT_REFERRAL_SECRET   # Dev referral JWT secret
+# - AES_SECRET_KEY        # Dev AES key (64 hex chars)
+# - URL_HASHIDS_SALT      # Dev Hashids salt
+#
+# Optional:
+# - CLOUDINARY_URL        # If testing file uploads
+# - RESEND_API_KEY        # If testing email sending
+# - STRIPE_API_KEY        # Stripe test key
+# ============================================
+
+spring:
+  # ============================================
+  # Database Configuration (Local PostgreSQL or Supabase Dev)
+  # ============================================
+  datasource:
+    # Option 1: Local PostgreSQL
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gydidb?stringtype=unspecified}
+
+    # Option 2: Supabase Dev instance (shared with dev environment)
+    # url: jdbc:postgresql://aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require
+
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 5
+      minimum-idle: 2
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+
+  # ============================================
+  # JPA/Hibernate Configuration
+  # ============================================
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: true  # Show SQL queries in console
+    properties:
+      hibernate:
+        format_sql: true  # Format SQL for readability
+        type:
+          preferred_jsonb_jdbc_type: 1111
+    hibernate:
+      ddl-auto: none  # Use Flyway for schema management
+    open-in-view: false
+
+  # ============================================
+  # Flyway Configuration
+  # ============================================
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    schemas: users,properties,audit,referrals,payment,subscriptions
+    validate-on-migrate: false
+    out-of-order: true
+    clean-disabled: false  # Allow clean in local (NEVER in production!)
+
+  # ============================================
+  # Email Configuration (Console logging, no actual sending)
+  # ============================================
+  mail:
+    # Console logging only (no SMTP server needed)
+    host: localhost
+    port: 1025
+    username: dummy
+    password: dummy
+    properties:
+      mail:
+        smtp:
+          auth: false
+          starttls:
+            enable: false
+    test-connection: false
+
+# ============================================
+# Server Configuration
+# ============================================
+server:
+  port: ${SERVER_PORT:8080}
+  servlet:
+    context-path: /
+
+# ============================================
+# JWT Configuration (Development secrets - NOT for production!)
+# ============================================
+jwt:
+  secret: ${JWT_SECRET:LOCAL_DEV_SECRET_CHANGE_ME_AT_LEAST_64_CHARS_XXXXXXXXXXXXXXXXXX}
+  expiration: ${JWT_EXPIRATION:86400000}  # 24 hours
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 days
+  referral:
+    secret: ${JWT_REFERRAL_SECRET:LOCAL_REFERRAL_SECRET_ALSO_64_CHARS_XXXXXXXXXXXXXXXXXXX}
+    expiration-ms: ${JWT_REFERRAL_EXPIRATION:31536000000}  # 365 days
+
+# ============================================
+# Security Configuration
+# ============================================
+security:
+  url:
+    hashids:
+      salt: ${URL_HASHIDS_SALT:local-dev-hashids-salt-32-chars}
+      min-length: 10
+    aes:
+      # Must be exactly 64 hex characters (32 bytes = 256 bits)
+      secret: ${AES_SECRET_KEY:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2}
+
+# ============================================
+# Cloud Services Configuration
+# ============================================
+# Cloudinary (optional for local, use local storage if not set)
+cloudinary:
+  url: ${CLOUDINARY_URL:}
+
+# Resend (optional for local, logs to console if not set)
+resend:
+  api-key: ${RESEND_API_KEY:}
+  from-email: ${RESEND_FROM_EMAIL:dev@gydi.local}
+
+# Storage provider
+storage:
+  provider: ${STORAGE_PROVIDER:local}
+  local:
+    directory: ./uploads
+    base-url: http://localhost:8080/uploads
+
+# Email provider (use console logging in local)
+email:
+  provider: ${EMAIL_PROVIDER:console}
+
+# ============================================
+# Stripe Payment Configuration (Test Keys)
+# ============================================
+stripe:
+  api-key: ${STRIPE_API_KEY:sk_test_placeholder}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_placeholder}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
+  currency: ${STRIPE_CURRENCY:USD}
+
+# ============================================
+# Application Configuration
+# ============================================
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  password-reset:
+    token-expiration-minutes: 60
+    rate-limit-requests: 10  # More lenient in local
+    rate-limit-window-hours: 1
+    frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  dev-email-recipient: ${DEV_EMAIL_RECIPIENT:dev@localhost}
+
+# ============================================
+# CORS Configuration
+# ============================================
+cors:
+  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+
+# ============================================
+# Logging Configuration (Verbose for debugging)
+# ============================================
+logging:
+  level:
+    root: INFO
+    com.affiliate.rentals.gydi: DEBUG
+    org.springframework.security: DEBUG
+    org.springframework.web: DEBUG
+    org.hibernate.SQL: DEBUG
+    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.flywaydb: DEBUG
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
+
+# ============================================
+# Actuator Configuration (All endpoints exposed in local)
+# ============================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: "*"  # All endpoints exposed for debugging
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: always  # Always show full health details
+    env:
+      show-values: always  # Show all environment variables
+  # Enable metrics export
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# ============================================
+# OpenAPI/Swagger Configuration
+# ============================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true  # Swagger UI enabled in local
+    operations-sorter: method
+    tags-sorter: alpha
+
+# ============================================
+# Feature Flags (Local Development - All enabled for testing)
+# ============================================
+features:
+  ml-recommendations: ${FEATURE_ML_RECOMMENDATIONS:true}
+  referral-analytics: ${FEATURE_REFERRAL_ANALYTICS:true}
+  new-payment-flow: ${FEATURE_NEW_PAYMENT:true}
+  ab-testing: ${FEATURE_AB_TESTING:true}
+  multi-region: ${FEATURE_MULTI_REGION:false}

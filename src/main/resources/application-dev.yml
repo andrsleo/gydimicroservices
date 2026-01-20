@@ -1,17 +1,95 @@
 # ============================================
-# DEVELOPMENT PROFILE
+# DEVELOPMENT PROFILE (Railway Dev Environment)
 # ============================================
-# Variables de entorno requeridas:
-# - GMAIL_USERNAME
-# - GMAIL_APP_PASSWORD
+# Deployed to: https://gydi-backend-dev.railway.app
+# Auto-deploy: develop branch pushes
+#
+# Required environment variables (set via Railway Dashboard or CLI):
+# Database (Spring Boot standard names - auto-detected by Railway):
+# - SPRING_DATASOURCE_URL          # Supabase Dev connection string
+# - SPRING_DATASOURCE_USERNAME     # Database username
+# - SPRING_DATASOURCE_PASSWORD     # Database password
+#
+# Security:
+# - JWT_SECRET            # Generate: openssl rand -base64 64
+# - JWT_REFERRAL_SECRET   # Generate: openssl rand -base64 64
+# - AES_SECRET_KEY        # Generate: openssl rand -hex 32
+# - URL_HASHIDS_SALT      # Generate: openssl rand -base64 32
+#
+# Cloud Services:
+# - CLOUDINARY_URL        # Cloudinary connection string
+# - RESEND_API_KEY        # Resend API key
+# - RESEND_FROM_EMAIL     # From email address
+#
+# Payment:
+# - STRIPE_API_KEY        # Stripe test secret key
+# - STRIPE_PUBLISHABLE_KEY  # Stripe test publishable key
+# - STRIPE_WEBHOOK_SECRET   # Stripe webhook secret
+#
+# Application:
+# - FRONTEND_URL          # Frontend URL (e.g., https://gydi-dev.vercel.app)
+# - ALLOWED_ORIGINS       # CORS allowed origins
+#
+# SECURITY: NEVER hardcode secrets in this file!
 # ============================================
 
 spring:
+  # ============================================
+  # Database Configuration
+  # ============================================
+  datasource:
+    url: ${SPRING_DATASOURCE_URL}
+    username: ${SPRING_DATASOURCE_USERNAME}
+    password: ${SPRING_DATASOURCE_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+    hikari:
+      maximum-pool-size: 10
+      minimum-idle: 3
+      connection-timeout: 30000
+      idle-timeout: 600000
+      max-lifetime: 1800000
+      leak-detection-threshold: 60000
+
+  # ============================================
+  # JPA/Hibernate Configuration
+  # ============================================
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false # Disabled in dev for performance
+    properties:
+      hibernate:
+        format_sql: false
+        type:
+          preferred_jsonb_jdbc_type: 1111
+    hibernate:
+      ddl-auto: validate # Validate schema against entities
+    open-in-view: false
+
+  # ============================================
+  # Flyway Configuration
+  # ============================================
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    schemas: users,properties,audit,referrals,payment,subscriptions
+    validate-on-migrate: true
+    out-of-order: false
+    clean-disabled: true # NEVER allow clean in deployed environments!
+
+  # ============================================
+  # Email Configuration (Resend or Gmail for testing)
+  # ============================================
   mail:
-    host: smtp.gmail.com
-    port: 587
-    username: ${GMAIL_USERNAME:alvargasrod@gmail.com}
-    password: ${GMAIL_APP_PASSWORD:eaintlhnzrcxqbis}
+    # Option 1: Use Resend (preferred)
+    # Configured via email.provider=resend below
+
+    # Option 2: Gmail SMTP (for testing only, use app password)
+    host: ${MAIL_HOST}
+    port: ${MAIL_PORT}
+    username: ${GMAIL_USERNAME}
+    password: ${GMAIL_APP_PASSWORD}
     properties:
       mail:
         smtp:
@@ -21,10 +99,152 @@ spring:
             required: true
     test-connection: false
 
+# ============================================
+# Server Configuration
+# ============================================
+server:
+  port: ${PORT:8080} # Railway auto-assigns PORT
+  servlet:
+    context-path: /
+  compression:
+    enabled: true
+    mime-types: application/json,application/xml,text/html,text/xml,text/plain
+
+# ============================================
+# JWT Configuration
+# ============================================
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
+  referral:
+    secret: ${JWT_REFERRAL_SECRET}
+    expiration-ms: ${JWT_REFERRAL_EXPIRATION:31536000000} # 365 days
+
+# ============================================
+# Security Configuration
+# ============================================
+security:
+  url:
+    hashids:
+      salt: ${URL_HASHIDS_SALT}
+      min-length: 10
+    aes:
+      secret: ${AES_SECRET_KEY}
+
+# ============================================
+# Cloud Services Configuration
+# ============================================
+# Cloudinary for file storage
+cloudinary:
+  url: ${CLOUDINARY_URL}
+
+# Resend for email service
+resend:
+  api-key: ${RESEND_API_KEY}
+  from-email: ${RESEND_FROM_EMAIL:dev@gydi.com}
+
+# Storage provider
+storage:
+  provider: ${STORAGE_PROVIDER:cloudinary}
+  local:
+    directory: ./uploads
+    base-url: ${FRONTEND_URL}/uploads
+
+# Email provider
+email:
+  provider: ${EMAIL_PROVIDER:resend}
+
+# ============================================
+# Stripe Payment Configuration (Test Mode)
+# ============================================
+stripe:
+  api-key: ${STRIPE_API_KEY}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET}
+  currency: ${STRIPE_CURRENCY:USD}
+
+# ============================================
+# Application Configuration
+# ============================================
+app:
+  frontend-url: ${FRONTEND_URL}
+  password-reset:
+    token-expiration-minutes: 60
+    rate-limit-requests: 3
+    rate-limit-window-hours: 1
+    frontend-url: ${FRONTEND_URL}
+  dev-email-recipient: ${DEV_EMAIL_RECIPIENT:dev@gydi.com}
+
+# ============================================
+# CORS Configuration
+# ============================================
+cors:
+  allowed-origins: ${ALLOWED_ORIGINS}
+
+# ============================================
+# Logging Configuration
+# ============================================
 logging:
   level:
-    root: INFO
+    root: ${LOG_LEVEL:INFO}
     com.affiliate.rentals.gydi: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: ${SQL_LOG_LEVEL:INFO}
+    org.hibernate.type.descriptor.sql.BasicBinder: INFO
+    org.flywaydb: INFO
+  pattern:
+    console: "%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n"
+
+# ============================================
+# Actuator Configuration
+# ============================================
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+      base-path: /actuator
+  endpoint:
+    health:
+      show-details: ${HEALTH_DETAILS:when-authorized}
+    info:
+      access: unrestricted
+    metrics:
+      access: unrestricted
+  metrics:
+    export:
+      prometheus:
+        enabled: true
+
+# ============================================
+# OpenAPI/Swagger Configuration
+# ============================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+    enabled: true
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true # Enabled in dev for API testing
+    operations-sorter: method
+    tags-sorter: alpha
+
+# ============================================
+# Feature Flags
+# ============================================
+features:
+  ml-recommendations: ${FEATURE_ML_RECOMMENDATIONS:true}
+  referral-analytics: ${FEATURE_REFERRAL_ANALYTICS:true}
+  new-payment-flow: ${FEATURE_NEW_PAYMENT:true}
+  ab-testing: ${FEATURE_AB_TESTING:false}
+  multi-region: ${FEATURE_MULTI_REGION:false}
+
+# ============================================
+# Monitoring (Optional)
+# ============================================
+sentry:
+  dsn: ${SENTRY_DSN:}
+  environment: development
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.5}
