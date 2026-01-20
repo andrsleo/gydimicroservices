@@ -50,6 +50,10 @@ spring:
       idle-timeout: 600000
       max-lifetime: 1800000
       leak-detection-threshold: 60000
+      # Fix for Supabase PgBouncer "prepared statement already exists" error
+      # Disables prepared statements at the pool level
+      data-source-properties:
+        prepareThreshold: 0
 
   # ============================================
   # JPA/Hibernate Configuration
