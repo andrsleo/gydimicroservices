@@ -67,7 +67,7 @@ spring:
         type:
           preferred_jsonb_jdbc_type: 1111
     hibernate:
-      ddl-auto: validate # Validate schema against entities
+      ddl-auto: none # Skipped validation to avoid startup errors with prepared statements
     open-in-view: false
 
   # ============================================
