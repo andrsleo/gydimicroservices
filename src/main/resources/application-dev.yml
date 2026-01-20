@@ -214,11 +214,12 @@ management:
       exposure:
         include: health,info,metrics,prometheus
       base-path: /actuator
+  health:
+    mail:
+      enabled: false # Correctly disable mail check
   endpoint:
     health:
       show-details: ${HEALTH_DETAILS:when-authorized}
-      mail:
-        enabled: false # Disable mail check due to potential timeouts in Railway
     info:
       access: unrestricted
     metrics:
