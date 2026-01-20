@@ -59,15 +59,15 @@ CREATE INDEX IF NOT EXISTS idx_security_audit_log_event_type_created_at
 ON referrals.security_audit_log(event_type, created_at DESC);
 
 -- Grant permissions
-GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA referrals TO andresvargas;
-GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA referrals TO andresvargas;
+--GRANT SELECT, INSERT ON ALL TABLES IN SCHEMA referrals TO andresvargas;
+--GRANT USAGE, SELECT ON ALL SEQUENCES IN SCHEMA referrals TO andresvargas;
 
 -- Set default privileges for future tables
-ALTER DEFAULT PRIVILEGES IN SCHEMA referrals
-GRANT SELECT, INSERT ON TABLES TO andresvargas;
+--ALTER DEFAULT PRIVILEGES IN SCHEMA referrals
+--GRANT SELECT, INSERT ON TABLES TO andresvargas;
 
-ALTER DEFAULT PRIVILEGES IN SCHEMA referrals
-GRANT USAGE, SELECT ON SEQUENCES TO andresvargas;
+--ALTER DEFAULT PRIVILEGES IN SCHEMA referrals
+--GRANT USAGE, SELECT ON SEQUENCES TO andresvargas;
 
 COMMIT;
 
