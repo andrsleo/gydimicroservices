@@ -334,10 +334,7 @@ COMMENT ON FUNCTION referrals.auto_approve_pending_commissions IS
 -- PART 7: GRANT PERMISSIONS
 -- =====================================================================
 
-GRANT SELECT, INSERT, UPDATE ON referrals.commission_booking TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.generate_verification_hash TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.verify_ledger_integrity TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.auto_approve_pending_commissions TO andresvargas;
+
 
 COMMIT;
 

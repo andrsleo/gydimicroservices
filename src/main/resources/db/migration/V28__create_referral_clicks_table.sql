@@ -251,10 +251,7 @@ COMMENT ON FUNCTION referrals.drop_old_partitions() IS
 -- GRANT PERMISSIONS
 -- =====================================================================
 
-GRANT SELECT, INSERT ON referrals.referral_clicks TO andresvargas;
-GRANT ALL ON ALL TABLES IN SCHEMA referrals TO andresvargas;  -- For partition management
-GRANT EXECUTE ON FUNCTION referrals.create_next_month_partition() TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.drop_old_partitions() TO andresvargas;
+
 
 COMMIT;
 

@@ -9,7 +9,7 @@ BEGIN;
 CREATE SCHEMA IF NOT EXISTS referrals;
 
 -- Grant usage to application user
-GRANT USAGE ON SCHEMA referrals TO andresvargas;
+
 
 -- Create custom types for type safety (idempotent)
 DO $$

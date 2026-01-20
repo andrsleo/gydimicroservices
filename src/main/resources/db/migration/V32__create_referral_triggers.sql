@@ -318,7 +318,7 @@ COMMENT ON FUNCTION referrals.prevent_ledger_delete IS
 -- GRANT PERMISSIONS
 -- =====================================================================
 
-GRANT EXECUTE ON ALL FUNCTIONS IN SCHEMA referrals TO andresvargas;
+
 
 COMMIT;
 

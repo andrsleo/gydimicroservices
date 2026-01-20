@@ -278,9 +278,7 @@ COMMENT ON FUNCTION referrals.get_affiliate_fraud_risk IS
 -- GRANT PERMISSIONS
 -- =====================================================================
 
-GRANT SELECT, INSERT, UPDATE ON referrals.fraud_alerts TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.create_fraud_alert TO andresvargas;
-GRANT EXECUTE ON FUNCTION referrals.get_affiliate_fraud_risk TO andresvargas;
+
 
 COMMIT;
 
