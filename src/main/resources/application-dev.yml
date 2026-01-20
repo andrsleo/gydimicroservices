@@ -81,6 +81,10 @@ spring:
     validate-on-migrate: true
     out-of-order: false
     clean-disabled: true # NEVER allow clean in deployed environments!
+    # Force Flyway to use the same fix for PgBouncer
+    # This appends the property to the JDBC URL used by Flyway
+    jdbc-properties:
+      prepareThreshold: 0
 
   # ============================================
   # Email Configuration (Resend or Gmail for testing)
