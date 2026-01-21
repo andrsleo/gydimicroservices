@@ -59,6 +59,8 @@ spring:
       leak-detection-threshold: 60000
       # Connection health check
       connection-test-query: SELECT 1
+      data-source-properties:
+        prepareThreshold: 0  # Critical for Supabase transaction mode
 
   # ============================================
   # JPA/Hibernate Configuration (Production)
@@ -90,6 +92,8 @@ spring:
     validate-on-migrate: true  # STRICT validation
     out-of-order: false  # STRICT ordering
     clean-disabled: true  # NEVER allow clean in production!
+    jdbc-properties:
+      prepareThreshold: 0  # Critical for Supabase transaction mode
 
 # ============================================
 # Server Configuration (Production)
@@ -209,6 +213,9 @@ logging:
 # Actuator Configuration (Production - MINIMAL exposure)
 # ============================================
 management:
+  health:
+    mail:
+      enabled: false  # Disable mail check due to potential timeouts in Railway
   endpoints:
     web:
       exposure:
