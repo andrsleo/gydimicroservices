@@ -188,7 +188,11 @@ app:
 # CORS Configuration
 # ============================================
 cors:
+  # Explicit origins (production URLs, specific dev URLs)
   allowed-origins: ${ALLOWED_ORIGINS}
+  # Origin patterns for dynamic URLs (Vercel preview deployments)
+  # Example: https://*.vercel.app, https://gydi-front-next-*.vercel.app
+  allowed-origin-patterns: ${ALLOWED_ORIGIN_PATTERNS:}
 
 # ============================================
 # Logging Configuration
