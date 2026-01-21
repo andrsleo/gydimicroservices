@@ -49,7 +49,7 @@ public class SecurityConfig {
         private final JwtAuthenticationFilter jwtAuthFilter;
         private final UserDetailsService userDetailsService;
 
-        @Value("${cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000,https://gydi-front-next.vercel.app}")
+        @Value("${cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000}")
         private String allowedOrigins;
 
         @Value("${cors.allowed-origin-patterns:}")
@@ -176,14 +176,23 @@ public class SecurityConfig {
          * Configures CORS (Cross-Origin Resource Sharing) for the application.
          *
          * <p>
-         * This configuration allows the Next.js frontend running on localhost:3000
-         * to make requests to this backend API running on localhost:8080.
+         * This configuration dynamically loads allowed origins from environment variables,
+         * supporting multiple deployment environments (local, dev, staging, production).
          * </p>
          *
          * <p>
-         * <strong>Production Note:</strong> Update allowed origins for production
-         * deployment.
-         * Do not use "*" in production as it allows any origin to access your API.
+         * <strong>Configuration:</strong>
+         * <ul>
+         * <li><code>cors.allowed-origins</code>: Comma-separated list of explicit origins
+         * (e.g., "http://localhost:3000,https://gydi.vercel.app")</li>
+         * <li><code>cors.allowed-origin-patterns</code>: Comma-separated wildcard patterns
+         * (e.g., "https://*.vercel.app" for Vercel preview deployments)</li>
+         * </ul>
+         * </p>
+         *
+         * <p>
+         * <strong>Security Note:</strong> Never use "*" in production. Always specify
+         * explicit origins or use controlled patterns with authentication.
          * </p>
          *
          * @return CorsConfigurationSource configured for frontend integration
@@ -192,12 +201,35 @@ public class SecurityConfig {
         public CorsConfigurationSource corsConfigurationSource() {
                 CorsConfiguration configuration = new CorsConfiguration();
 
-                // Allow frontend origin (localhost:3000 for development)
-                // TODO: Update this for production deployment
-                configuration.setAllowedOrigins(Arrays.asList(
-                                "http://localhost:3000",
-                                "http://127.0.0.1:3000",
-                                "https://gydi-front-next.vercel.app"));
+                // Parse and set allowed origins from environment variable
+                if (allowedOrigins != null && !allowedOrigins.trim().isEmpty()) {
+                        List<String> origins = new ArrayList<>();
+                        for (String origin : allowedOrigins.split(",")) {
+                                String trimmed = origin.trim();
+                                if (!trimmed.isEmpty()) {
+                                        origins.add(trimmed);
+                                }
+                        }
+                        if (!origins.isEmpty()) {
+                                configuration.setAllowedOrigins(origins);
+                                log.info("CORS configured with allowed origins: {}", origins);
+                        }
+                }
+
+                // Parse and set allowed origin patterns (for Vercel preview URLs, etc.)
+                if (allowedOriginPatterns != null && !allowedOriginPatterns.trim().isEmpty()) {
+                        List<String> patterns = new ArrayList<>();
+                        for (String pattern : allowedOriginPatterns.split(",")) {
+                                String trimmed = pattern.trim();
+                                if (!trimmed.isEmpty()) {
+                                        patterns.add(trimmed);
+                                }
+                        }
+                        if (!patterns.isEmpty()) {
+                                configuration.setAllowedOriginPatterns(patterns);
+                                log.info("CORS configured with allowed origin patterns: {}", patterns);
+                        }
+                }
 
                 // Allow all HTTP methods (GET, POST, PUT, DELETE, PATCH, OPTIONS)
                 configuration.setAllowedMethods(Arrays.asList(
