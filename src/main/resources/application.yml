@@ -30,10 +30,10 @@ spring:
   # JPA/Hibernate Configuration
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: false  # Set to true in application-local.yml for debugging
+    show-sql: false # Set to true in application-local.yml for debugging
     properties:
       hibernate:
-        format_sql: false  # Set to true in application-local.yml for debugging
+        format_sql: false # Set to true in application-local.yml for debugging
         type:
           preferred_jsonb_jdbc_type: 1111
     hibernate:
@@ -160,17 +160,17 @@ management:
       access: unrestricted
     # Disable dangerous endpoints using 'access: none'
     shutdown:
-      access: none  # Disabled - can shutdown the application
+      access: none # Disabled - can shutdown the application
     env:
       # Environment endpoint requires ADMIN role (configured in SecurityConfig)
       access: unrestricted
-      show-values: when-authorized  # Hide values from unauthorized users
+      show-values: when-authorized # Hide values from unauthorized users
     threaddump:
-      access: none  # Disabled - can reveal sensitive data
+      access: none # Disabled - can reveal sensitive data
     heapdump:
-      access: none  # Disabled - contains all application memory
+      access: none # Disabled - contains all application memory
     logfile:
-      access: none  # Disabled - can contain sensitive logs
+      access: none # Disabled - can contain sensitive logs
 
 # ============================================
 # Cloud Services Configuration
@@ -204,7 +204,7 @@ storage:
 
 # Email provider selection
 email:
-  provider: ${EMAIL_PROVIDER:local}  # Options: local, resend
+  provider: ${EMAIL_PROVIDER:local} # Options: local, resend
 
 # ============================================
 # Stripe Payment Gateway Configuration
@@ -214,9 +214,9 @@ email:
 # Use test keys for development: sk_test_... and pk_test_...
 # NEVER commit production keys to git
 stripe:
-  api-key: ${STRIPE_API_KEY}  # Secret Key: sk_test_... or sk_live_...
-  publishable-key: ${STRIPE_PUBLISHABLE_KEY}  # Publishable Key: pk_test_... or pk_live_...
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET}  # Webhook signing secret: whsec_...
+  api-key: ${STRIPE_API_KEY} # Secret Key: sk_test_... or sk_live_...
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY} # Publishable Key: pk_test_... or pk_live_...
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET} # Webhook signing secret: whsec_...
   currency: ${STRIPE_CURRENCY:USD}
 
 # ============================================
@@ -230,7 +230,6 @@ stripe:
 #     bucket-name: ${AWS_S3_BUCKET_NAME:gydi-profile-images}
 #     region: ${AWS_S3_REGION:us-east-1}
 #     base-url: ${AWS_S3_BASE_URL:https://gydi-profile-images.s3.amazonaws.com}
-
 
 # ============================================
 # Password Reset Configuration
@@ -255,13 +254,12 @@ security:
     # Hashids configuration for property ID obfuscation
     hashids:
       salt: ${URL_HASHIDS_SALT}
-      min-length: 10  # Minimum length of encoded property IDs
+      min-length: 10 # Minimum length of encoded property IDs
     # AES-256 configuration for user ID encryption
     aes:
       # IMPORTANT: Must be exactly 64 hex characters (32 bytes = 256 bits)
       # Generate with: openssl rand -hex 32
       secret: ${AES_SECRET_KEY}
-
 # ============================================
 # CORS Configuration
 # ============================================
@@ -269,5 +267,5 @@ security:
 # See SecurityConfig.java for implementation details
 # Example configuration:
 # cors:
-#   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
-#   allowed-origin-patterns: ${ALLOWED_ORIGIN_PATTERNS:}
+#   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+#   allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:}
