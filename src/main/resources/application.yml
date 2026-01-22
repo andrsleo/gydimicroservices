@@ -30,10 +30,10 @@ spring:
   # JPA/Hibernate Configuration
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true
+    show-sql: false  # Set to true in application-local.yml for debugging
     properties:
       hibernate:
-        format_sql: true
+        format_sql: false  # Set to true in application-local.yml for debugging
         type:
           preferred_jsonb_jdbc_type: 1111
     hibernate:
@@ -110,13 +110,17 @@ jwt:
 # ============================================
 # Logging Configuration
 # ============================================
+# Base configuration for all environments
+# Override in profile-specific files (application-local.yml, etc.)
 logging:
   level:
     root: INFO
-    com.affiliate.rentals.gydi: DEBUG
-    org.springframework.security: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
+    com.affiliate.rentals.gydi: INFO
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.flywaydb: INFO
 
 # ============================================
 # OpenAPI/Swagger Configuration
@@ -230,7 +234,7 @@ app:
     rate-limit-requests: 3
     rate-limit-window-hours: 1
     frontend-url: ${FRONTEND_URL:http://localhost:3000}
-  dev-email-recipient: alvargasrod@gmail.com
+  dev-email-recipient: ${DEV_EMAIL_RECIPIENT:dev@gydi.local}
 
 # ============================================
 # URL Encryption & Security Configuration
@@ -249,3 +253,13 @@ security:
       # IMPORTANT: Must be exactly 64 hex characters (32 bytes = 256 bits)
       # Generate with: openssl rand -hex 32
       secret: ${AES_SECRET_KEY}
+
+# ============================================
+# CORS Configuration
+# ============================================
+# CORS is configured per environment in application-{profile}.yml
+# See SecurityConfig.java for implementation details
+# Example configuration:
+# cors:
+#   allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000}
+#   allowed-origin-patterns: ${ALLOWED_ORIGIN_PATTERNS:}

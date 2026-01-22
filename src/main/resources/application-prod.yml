@@ -95,6 +95,14 @@ spring:
     jdbc-properties:
       prepareThreshold: 0  # Critical for Supabase transaction mode
 
+  # ============================================
+  # Cache Configuration (Production)
+  # ============================================
+  cache:
+    type: caffeine
+    caffeine:
+      spec: maximumSize=1000,expireAfterWrite=600s
+
 # ============================================
 # Server Configuration (Production)
 # ============================================
@@ -248,6 +256,13 @@ management:
     export:
       prometheus:
         enabled: true  # For monitoring (restricted access)
+    # Enable detailed metrics for connection pool monitoring
+    enable:
+      hikaricp: true
+      jdbc: true
+      jvm: true
+      logback: true
+      system: true
 
 # ============================================
 # OpenAPI/Swagger Configuration (DISABLED in production)
@@ -291,24 +306,3 @@ sentry:
   enable-tracing: true
   # Filters
   before-send: com.affiliate.rentals.gydi.shared.config.SentryBeforeSendCallback
-
-# ============================================
-# Cache Configuration (Production)
-# ============================================
-spring:
-  cache:
-    type: caffeine
-    caffeine:
-      spec: maximumSize=1000,expireAfterWrite=600s
-
-# ============================================
-# Connection Pool Monitoring
-# ============================================
-management:
-  metrics:
-    enable:
-      hikaricp: true
-      jdbc: true
-      jvm: true
-      logback: true
-      system: true
