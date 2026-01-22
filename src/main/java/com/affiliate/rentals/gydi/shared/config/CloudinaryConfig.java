@@ -93,6 +93,14 @@ public class CloudinaryConfig {
         // Trim whitespace (Railway might add spaces)
         String trimmedUrl = cloudinaryUrl.trim();
 
+        // WORKAROUND: Railway sometimes includes the variable name in the value
+        // Remove "CLOUDINARY_URL=" prefix if present
+        if (trimmedUrl.startsWith("CLOUDINARY_URL=")) {
+            log.warn("Detected CLOUDINARY_URL prefix in value. Stripping it. Check Railway variable configuration.");
+            trimmedUrl = trimmedUrl.substring("CLOUDINARY_URL=".length());
+            log.info("URL after stripping prefix: [{}]", trimmedUrl);
+        }
+
         if (!trimmedUrl.startsWith("cloudinary://")) {
             log.error("Invalid Cloudinary URL format. Received: [{}]", trimmedUrl);
             log.error("URL bytes: {}", trimmedUrl.getBytes());
