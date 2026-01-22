@@ -167,7 +167,7 @@ app:
 # CORS Configuration
 # ============================================
 cors:
-  allowed-origins: ${ALLOWED_ORIGINS:http://localhost:3000,http://localhost:3001}
+  allowed-origins: ${ALLOWED_ORIGINS}
 
 # ============================================
 # Logging Configuration (Verbose for debugging)
