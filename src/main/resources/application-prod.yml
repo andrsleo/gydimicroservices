@@ -29,7 +29,7 @@
 #
 # Application:
 # - FRONTEND_URL          # Frontend URL (e.g., https://app.gydi.com)
-# - ALLOWED_ORIGINS       # CORS allowed origins (production domains only)
+# - CORS_ALLOWED_ORIGINS       # CORS allowed origins (production domains only)
 #
 # CRITICAL SECURITY REQUIREMENTS:
 # 1. ALL secrets MUST be unique (never reuse from dev/staging)
@@ -194,7 +194,7 @@ app:
 # CORS Configuration (Production - Strict whitelist)
 # ============================================
 cors:
-  allowed-origins: ${ALLOWED_ORIGINS} # Only production domains!
+  allowed-origins: ${CORS_ALLOWED_ORIGINS} # Only production domains!
 
 # ============================================
 # Logging Configuration (Production - WARN level)
