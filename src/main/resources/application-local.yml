@@ -82,6 +82,12 @@ spring:
             enable: false
     test-connection: false
 
+  # ============================================
+  # Cache Configuration (Local - Disabled for development)
+  # ============================================
+  cache:
+    type: none  # Disable caching in local for immediate feedback during development
+
 # ============================================
 # Server Configuration
 # ============================================
