@@ -179,8 +179,11 @@ management:
 # See: docs/setup/DEPLOYMENT_PLAN_VERCEL_FLYIO.md
 
 # Cloudinary for File Storage (replaces AWS S3)
+# Get your URL from: https://console.cloudinary.com/
+# Format: cloudinary://api_key:api_secret@cloud_name
+# Example: ***REMOVED***
 cloudinary:
-  url: ${CLOUDINARY_URL}  # Format: cloudinary://api_key:api_secret@cloud_name
+  url: ${CLOUDINARY_URL}
 
 # Resend for Email Service (replaces AWS SES)
 resend:
@@ -188,8 +191,13 @@ resend:
   from-email: ${RESEND_FROM_EMAIL:noreply@gydi.com}
 
 # Storage provider selection
+# Options:
+#   - local: Store files in ./uploads (ephemeral in Railway/Docker)
+#   - cloudinary: Store files in Cloudinary (persistent, CDN, optimizations)
+#
+# Set STORAGE_PROVIDER=cloudinary in Railway for production
 storage:
-  provider: ${STORAGE_PROVIDER:local}  # Options: local, cloudinary
+  provider: ${STORAGE_PROVIDER:local}
   local:
     directory: ./uploads
     base-url: http://localhost:8080/uploads
