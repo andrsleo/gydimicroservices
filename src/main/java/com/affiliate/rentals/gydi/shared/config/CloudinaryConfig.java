@@ -77,6 +77,12 @@ public class CloudinaryConfig {
      */
     @Bean
     public Cloudinary cloudinary() {
+        // Debug logging
+        log.info("CLOUDINARY_URL raw value: [{}]", cloudinaryUrl);
+        log.info("CLOUDINARY_URL length: {}", cloudinaryUrl != null ? cloudinaryUrl.length() : "null");
+        log.info("CLOUDINARY_URL starts with 'cloudinary://': {}",
+            cloudinaryUrl != null && cloudinaryUrl.startsWith("cloudinary://"));
+
         if (cloudinaryUrl == null || cloudinaryUrl.trim().isEmpty()) {
             throw new IllegalArgumentException(
                 "Cloudinary URL is required when storage.provider=cloudinary. " +
@@ -84,16 +90,30 @@ public class CloudinaryConfig {
             );
         }
 
-        if (!cloudinaryUrl.startsWith("cloudinary://")) {
+        // Trim whitespace (Railway might add spaces)
+        String trimmedUrl = cloudinaryUrl.trim();
+
+        // WORKAROUND: Railway sometimes includes the variable name in the value
+        // Remove "CLOUDINARY_URL=" prefix if present
+        if (trimmedUrl.startsWith("CLOUDINARY_URL=")) {
+            log.warn("Detected CLOUDINARY_URL prefix in value. Stripping it. Check Railway variable configuration.");
+            trimmedUrl = trimmedUrl.substring("CLOUDINARY_URL=".length());
+            log.info("URL after stripping prefix: [{}]", trimmedUrl);
+        }
+
+        if (!trimmedUrl.startsWith("cloudinary://")) {
+            log.error("Invalid Cloudinary URL format. Received: [{}]", trimmedUrl);
+            log.error("URL bytes: {}", trimmedUrl.getBytes());
             throw new IllegalArgumentException(
-                "Invalid Cloudinary URL format. Expected: cloudinary://api_key:api_secret@cloud_name"
+                "Invalid Cloudinary URL format. Expected: cloudinary://api_key:api_secret@cloud_name. " +
+                "Received: " + trimmedUrl.substring(0, Math.min(20, trimmedUrl.length())) + "..."
             );
         }
 
         log.info("Initializing Cloudinary client from URL: cloudinary://***:***@{}",
-            extractCloudName(cloudinaryUrl));
+            extractCloudName(trimmedUrl));
 
-        Cloudinary cloudinary = new Cloudinary(cloudinaryUrl);
+        Cloudinary cloudinary = new Cloudinary(trimmedUrl);
 
         // Verify configuration by extracting cloud name
         String cloudName = cloudinary.config.cloudName;
