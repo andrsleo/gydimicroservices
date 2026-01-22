@@ -60,25 +60,25 @@ spring:
       # Connection health check
       connection-test-query: SELECT 1
       data-source-properties:
-        prepareThreshold: 0  # Critical for Supabase transaction mode
+        prepareThreshold: 0 # Critical for Supabase transaction mode
 
   # ============================================
   # JPA/Hibernate Configuration (Production)
   # ============================================
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: false  # NEVER log SQL in production
+    show-sql: false # NEVER log SQL in production
     properties:
       hibernate:
         format_sql: false
         type:
           preferred_jsonb_jdbc_type: 1111
-        generate_statistics: false  # Disabled for performance
+        generate_statistics: false # Disabled for performance
         # Query plan cache
         query:
           plan_cache_max_size: 2048
     hibernate:
-      ddl-auto: validate  # STRICT validation, no auto schema changes
+      ddl-auto: validate # STRICT validation, no auto schema changes
     open-in-view: false
 
   # ============================================
@@ -89,11 +89,11 @@ spring:
     baseline-on-migrate: true
     locations: classpath:db/migration
     schemas: users,properties,audit,referrals,payment,subscriptions
-    validate-on-migrate: true  # STRICT validation
-    out-of-order: false  # STRICT ordering
-    clean-disabled: true  # NEVER allow clean in production!
+    validate-on-migrate: true # STRICT validation
+    out-of-order: false # STRICT ordering
+    clean-disabled: true # NEVER allow clean in production!
     jdbc-properties:
-      prepareThreshold: 0  # Critical for Supabase transaction mode
+      prepareThreshold: 0 # Critical for Supabase transaction mode
 
   # ============================================
   # Cache Configuration (Production)
@@ -107,7 +107,7 @@ spring:
 # Server Configuration (Production)
 # ============================================
 server:
-  port: ${PORT:8080}  # Railway auto-assigns PORT
+  port: ${PORT:8080} # Railway auto-assigns PORT
   servlet:
     context-path: /
   compression:
@@ -121,7 +121,7 @@ server:
     include-binding-errors: never
   # Connection timeouts
   tomcat:
-    connection-timeout: 20000  # 20 seconds
+    connection-timeout: 20000 # 20 seconds
     max-connections: 10000
     threads:
       max: 200
@@ -132,11 +132,11 @@ server:
 # ============================================
 jwt:
   secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:3600000}  # 1 hour (security best practice)
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 days
+  expiration: ${JWT_EXPIRATION:3600000} # 1 hour (security best practice)
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
   referral:
     secret: ${JWT_REFERRAL_SECRET}
-    expiration-ms: ${JWT_REFERRAL_EXPIRATION:2592000000}  # 30 days
+    expiration-ms: ${JWT_REFERRAL_EXPIRATION:2592000000} # 30 days
 
 # ============================================
 # Security Configuration (Production)
@@ -163,7 +163,7 @@ resend:
 
 # Storage provider
 storage:
-  provider: cloudinary
+  provider: ${STORAGE_PROVIDER}
 
 # Email provider
 email:
@@ -173,9 +173,9 @@ email:
 # Stripe Payment Configuration (LIVE MODE - Real money!)
 # ============================================
 stripe:
-  api-key: ${STRIPE_API_KEY}  # sk_live_...
-  publishable-key: ${STRIPE_PUBLISHABLE_KEY}  # pk_live_...
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET}  # whsec_...
+  api-key: ${STRIPE_API_KEY} # sk_live_...
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY} # pk_live_...
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET} # whsec_...
   currency: ${STRIPE_CURRENCY:USD}
 
 # ============================================
@@ -185,7 +185,7 @@ app:
   frontend-url: ${FRONTEND_URL}
   password-reset:
     token-expiration-minutes: 60
-    rate-limit-requests: 3  # Strict rate limiting
+    rate-limit-requests: 3 # Strict rate limiting
     rate-limit-window-hours: 1
     frontend-url: ${FRONTEND_URL}
   dev-email-recipient: ${SUPPORT_EMAIL:support@gydi.com}
@@ -194,7 +194,7 @@ app:
 # CORS Configuration (Production - Strict whitelist)
 # ============================================
 cors:
-  allowed-origins: ${ALLOWED_ORIGINS}  # Only production domains!
+  allowed-origins: ${ALLOWED_ORIGINS} # Only production domains!
 
 # ============================================
 # Logging Configuration (Production - WARN level)
@@ -202,10 +202,10 @@ cors:
 logging:
   level:
     root: ${LOG_LEVEL:WARN}
-    com.affiliate.rentals.gydi: INFO  # Application logs at INFO
+    com.affiliate.rentals.gydi: INFO # Application logs at INFO
     org.springframework.security: WARN
     org.springframework.web: WARN
-    org.hibernate.SQL: ERROR  # Only log SQL errors
+    org.hibernate.SQL: ERROR # Only log SQL errors
     org.hibernate.type.descriptor.sql.BasicBinder: ERROR
     org.flywaydb: WARN
   pattern:
@@ -215,7 +215,7 @@ logging:
   file:
     name: ${LOG_FILE:/var/log/gydi/application.log}
     max-size: 100MB
-    max-history: 30  # Keep 30 days of logs
+    max-history: 30 # Keep 30 days of logs
 
 # ============================================
 # Actuator Configuration (Production - MINIMAL exposure)
@@ -223,7 +223,7 @@ logging:
 management:
   health:
     mail:
-      enabled: false  # Disable mail check due to potential timeouts in Railway
+      enabled: false # Disable mail check due to potential timeouts in Railway
   endpoints:
     web:
       exposure:
@@ -241,21 +241,21 @@ management:
       access: unrestricted
     # DISABLE all dangerous endpoints in production
     shutdown:
-      access: none  # Can shutdown the application
+      access: none # Can shutdown the application
     env:
-      access: none  # Exposes environment variables
+      access: none # Exposes environment variables
     metrics:
-      access: none  # Sensitive performance data
+      access: none # Sensitive performance data
     threaddump:
-      access: none  # Can reveal sensitive data
+      access: none # Can reveal sensitive data
     heapdump:
-      access: none  # Contains all application memory
+      access: none # Contains all application memory
     logfile:
-      access: none  # Can contain sensitive logs
+      access: none # Can contain sensitive logs
   metrics:
     export:
       prometheus:
-        enabled: true  # For monitoring (restricted access)
+        enabled: true # For monitoring (restricted access)
     # Enable detailed metrics for connection pool monitoring
     enable:
       hikaricp: true
@@ -269,9 +269,9 @@ management:
 # ============================================
 springdoc:
   api-docs:
-    enabled: false  # NEVER expose API docs in production
+    enabled: false # NEVER expose API docs in production
   swagger-ui:
-    enabled: false  # NEVER expose Swagger UI in production
+    enabled: false # NEVER expose Swagger UI in production
 
 # ============================================
 # Feature Flags (Production - Controlled rollouts)
@@ -296,10 +296,10 @@ features:
 # Monitoring & Observability (Production)
 # ============================================
 sentry:
-  dsn: ${SENTRY_DSN:}  # Sentry DSN for error tracking
+  dsn: ${SENTRY_DSN:} # Sentry DSN for error tracking
   environment: production
-  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1}  # Sample 10% of requests
-  send-default-pii: false  # NEVER send PII to Sentry
+  traces-sample-rate: ${SENTRY_TRACES_SAMPLE_RATE:0.1} # Sample 10% of requests
+  send-default-pii: false # NEVER send PII to Sentry
   # Release tracking
   release: ${APP_VERSION:unknown}
   # Performance monitoring

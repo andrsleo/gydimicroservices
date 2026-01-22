@@ -43,14 +43,14 @@ spring:
   # ============================================
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true  # Show SQL queries in console
+    show-sql: true # Show SQL queries in console
     properties:
       hibernate:
-        format_sql: true  # Format SQL for readability
+        format_sql: true # Format SQL for readability
         type:
           preferred_jsonb_jdbc_type: 1111
     hibernate:
-      ddl-auto: none  # Use Flyway for schema management
+      ddl-auto: none # Use Flyway for schema management
     open-in-view: false
 
   # ============================================
@@ -63,7 +63,7 @@ spring:
     schemas: users,properties,audit,referrals,payment,subscriptions
     validate-on-migrate: false
     out-of-order: true
-    clean-disabled: false  # Allow clean in local (NEVER in production!)
+    clean-disabled: false # Allow clean in local (NEVER in production!)
 
   # ============================================
   # Email Configuration (Console logging, no actual sending)
@@ -86,7 +86,7 @@ spring:
   # Cache Configuration (Local - Disabled for development)
   # ============================================
   cache:
-    type: none  # Disable caching in local for immediate feedback during development
+    type: none # Disable caching in local for immediate feedback during development
 
 # ============================================
 # Server Configuration
@@ -101,11 +101,11 @@ server:
 # ============================================
 jwt:
   secret: ${JWT_SECRET:LOCAL_DEV_SECRET_CHANGE_ME_AT_LEAST_64_CHARS_XXXXXXXXXXXXXXXXXX}
-  expiration: ${JWT_EXPIRATION:86400000}  # 24 hours
-  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000}  # 7 days
+  expiration: ${JWT_EXPIRATION:86400000} # 24 hours
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
   referral:
     secret: ${JWT_REFERRAL_SECRET:LOCAL_REFERRAL_SECRET_ALSO_64_CHARS_XXXXXXXXXXXXXXXXXXX}
-    expiration-ms: ${JWT_REFERRAL_EXPIRATION:31536000000}  # 365 days
+    expiration-ms: ${JWT_REFERRAL_EXPIRATION:31536000000} # 365 days
 
 # ============================================
 # Security Configuration
@@ -133,7 +133,7 @@ resend:
 
 # Storage provider
 storage:
-  provider: ${STORAGE_PROVIDER:local}
+  provider: ${STORAGE_PROVIDER}
   local:
     directory: ./uploads
     base-url: http://localhost:8080/uploads
@@ -158,7 +158,7 @@ app:
   frontend-url: ${FRONTEND_URL:http://localhost:3000}
   password-reset:
     token-expiration-minutes: 60
-    rate-limit-requests: 10  # More lenient in local
+    rate-limit-requests: 10 # More lenient in local
     rate-limit-window-hours: 1
     frontend-url: ${FRONTEND_URL:http://localhost:3000}
   dev-email-recipient: ${DEV_EMAIL_RECIPIENT:dev@localhost}
@@ -191,13 +191,13 @@ management:
   endpoints:
     web:
       exposure:
-        include: "*"  # All endpoints exposed for debugging
+        include: "*" # All endpoints exposed for debugging
       base-path: /actuator
   endpoint:
     health:
-      show-details: always  # Always show full health details
+      show-details: always # Always show full health details
     env:
-      show-values: always  # Show all environment variables
+      show-values: always # Show all environment variables
   # Enable metrics export
   metrics:
     export:
@@ -213,7 +213,7 @@ springdoc:
     enabled: true
   swagger-ui:
     path: /swagger-ui.html
-    enabled: true  # Swagger UI enabled in local
+    enabled: true # Swagger UI enabled in local
     operations-sorter: method
     tags-sorter: alpha
 
