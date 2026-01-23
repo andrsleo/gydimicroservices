@@ -9,8 +9,9 @@ Este documento especifica las variables de entorno requeridas para desplegar GYD
 **Descripción:** Define el perfil de Spring Boot activo, que determina qué archivo de configuración se carga (`application-{profile}.yml`) y las configuraciones específicas de seguridad.
 
 **Valores permitidos:**
-- `dev` o `local` - Ambiente de desarrollo (SameSite=Lax, CORS patterns permitidos)
-- `prod` o `production` - Ambiente de producción (SameSite=None + CSRF tokens, CORS estricto)
+- `local` - Ambiente local (SameSite=Lax, localhost:3000 → localhost:8080, mismo dominio)
+- `dev` - Railway Dev (SameSite=None + CSRF, Vercel → Railway Dev, cross-domain)
+- `prod` o `production` - Railway Prod (SameSite=None + CSRF, Vercel → Railway Prod, cross-domain)
 
 **Configuración por ambiente:**
 
@@ -25,8 +26,11 @@ SPRING_PROFILES_ACTIVE=prod
 ```
 
 **Impacto:**
-- **Archivo de configuración:** Carga `application-dev.yml` o `application-prod.yml`
-- **SameSite Cookies:** Perfiles `dev`/`local` usan `Lax`, perfiles `prod`/`production` usan `None`
+- **Archivo de configuración:** Carga `application-{profile}.yml` (local, dev, prod)
+- **SameSite Cookies:**
+  - `local` → `Lax` (mismo dominio)
+  - `dev` → `None` (cross-domain, requiere CSRF)
+  - `prod` → `None` (cross-domain, requiere CSRF)
 - **CORS:** Development puede usar patterns, production requiere origins explícitos
 
 ---
@@ -144,7 +148,7 @@ DEV_EMAIL_RECIPIENT=dev@gydi.local
 
 ### Railway Dev Environment
 
-- [ ] `SPRING_PROFILES_ACTIVE=dev` ⭐ **Define ambiente y SameSite policy**
+- [ ] `SPRING_PROFILES_ACTIVE=dev` ⭐ **Define ambiente (SameSite=None para cross-domain Vercel→Railway)**
 - [ ] `CORS_ALLOWED_ORIGINS=http://localhost:3000,http://127.0.0.1:3000,https://gydi-front-next.vercel.app`
 - [ ] `CORS_ALLOWED_ORIGIN_PATTERNS=https://*.vercel.app` (opcional)
 - [ ] `CLOUDINARY_URL=cloudinary://...` (con valor correcto)

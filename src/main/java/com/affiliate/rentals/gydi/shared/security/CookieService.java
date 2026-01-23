@@ -20,8 +20,9 @@ import org.springframework.stereotype.Service;
  * <b>Profile-Based SameSite Policy:</b>
  * </p>
  * <ul>
- *   <li><b>Development (dev, local):</b> SameSite=Lax (sufficient for localhost, allows top-level navigation)</li>
- *   <li><b>Production (prod, production):</b> SameSite=None (required for cross-domain: Vercel → Railway)</li>
+ *   <li><b>Local (localhost):</b> SameSite=Lax (same-origin: localhost:3000 → localhost:8080)</li>
+ *   <li><b>Railway Dev:</b> SameSite=None (cross-domain: Vercel → Railway Dev, requires CSRF)</li>
+ *   <li><b>Railway Production:</b> SameSite=None (cross-domain: Vercel → Railway Prod, requires CSRF)</li>
  * </ul>
  *
  * <p>
@@ -112,30 +113,35 @@ public class CookieService {
      *   <li>Path: / - Available for all routes</li>
      * </ul>
      *
-     * <p><b>SameSite Policy by Environment:</b></p>
+     * <p><b>SameSite Policy by Profile:</b></p>
      * <table border="1">
      *   <tr>
-     *     <th>Environment</th>
+     *     <th>Profile</th>
      *     <th>SameSite Value</th>
      *     <th>Reason</th>
      *   </tr>
      *   <tr>
-     *     <td>Development (localhost)</td>
+     *     <td>local (localhost:8080)</td>
      *     <td>Lax</td>
-     *     <td>Same-origin requests, allows top-level navigation</td>
+     *     <td>Same-origin (localhost:3000 → localhost:8080)</td>
      *   </tr>
      *   <tr>
-     *     <td>Production (Vercel → Railway)</td>
+     *     <td>dev (Railway Dev)</td>
      *     <td>None</td>
-     *     <td>Cross-domain requests required, CSRF tokens provide protection</td>
+     *     <td>Cross-domain (Vercel → Railway Dev), CSRF protection enabled</td>
+     *   </tr>
+     *   <tr>
+     *     <td>prod (Railway Prod)</td>
+     *     <td>None</td>
+     *     <td>Cross-domain (Vercel → Railway Prod), CSRF protection enabled</td>
      *   </tr>
      * </table>
      *
      * <p>
-     * <b>Why SameSite=None in Production:</b> Frontend (Vercel) and Backend (Railway)
-     * are on different domains (cross-site). SameSite=Strict would block cookies from
+     * <b>Why SameSite=None in Railway (Dev & Prod):</b> Frontend (Vercel) and Backend (Railway)
+     * are on different domains (cross-site). SameSite=Strict or Lax would block cookies from
      * being sent in cross-site requests. SameSite=None allows the frontend to send
-     * cookies to the backend API.
+     * cookies to the backend API across domains.
      * </p>
      *
      * <p>
@@ -157,10 +163,10 @@ public class CookieService {
         cookie.setMaxAge(maxAge);
 
         // ✅ Profile-based SameSite policy
-        // Development profiles (dev, local): Lax - Sufficient for same-origin
-        // Production profiles (prod, production): None - Required for cross-domain with CSRF protection
-        boolean isDevelopment = environment.acceptsProfiles(Profiles.of("dev", "local"));
-        String sameSite = isDevelopment ? "Lax" : "None";
+        // Local profile (localhost): Lax - Same-origin (localhost:3000 → localhost:8080)
+        // Railway profiles (dev, prod): None - Cross-domain (Vercel → Railway) with CSRF protection
+        boolean isLocalhost = environment.acceptsProfiles(Profiles.of("local"));
+        String sameSite = isLocalhost ? "Lax" : "None";
         cookie.setAttribute("SameSite", sameSite);
 
         return cookie;
