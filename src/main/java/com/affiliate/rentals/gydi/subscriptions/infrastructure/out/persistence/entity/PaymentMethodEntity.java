@@ -84,7 +84,7 @@ public class PaymentMethodEntity {
     /**
      * The last 4 digits of the card (for user reference only).
      */
-    @Column(name = "card_last_four", columnDefinition = "char(4)")
+    @Column(name = "card_last_four", columnDefinition = "varchar(4)")
     private String cardLastFour;
 
     /**
