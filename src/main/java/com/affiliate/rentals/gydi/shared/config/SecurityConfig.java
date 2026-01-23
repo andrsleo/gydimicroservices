@@ -1,6 +1,8 @@
 package com.affiliate.rentals.gydi.shared.config;
 
+import com.affiliate.rentals.gydi.shared.security.CsrfCookieFilter;
 import com.affiliate.rentals.gydi.shared.security.JwtAuthenticationFilter;
+import com.affiliate.rentals.gydi.shared.security.SpaCsrfTokenRequestHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -17,6 +19,8 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -61,23 +65,44 @@ public class SecurityConfig {
         }
 
         /**
-         * Configures the security filter chain.
+         * Configures the security filter chain with CSRF protection for SPAs.
          *
          * <p>
-         * SECURITY DECISION: CSRF protection is DISABLED for this REST API
-         *
-         * Justification:
-         * 1. Stateless JWT authentication (tokens in Authorization header, not cookies)
-         * 2. JWT must be sent explicitly by client - no automatic cookie submission
-         * 3. CORS protection restricts allowed origins (defense in depth)
-         * 4. SessionCreationPolicy.STATELESS prevents session fixation
-         * 5. OWASP recommendation for REST APIs with token-based auth
-         *
-         * Reference:
-         * https://cheatsheetseries.owasp.org/cheatsheets/REST_Security_Cheat_Sheet.html#csrf
-         * "CSRF tokens are not applicable to REST APIs that use proper authentication
-         * mechanisms"
+         * <b>SECURITY DECISION: CSRF protection is ENABLED</b>
          * </p>
+         *
+         * <p>
+         * <b>Justification:</b>
+         * </p>
+         * <ol>
+         *   <li><b>Cross-Domain Architecture:</b> Frontend (Vercel) and Backend (Railway) are on different domains</li>
+         *   <li><b>SameSite=None Cookies:</b> Required for cross-domain auth cookies (access_token, refresh_token)</li>
+         *   <li><b>CSRF Risk:</b> SameSite=None cookies are sent automatically, creating CSRF vulnerability without protection</li>
+         *   <li><b>Mitigation:</b> CSRF tokens (X-XSRF-TOKEN header) validate that requests originate from our frontend</li>
+         * </ol>
+         *
+         * <p>
+         * <b>CSRF Configuration for SPAs:</b>
+         * </p>
+         * <ul>
+         *   <li><b>Token Repository:</b> {@code CookieCsrfTokenRepository.withHttpOnlyFalse()} - Stores token in XSRF-TOKEN cookie (readable by JavaScript)</li>
+         *   <li><b>Token Handler:</b> {@link SpaCsrfTokenRequestHandler} - Custom handler for SPA token validation</li>
+         *   <li><b>Exempt Endpoints:</b> Login, register, refresh - These don't need CSRF (no state-changing operations on existing sessions)</li>
+         *   <li><b>Cookie Filter:</b> {@link CsrfCookieFilter} - Ensures CSRF token is sent in every response</li>
+         * </ul>
+         *
+         * <p>
+         * <b>How Frontend Uses CSRF Tokens:</b>
+         * </p>
+         * <pre>{@code
+         * // 1. Read CSRF token from XSRF-TOKEN cookie
+         * const csrfToken = getCsrfTokenFromCookie();
+         *
+         * // 2. Send in X-XSRF-TOKEN header for POST/PUT/PATCH/DELETE
+         * axios.post('/api/properties', data, {
+         *   headers: { 'X-XSRF-TOKEN': csrfToken }
+         * });
+         * }</pre>
          *
          * @param http the HttpSecurity to configure
          * @return the configured SecurityFilterChain
@@ -86,8 +111,18 @@ public class SecurityConfig {
         @Bean
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 http
-                                // Disable CSRF for stateless JWT REST API
-                                .csrf(AbstractHttpConfigurer::disable)
+                                // ✅ ENABLE CSRF protection for SPA with custom handler
+                                .csrf(csrf -> csrf
+                                                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                                                .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
+                                                // Exempt authentication endpoints (no state to protect yet)
+                                                .ignoringRequestMatchers(
+                                                                "/api/v1/auth/login",
+                                                                "/api/v1/auth/register",
+                                                                "/api/v1/auth/refresh",
+                                                                "/api/v1/users/register" // User registration endpoint
+                                                )
+                                )
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .authorizeHttpRequests(auth -> auth
                                                 // Public endpoints
@@ -145,7 +180,9 @@ public class SecurityConfig {
                                                 .anyRequest().authenticated())
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class);
+                                .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                                // ✅ Add CSRF cookie filter to ensure CSRF token is sent in every response
+                                .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
 
                 return http.build();
         }
