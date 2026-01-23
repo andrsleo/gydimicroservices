@@ -438,6 +438,63 @@ public class AuthController {
     }
 
     /**
+     * Generates a CSRF token for the frontend.
+     *
+     * <p>
+     * This endpoint triggers CSRF token generation by Spring Security's {@code CsrfFilter}.
+     * The CSRF token is automatically set in the {@code XSRF-TOKEN} cookie (non-httpOnly
+     * so JavaScript can read it).
+     * </p>
+     *
+     * <p>
+     * <b>When to call:</b>
+     * </p>
+     * <ul>
+     *   <li>On application load (useEffect in Next.js root layout)</li>
+     *   <li>When CSRF token is missing from cookies</li>
+     *   <li>After 403 Forbidden error (to refresh expired token)</li>
+     * </ul>
+     *
+     * <p>
+     * <b>Frontend Integration:</b>
+     * </p>
+     * <pre>{@code
+     * // Call this endpoint to ensure CSRF token cookie is set
+     * await fetch(`${API_URL}/api/v1/auth/csrf`, {
+     *   method: 'GET',
+     *   credentials: 'include' // Important: send/receive cookies
+     * });
+     *
+     * // Then read token from XSRF-TOKEN cookie
+     * const csrfToken = getCsrfTokenFromCookie();
+     * }</pre>
+     *
+     * <p>
+     * <b>Security Note:</b> This endpoint is public (does not require authentication).
+     * The CSRF token itself is not a secret - it only works in combination with
+     * the Same-Origin Policy and proper CORS configuration.
+     * </p>
+     *
+     * @return HTTP 200 OK with CSRF token set in XSRF-TOKEN cookie
+     */
+    @GetMapping("/csrf")
+    @Operation(
+        summary = "Get CSRF token",
+        description = "Triggers CSRF token generation and sets it in XSRF-TOKEN cookie. " +
+                      "Frontend should call this on app load to ensure a valid CSRF token exists."
+    )
+    @ApiResponse(responseCode = "200", description = "CSRF token generated and set in cookie")
+    public ResponseEntity<Void> getCsrfToken() {
+        // Spring Security's CsrfFilter automatically generates and sets XSRF-TOKEN cookie
+        // CsrfCookieFilter (registered in SecurityConfig) ensures the token is generated
+        // by accessing the CsrfToken from the request attribute.
+        //
+        // No need to do anything here - just returning 200 OK is enough.
+        // The token is already in the response via CsrfCookieFilter.
+        return ResponseEntity.ok().build();
+    }
+
+    /**
      * Verifies user authentication by validating JWT token.
      *
      * <p>

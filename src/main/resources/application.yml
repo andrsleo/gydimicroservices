@@ -1,6 +1,7 @@
 # ============================================
 # Application Configuration
 # ============================================
+
 spring:
   application:
     name: gydi-rentals
