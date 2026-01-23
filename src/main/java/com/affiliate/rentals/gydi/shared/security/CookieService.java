@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Service for managing authentication cookies with profile-aware security settings.
@@ -39,6 +41,8 @@ import org.springframework.stereotype.Service;
  */
 @Service
 public class CookieService {
+
+    private static final Logger log = LoggerFactory.getLogger(CookieService.class);
 
     private final Environment environment;
 
@@ -76,15 +80,25 @@ public class CookieService {
     ) {
         // Detect if request is over HTTPS (direct or via proxy like Railway/Vercel)
         boolean isSecure = isHttpsRequest(response);
+        boolean isLocalhost = environment.acceptsProfiles(Profiles.of("local"));
+        String sameSite = isLocalhost ? "Lax" : "None";
+
+        log.info("🍪 Setting auth cookies - Profile: {}, Secure: {}, SameSite: {}",
+                 environment.getActiveProfiles().length > 0 ? environment.getActiveProfiles()[0] : "default",
+                 isSecure, sameSite);
 
         // Set access token cookie
         Cookie accessCookie = createSecureCookie(ACCESS_TOKEN_COOKIE, accessToken, ACCESS_TOKEN_MAX_AGE, isSecure);
         response.addCookie(accessCookie);
+        log.info("✅ Cookie set: {} (maxAge={}, Secure={}, SameSite={})",
+                 ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_MAX_AGE, isSecure, sameSite);
 
         // Set refresh token cookie if provided
         if (refreshToken != null && !refreshToken.isBlank()) {
             Cookie refreshCookie = createSecureCookie(REFRESH_TOKEN_COOKIE, refreshToken, REFRESH_TOKEN_MAX_AGE, isSecure);
             response.addCookie(refreshCookie);
+            log.info("✅ Cookie set: {} (maxAge={}, Secure={}, SameSite={})",
+                     REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_MAX_AGE, isSecure, sameSite);
         }
     }
 
