@@ -32,6 +32,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.http.ResponseEntity;
@@ -88,6 +90,8 @@ import java.util.Optional;
 @RequestMapping("/api/v1/auth")
 @Tag(name = "Authentication", description = "Authentication and authorization endpoints")
 public class AuthController {
+
+    private static final Logger log = LoggerFactory.getLogger(AuthController.class);
 
     private final AuthenticateUserUseCase authenticateUserUseCase;
     private final LogoutUserUseCase logoutUserUseCase;
@@ -591,21 +595,32 @@ public class AuthController {
     private String extractToken(
             HttpServletRequest request,
             String authHeader) {
+        log.debug("🔍 Extracting token - Profile: {}, isProduction: {}, authHeader present: {}, cookies present: {}",
+                  environment.getActiveProfiles().length > 0 ? environment.getActiveProfiles()[0] : "default",
+                  isProduction(),
+                  authHeader != null,
+                  request.getCookies() != null);
+
         if (isProduction()) {
             // Production: Extract from cookie only
-            return cookieService.extractAccessToken(request);
+            String token = cookieService.extractAccessToken(request);
+            log.debug("✅ Production mode - Token from cookie: {}", token != null ? "FOUND" : "NOT FOUND");
+            return token;
         } else {
             // Development: Try Authorization header first
             if (authHeader != null && authHeader.startsWith("Bearer ")) {
+                log.debug("✅ Development mode - Token from Authorization header: FOUND");
                 return authHeader.substring(7);
             }
 
             // Development fallback: Try cookie (for middleware verification)
             String cookieToken = cookieService.extractAccessToken(request);
+            log.debug("✅ Development mode - Token from cookie fallback: {}", cookieToken != null ? "FOUND" : "NOT FOUND");
             if (cookieToken != null && !cookieToken.isBlank()) {
                 return cookieToken;
             }
 
+            log.warn("❌ Development mode - No token found in Authorization header or cookies");
             return null;
         }
     }

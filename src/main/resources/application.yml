@@ -269,4 +269,4 @@ security:
 # Example configuration:
 # cors:
 #   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
-#   allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:}
+
