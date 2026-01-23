@@ -5,6 +5,8 @@ import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.stereotype.Service;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Service for managing authentication cookies with profile-aware security settings.
@@ -40,6 +42,8 @@ import org.springframework.stereotype.Service;
 @Service
 public class CookieService {
 
+    private static final Logger log = LoggerFactory.getLogger(CookieService.class);
+
     private final Environment environment;
 
     private static final String ACCESS_TOKEN_COOKIE = "access_token";
@@ -74,14 +78,27 @@ public class CookieService {
             String accessToken,
             String refreshToken
     ) {
+        // Detect if request is over HTTPS (direct or via proxy like Railway/Vercel)
+        boolean isSecure = isHttpsRequest(response);
+        boolean isLocalhost = environment.acceptsProfiles(Profiles.of("local"));
+        String sameSite = isLocalhost ? "Lax" : "None";
+
+        log.info("🍪 Setting auth cookies - Profile: {}, Secure: {}, SameSite: {}",
+                 environment.getActiveProfiles().length > 0 ? environment.getActiveProfiles()[0] : "default",
+                 isSecure, sameSite);
+
         // Set access token cookie
-        Cookie accessCookie = createSecureCookie(ACCESS_TOKEN_COOKIE, accessToken, ACCESS_TOKEN_MAX_AGE);
+        Cookie accessCookie = createSecureCookie(ACCESS_TOKEN_COOKIE, accessToken, ACCESS_TOKEN_MAX_AGE, isSecure);
         response.addCookie(accessCookie);
+        log.info("✅ Cookie set: {} (maxAge={}, Secure={}, SameSite={})",
+                 ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_MAX_AGE, isSecure, sameSite);
 
         // Set refresh token cookie if provided
         if (refreshToken != null && !refreshToken.isBlank()) {
-            Cookie refreshCookie = createSecureCookie(REFRESH_TOKEN_COOKIE, refreshToken, REFRESH_TOKEN_MAX_AGE);
+            Cookie refreshCookie = createSecureCookie(REFRESH_TOKEN_COOKIE, refreshToken, REFRESH_TOKEN_MAX_AGE, isSecure);
             response.addCookie(refreshCookie);
+            log.info("✅ Cookie set: {} (maxAge={}, Secure={}, SameSite={})",
+                     REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_MAX_AGE, isSecure, sameSite);
         }
     }
 
@@ -93,12 +110,14 @@ public class CookieService {
      * @param response the HTTP response
      */
     public void clearAuthCookies(HttpServletResponse response) {
+        boolean isSecure = isHttpsRequest(response);
+
         // Clear access token
-        Cookie accessCookie = createSecureCookie(ACCESS_TOKEN_COOKIE, "", 0);
+        Cookie accessCookie = createSecureCookie(ACCESS_TOKEN_COOKIE, "", 0, isSecure);
         response.addCookie(accessCookie);
 
         // Clear refresh token
-        Cookie refreshCookie = createSecureCookie(REFRESH_TOKEN_COOKIE, "", 0);
+        Cookie refreshCookie = createSecureCookie(REFRESH_TOKEN_COOKIE, "", 0, isSecure);
         response.addCookie(refreshCookie);
     }
 
@@ -153,12 +172,13 @@ public class CookieService {
      * @param name the cookie name
      * @param value the cookie value
      * @param maxAge the max age in seconds
+     * @param isSecure whether the cookie should have Secure flag (HTTPS only)
      * @return the configured cookie with environment-appropriate SameSite policy
      */
-    private Cookie createSecureCookie(String name, String value, int maxAge) {
+    private Cookie createSecureCookie(String name, String value, int maxAge, boolean isSecure) {
         Cookie cookie = new Cookie(name, value);
         cookie.setHttpOnly(true); // XSS protection
-        cookie.setSecure(true); // HTTPS only (REQUIRED with SameSite=None)
+        cookie.setSecure(isSecure); // HTTPS only (REQUIRED with SameSite=None)
         cookie.setPath("/"); // Available for all routes
         cookie.setMaxAge(maxAge);
 
@@ -212,5 +232,31 @@ public class CookieService {
         }
 
         return null;
+    }
+
+    /**
+     * Determines if cookies should have the Secure flag based on environment.
+     *
+     * <p>
+     * <b>Logic:</b>
+     * </p>
+     * <ul>
+     *   <li><b>local profile:</b> false (HTTP on localhost:8080)</li>
+     *   <li><b>dev/prod profiles:</b> true (Railway uses HTTPS externally, even if internal is HTTP)</li>
+     * </ul>
+     *
+     * <p>
+     * <b>Railway/Vercel Architecture:</b> These platforms use HTTPS terminiation at the edge proxy,
+     * but the internal connection to the application is HTTP. The Secure flag must be set to true
+     * because the browser sees HTTPS, even though Tomcat runs on HTTP internally.
+     * </p>
+     *
+     * @param response the HTTP response (not used, kept for potential future header inspection)
+     * @return true if Secure flag should be set, false otherwise
+     */
+    private boolean isHttpsRequest(HttpServletResponse response) {
+        // Local profile = HTTP (localhost development)
+        // Dev/Prod profiles = HTTPS (Railway always serves HTTPS externally)
+        return !environment.acceptsProfiles(Profiles.of("local"));
     }
 }
