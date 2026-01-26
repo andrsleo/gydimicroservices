@@ -17,15 +17,20 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Web MVC configuration for serving static files in development.
  *
- * <p>This configuration allows the application to serve uploaded files
- * directly from the local filesystem in development mode.</p>
+ * <p>
+ * This configuration allows the application to serve uploaded files
+ * directly from the local filesystem in development mode.
+ * </p>
  *
- * <p><b>Active only in development profile ({@code @Profile("dev")})</b></p>
+ * <p>
+ * <b>Active in development and local profiles
+ * ({@code @Profile({"dev", "local"})})</b>
+ * </p>
  *
  * @author GYDI Development Team
  */
 @Configuration
-@Profile("dev")
+@Profile({ "dev", "local" })
 @Slf4j
 public class WebMvcConfig implements WebMvcConfigurer {
 
@@ -42,7 +47,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
 
         registry.addResourceHandler("/uploads/**")
                 .addResourceLocations("file:" + absolutePath + "/")
-                .setCachePeriod(3600)  // 1 hour cache for performance
+                .setCachePeriod(3600) // 1 hour cache for performance
                 .resourceChain(true)
                 .addResolver(new PathResourceResolver() {
                     @Override
@@ -54,7 +59,7 @@ public class WebMvcConfig implements WebMvcConfigurer {
                             // SECURITY: Verify file is within allowed upload directory
                             // Prevents path traversal attacks (e.g., /uploads/../../../etc/passwd)
                             Path filePath = resource.getFile().toPath()
-                                .toAbsolutePath().normalize();
+                                    .toAbsolutePath().normalize();
 
                             if (!filePath.startsWith(uploadPath)) {
                                 log.warn("SECURITY: Path traversal attempt blocked: {}", resourcePath);

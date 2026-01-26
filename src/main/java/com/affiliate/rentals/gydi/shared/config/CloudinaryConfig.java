@@ -53,7 +53,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Configuration
-@ConditionalOnProperty(name = "storage.provider", havingValue = "cloudinary")
+@ConditionalOnProperty(name = "storage.provider", havingValue = "cloudinary", matchIfMissing = false)
 public class CloudinaryConfig {
 
     @Value("${cloudinary.url}")

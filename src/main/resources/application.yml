@@ -23,7 +23,7 @@ spring:
   # SECURITY: Never hardcode credentials in configuration files
   # Use environment variables for all sensitive data
   datasource:
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gydidb?stringtype=unspecified}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gydidb}
     username: ${DB_USERNAME:postgres}
     password: ${DB_PASSWORD}
     driver-class-name: org.postgresql.Driver
@@ -183,12 +183,14 @@ management:
 # Get your URL from: https://console.cloudinary.com/
 # Format: cloudinary://api_key:api_secret@cloud_name
 # Example: ***REMOVED***
+# NOTE: Only required when storage.provider=cloudinary (dev/prod)
 cloudinary:
-  url: ${CLOUDINARY_URL}
+  url: ${CLOUDINARY_URL:} # Empty default for local development
 
 # Resend for Email Service (replaces AWS SES)
+# NOTE: Only required when email.provider=resend (dev/prod)
 resend:
-  api-key: ${RESEND_API_KEY}
+  api-key: ${RESEND_API_KEY:} # Empty default for local development
   from-email: ${RESEND_FROM_EMAIL:noreply@gydi.com}
 
 # Storage provider selection
@@ -196,9 +198,9 @@ resend:
 #   - local: Store files in ./uploads (ephemeral in Railway/Docker)
 #   - cloudinary: Store files in Cloudinary (persistent, CDN, optimizations)
 #
-# Set STORAGE_PROVIDER=cloudinary in Railway for production
+# Override with STORAGE_PROVIDER environment variable in Railway
 storage:
-  provider: ${STORAGE_PROVIDER:local}
+  provider: local # Default: local (override with STORAGE_PROVIDER=cloudinary in production)
   local:
     directory: ./uploads
     base-url: http://localhost:8080/uploads
@@ -214,23 +216,18 @@ email:
 # Get your keys from: https://dashboard.stripe.com/apikeys
 # Use test keys for development: sk_test_... and pk_test_...
 # NEVER commit production keys to git
+# NOTE: Only required when payment features are enabled
 stripe:
-  api-key: ${STRIPE_API_KEY} # Secret Key: sk_test_... or sk_live_...
-  publishable-key: ${STRIPE_PUBLISHABLE_KEY} # Publishable Key: pk_test_... or pk_live_...
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET} # Webhook signing secret: whsec_...
+  api-key: ${STRIPE_API_KEY:} # Secret Key: sk_test_... or sk_live_...
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:} # Publishable Key: pk_test_... or pk_live_...
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:} # Webhook signing secret: whsec_...
   currency: ${STRIPE_CURRENCY:USD}
 
 # ============================================
-# AWS Configuration (DEPRECATED - Keep for reference only)
+# CORS Configuration
 # ============================================
-# aws:
-#   ses:
-#     region: ${AWS_REGION:us-east-1}
-#     from-email: ${AWS_SES_FROM_EMAIL:noreply@gydi.com}
-#   s3:
-#     bucket-name: ${AWS_S3_BUCKET_NAME:gydi-profile-images}
-#     region: ${AWS_S3_REGION:us-east-1}
-#     base-url: ${AWS_S3_BASE_URL:https://gydi-profile-images.s3.amazonaws.com}
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
 
 # ============================================
 # Password Reset Configuration

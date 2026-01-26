@@ -186,12 +186,15 @@ public class AuthController {
         httpResponse.setHeader("X-RateLimit-Remaining", String.valueOf(remainingAttempts));
         httpResponse.setHeader("X-RateLimit-Limit", "10");
 
-        // SECURITY: Set httpOnly cookies in BOTH production and development
-        // This allows Next.js middleware to verify authentication in both environments
+        // ✅ ALWAYS SET COOKIES (required for Next.js middleware)
+        // Next.js middleware runs server-side and can ONLY read cookies, not localStorage
+        // Therefore, we MUST use cookies in ALL environments (local, dev, prod)
+        // CookieService handles profile-aware configuration (SameSite=Lax for local, None for prod)
         cookieService.setAuthCookies(httpResponse, response.token(), response.refreshToken());
+        log.info("🍪 Auth cookies set (required for Next.js middleware)");
 
         if (isProduction()) {
-            // Production: Return response WITHOUT tokens in body (security)
+            // Production: Return response WITHOUT tokens in body (cookies only)
             return ResponseEntity.ok(AuthResponse.builder()
                     .token(null) // Don't expose in body
                     .refreshToken(null) // Don't expose in body
@@ -199,8 +202,7 @@ public class AuthController {
                     .user(response.user())
                     .build());
         } else {
-            // Development: ALSO return tokens in body (for localStorage fallback)
-            // AND set cookies (for middleware verification)
+            // Local/Dev: Return tokens in body (localStorage)
             return ResponseEntity.ok(response);
         }
     }
@@ -264,7 +266,8 @@ public class AuthController {
             performSimpleLogout(token);
         }
 
-        // SECURITY: Clear authentication cookies in BOTH production and development
+        // ✅ ALWAYS CLEAR COOKIES (consistent with login behavior)
+        // Clear authentication cookies in all environments
         cookieService.clearAuthCookies(response);
 
         return ResponseEntity.ok().build();
@@ -385,11 +388,12 @@ public class AuthController {
         RefreshTokenRequest request = new RefreshTokenRequest(refreshToken);
         AuthResponse response = refreshTokenUseCase.execute(request);
 
-        // SECURITY: Set httpOnly cookies in BOTH production and development
+        // ✅ ALWAYS SET COOKIES (consistent with login behavior)
+        // Set authentication cookies in all environments
         cookieService.setAuthCookies(httpResponse, response.token(), response.refreshToken());
 
         if (isProduction()) {
-            // Production: Return response WITHOUT tokens in body (security)
+            // Production: Return response WITHOUT tokens in body (cookies only)
             return ResponseEntity.ok(AuthResponse.builder()
                     .token(null) // Don't expose in body
                     .refreshToken(null) // Don't expose in body
@@ -397,8 +401,7 @@ public class AuthController {
                     .user(response.user())
                     .build());
         } else {
-            // Development: ALSO return tokens in body (for localStorage fallback)
-            // AND set cookies (for middleware verification)
+            // Local/Dev: Return tokens in body (localStorage)
             return ResponseEntity.ok(response);
         }
     }
