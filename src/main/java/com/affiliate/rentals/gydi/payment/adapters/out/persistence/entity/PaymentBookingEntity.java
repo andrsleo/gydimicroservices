@@ -2,7 +2,9 @@ package com.affiliate.rentals.gydi.payment.adapters.out.persistence.entity;
 
 import jakarta.persistence.*;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -49,7 +51,8 @@ public class PaymentBookingEntity {
     private String currency;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "payment_status", nullable = false, length = 20)
+    @JdbcTypeCode(SqlTypes.VARCHAR)  // Fix PostgreSQL ENUM casting error
+    @Column(name = "payment_status", nullable = false, length = 50)
     private PaymentStatusEntity status;
 
     @Column(name = "payment_method", length = 50)

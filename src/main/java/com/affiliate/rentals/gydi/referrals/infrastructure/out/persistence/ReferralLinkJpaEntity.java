@@ -7,7 +7,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.annotations.UpdateTimestamp;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -43,7 +45,8 @@ public class ReferralLinkJpaEntity {
     private Integer clicksCount = 0;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "status", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)  // Fix PostgreSQL ENUM casting error
+    @Column(name = "status", nullable = false, length = 50)
     private ReferralLinkStatus status = ReferralLinkStatus.ACTIVE;
 
     @Column(name = "expires_at", nullable = false)

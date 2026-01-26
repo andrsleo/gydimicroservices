@@ -8,6 +8,8 @@ import java.util.List;
 import java.util.Set;
 
 import org.hibernate.annotations.BatchSize;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import com.affiliate.rentals.gydi.users.infrastructure.out.persistence.entity.UserEntity;
 
@@ -119,8 +121,9 @@ public class PropertyJpaEntity {
     @Column(name = "airbnb_url", length = 500)
     private String airbnbUrl;
 
-    @Column(name = "import_mode", nullable = false)
     @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)
+    @Column(name = "import_mode", nullable = false, length = 50)
     private ImportMode importMode = ImportMode.MANUAL;
 
     @Column(name = "imported_at")
