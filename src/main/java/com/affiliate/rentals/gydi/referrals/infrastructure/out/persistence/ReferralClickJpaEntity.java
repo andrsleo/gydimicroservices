@@ -7,6 +7,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 import org.hibernate.annotations.CreationTimestamp;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -42,7 +44,8 @@ public class ReferralClickJpaEntity {
     private String countryCode;
 
     @Enumerated(EnumType.STRING)
-    @Column(name = "device_type", nullable = false)
+    @JdbcTypeCode(SqlTypes.VARCHAR)  // Fix PostgreSQL ENUM casting error
+    @Column(name = "device_type", nullable = false, length = 50)
     private DeviceType deviceType = DeviceType.UNKNOWN;
 
     @Column(name = "bot_score")

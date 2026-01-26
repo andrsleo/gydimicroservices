@@ -22,13 +22,13 @@ spring:
   # ============================================
   datasource:
     # Option 1: Local PostgreSQL
-    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gydidb?stringtype=unspecified}
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gydidb}
 
     # Option 2: Supabase Dev instance (shared with dev environment)
     # url: jdbc:postgresql://aws-1-us-east-2.pooler.supabase.com:6543/postgres?sslmode=require
 
-    username: ${DB_USERNAME:postgres}
-    password: ${DB_PASSWORD}
+    username: ${DB_USERNAME:andresvargas}
+    password: ${DB_PASSWORD:Gydi2025@}
     driver-class-name: org.postgresql.Driver
 
     hikari:
@@ -43,10 +43,10 @@ spring:
   # ============================================
   jpa:
     database-platform: org.hibernate.dialect.PostgreSQLDialect
-    show-sql: true # Show SQL queries in console
+    show-sql: false # Disabled to reduce console noise
     properties:
       hibernate:
-        format_sql: true # Format SQL for readability
+        format_sql: false
         type:
           preferred_jsonb_jdbc_type: 1111
     hibernate:
@@ -100,11 +100,11 @@ server:
 # JWT Configuration (Development secrets - NOT for production!)
 # ============================================
 jwt:
-  secret: ${JWT_SECRET:LOCAL_DEV_SECRET_CHANGE_ME_AT_LEAST_64_CHARS_XXXXXXXXXXXXXXXXXX}
+  secret: ${JWT_SECRET:z8rypMgxSqo/TLU1wGDVfV776CyXvy1jZm0veVZOy85CPc/0cA/ONKnKq6sfD0mn9AHHc/qHTrKjoRL8EEMs1Q==}
   expiration: ${JWT_EXPIRATION:86400000} # 24 hours
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days
   referral:
-    secret: ${JWT_REFERRAL_SECRET:LOCAL_REFERRAL_SECRET_ALSO_64_CHARS_XXXXXXXXXXXXXXXXXXX}
+    secret: ${JWT_REFERRAL_SECRET:0xXaYClhIkthoFZwGjtmArdVQLqZ5Px0C3Y1qduA9OuMIhPJ5iwIw92Ocn0AEyOs1wOpthIWhSXK5H9Rr9kMdA==}
     expiration-ms: ${JWT_REFERRAL_EXPIRATION:31536000000} # 365 days
 
 # ============================================
@@ -113,61 +113,18 @@ jwt:
 security:
   url:
     hashids:
-      salt: ${URL_HASHIDS_SALT:local-dev-hashids-salt-32-chars}
+      salt: ${URL_HASHIDS_SALT:D+TA0eXEuTqB86E648HZXwfGeobglfjWQfHStts6iQ4=}
       min-length: 10
     aes:
       # Must be exactly 64 hex characters (32 bytes = 256 bits)
-      secret: ${AES_SECRET_KEY:a1b2c3d4e5f6a7b8c9d0e1f2a3b4c5d6e7f8a9b0c1d2e3f4a5b6c7d8e9f0a1b2}
-
-# ============================================
-# Cloud Services Configuration
-# ============================================
-# Cloudinary (optional for local, use local storage if not set)
-cloudinary:
-  url: ${CLOUDINARY_URL:}
-
-# Resend (optional for local, logs to console if not set)
-resend:
-  api-key: ${RESEND_API_KEY:}
-  from-email: ${RESEND_FROM_EMAIL:dev@gydi.local}
-
-# Storage provider
-storage:
-  provider: ${STORAGE_PROVIDER}
-  local:
-    directory: ./uploads
-    base-url: http://localhost:8080/uploads
-
-# Email provider (use console logging in local)
-email:
-  provider: ${EMAIL_PROVIDER:console}
+      secret: ${AES_SECRET_KEY:ce540225cc2c4d6ec267e39edeb3a666880d8f9104e70f8f2621d4d6a91f64f6}
 
 # ============================================
 # Stripe Payment Configuration (Test Keys)
 # ============================================
 stripe:
-  api-key: ${STRIPE_API_KEY:sk_test_placeholder}
-  publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_placeholder}
-  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_placeholder}
-  currency: ${STRIPE_CURRENCY:USD}
-
-# ============================================
-# Application Configuration
-# ============================================
-app:
-  frontend-url: ${FRONTEND_URL:http://localhost:3000}
-  password-reset:
-    token-expiration-minutes: 60
-    rate-limit-requests: 10 # More lenient in local
-    rate-limit-window-hours: 1
-    frontend-url: ${FRONTEND_URL:http://localhost:3000}
-  dev-email-recipient: ${DEV_EMAIL_RECIPIENT:dev@localhost}
-
-# ============================================
-# CORS Configuration
-# ============================================
-cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  api-key: ${STRIPE_API_KEY:sk_test_51SdIGWQuBbKiBgeuKX1hhwE6kVA5QO01wntUIUg8HATDt08jtZmYWS5YOcMvoukEwgwcpBe6lOIeqEgvSMVGNUsn00upygkUds}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_51SdIGWQuBbKiBgeuyICFekmubnq6NtogWfozScafwnub3BT3Nf3j9s8qccOEomqk4MrA9bTdA86pif2BH550dLwT00CLzMTdqG}
 
 # ============================================
 # Logging Configuration (Verbose for debugging)
@@ -175,12 +132,12 @@ cors:
 logging:
   level:
     root: INFO
-    com.affiliate.rentals.gydi: DEBUG
-    org.springframework.security: DEBUG
-    org.springframework.web: DEBUG
-    org.hibernate.SQL: DEBUG
-    org.hibernate.type.descriptor.sql.BasicBinder: TRACE
-    org.flywaydb: DEBUG
+    com.affiliate.rentals.gydi: INFO
+    org.springframework.security: WARN # Reduced from DEBUG
+    org.springframework.web: WARN # Reduced from DEBUG
+    org.hibernate.SQL: WARN # Disabled SQL logging
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN # Disabled parameter logging
+    org.flywaydb: INFO
   pattern:
     console: "%d{yyyy-MM-dd HH:mm:ss} - %msg%n"
 

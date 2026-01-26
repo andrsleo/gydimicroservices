@@ -5,6 +5,8 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.time.LocalDateTime;
 
@@ -51,7 +53,9 @@ public class UserSubscriptionEntity {
     /**
      * The current status of the subscription.
      */
-    @Column(name = "status", nullable = false)
+    @Enumerated(EnumType.STRING)
+    @JdbcTypeCode(SqlTypes.VARCHAR)  // Fix PostgreSQL ENUM casting error
+    @Column(name = "status", nullable = false, length = 50)
     private SubscriptionStatusEntity status = SubscriptionStatusEntity.ACTIVE;
 
     /**

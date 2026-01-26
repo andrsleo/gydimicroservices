@@ -75,25 +75,35 @@ public class SecurityConfig {
          * <b>Justification:</b>
          * </p>
          * <ol>
-         *   <li><b>Cross-Domain Architecture:</b> Frontend (Vercel) and Backend (Railway) are on different domains</li>
-         *   <li><b>SameSite=None Cookies:</b> Required for cross-domain auth cookies (access_token, refresh_token)</li>
-         *   <li><b>CSRF Risk:</b> SameSite=None cookies are sent automatically, creating CSRF vulnerability without protection</li>
-         *   <li><b>Mitigation:</b> CSRF tokens (X-XSRF-TOKEN header) validate that requests originate from our frontend</li>
+         * <li><b>Cross-Domain Architecture:</b> Frontend (Vercel) and Backend (Railway)
+         * are on different domains</li>
+         * <li><b>SameSite=None Cookies:</b> Required for cross-domain auth cookies
+         * (access_token, refresh_token)</li>
+         * <li><b>CSRF Risk:</b> SameSite=None cookies are sent automatically, creating
+         * CSRF vulnerability without protection</li>
+         * <li><b>Mitigation:</b> CSRF tokens (X-XSRF-TOKEN header) validate that
+         * requests originate from our frontend</li>
          * </ol>
          *
          * <p>
          * <b>CSRF Configuration for SPAs:</b>
          * </p>
          * <ul>
-         *   <li><b>Token Repository:</b> {@code CookieCsrfTokenRepository.withHttpOnlyFalse()} - Stores token in XSRF-TOKEN cookie (readable by JavaScript)</li>
-         *   <li><b>Token Handler:</b> {@link SpaCsrfTokenRequestHandler} - Custom handler for SPA token validation</li>
-         *   <li><b>Exempt Endpoints:</b> Login, register, refresh - These don't need CSRF (no state-changing operations on existing sessions)</li>
-         *   <li><b>Cookie Filter:</b> {@link CsrfCookieFilter} - Ensures CSRF token is sent in every response</li>
+         * <li><b>Token Repository:</b>
+         * {@code CookieCsrfTokenRepository.withHttpOnlyFalse()} - Stores token in
+         * XSRF-TOKEN cookie (readable by JavaScript)</li>
+         * <li><b>Token Handler:</b> {@link SpaCsrfTokenRequestHandler} - Custom handler
+         * for SPA token validation</li>
+         * <li><b>Exempt Endpoints:</b> Login, register, refresh - These don't need CSRF
+         * (no state-changing operations on existing sessions)</li>
+         * <li><b>Cookie Filter:</b> {@link CsrfCookieFilter} - Ensures CSRF token is
+         * sent in every response</li>
          * </ul>
          *
          * <p>
          * <b>How Frontend Uses CSRF Tokens:</b>
          * </p>
+         * 
          * <pre>{@code
          * // 1. Read CSRF token from XSRF-TOKEN cookie
          * const csrfToken = getCsrfTokenFromCookie();
@@ -120,9 +130,10 @@ public class SecurityConfig {
                                                                 "/api/v1/auth/login",
                                                                 "/api/v1/auth/register",
                                                                 "/api/v1/auth/refresh",
-                                                                "/api/v1/users/register" // User registration endpoint
-                                                )
-                                )
+                                                                "/api/v1/users/register", // User registration endpoint
+                                                                "/api/v1/referrals/resolve" // Public referral link
+                                                                                            // resolution
+                                                ))
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .authorizeHttpRequests(auth -> auth
                                                 // Public endpoints
@@ -213,16 +224,20 @@ public class SecurityConfig {
          * Configures CORS (Cross-Origin Resource Sharing) for the application.
          *
          * <p>
-         * This configuration dynamically loads allowed origins from environment variables,
-         * supporting multiple deployment environments (local, dev, staging, production).
+         * This configuration dynamically loads allowed origins from environment
+         * variables,
+         * supporting multiple deployment environments (local, dev, staging,
+         * production).
          * </p>
          *
          * <p>
          * <strong>Configuration:</strong>
          * <ul>
-         * <li><code>cors.allowed-origins</code>: Comma-separated list of explicit origins
+         * <li><code>cors.allowed-origins</code>: Comma-separated list of explicit
+         * origins
          * (e.g., "http://localhost:3000,https://gydi.vercel.app")</li>
-         * <li><code>cors.allowed-origin-patterns</code>: Comma-separated wildcard patterns
+         * <li><code>cors.allowed-origin-patterns</code>: Comma-separated wildcard
+         * patterns
          * (e.g., "https://*.vercel.app" for Vercel preview deployments)</li>
          * </ul>
          * </p>

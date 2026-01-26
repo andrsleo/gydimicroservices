@@ -6,6 +6,7 @@ import java.util.Map;
 import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -80,6 +81,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
+@Primary
 @ConditionalOnProperty(name = "storage.provider", havingValue = "cloudinary")
 public class CloudinaryStorageAdapter implements StoragePort {
 
