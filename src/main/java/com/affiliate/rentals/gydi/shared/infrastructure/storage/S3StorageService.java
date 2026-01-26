@@ -21,25 +21,44 @@ import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+
 /**
  * AWS S3 implementation of StoragePort for production use.
  *
- * <p>This adapter handles uploading profile images and other assets to AWS S3,
- * generating public URLs, and deleting files when necessary.</p>
+ * <p>
+ * This adapter handles uploading profile images and other assets to AWS S3,
+ * generating public URLs, and deleting files when necessary.
+ * </p>
  *
- * <p><b>Active only in production profile ({@code @Profile("prod")})</b></p>
+ * <p>
+ * <b>Active only when storage.provider=s3</b>
+ * </p>
+ * <p>
+ * <b>IMPORTANT: Currently disabled in favor of Cloudinary</b>
+ * </p>
  *
- * <p><b>SECURITY: Uses AWS IAM roles for authentication instead of hardcoded credentials.</b></p>
- * <p>The AWS SDK will automatically discover credentials in this order:</p>
+ * <p>
+ * <b>SECURITY: Uses AWS IAM roles for authentication instead of hardcoded
+ * credentials.</b>
+ * </p>
+ * <p>
+ * The AWS SDK will automatically discover credentials in this order:
+ * </p>
  * <ol>
- *   <li>Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)</li>
- *   <li>System properties (aws.accessKeyId, aws.secretAccessKey)</li>
- *   <li>IAM role attached to EC2 instance, ECS task, or Lambda function</li>
- *   <li>AWS credentials file (~/.aws/credentials)</li>
+ * <li>Environment variables (AWS_ACCESS_KEY_ID, AWS_SECRET_ACCESS_KEY)</li>
+ * <li>System properties (aws.accessKeyId, aws.secretAccessKey)</li>
+ * <li>IAM role attached to EC2 instance, ECS task, or Lambda function</li>
+ * <li>AWS credentials file (~/.aws/credentials)</li>
  * </ol>
  *
- * <p><b>Configuration required in application-prod.yml:</b></p>
+ * <p>
+ * <b>Configuration required in application-prod.yml:</b>
+ * </p>
+ * 
  * <pre>
+ * storage:
+ *   provider: s3  # Must be set to 's3' to activate this service
  * aws:
  *   s3:
  *     bucket-name: your-bucket-name
@@ -51,6 +70,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
  */
 @Service
 @Profile("prod")
+@ConditionalOnProperty(name = "storage.provider", havingValue = "s3")
 @Slf4j
 public class S3StorageService implements StoragePort {
 
@@ -80,7 +100,7 @@ public class S3StorageService implements StoragePort {
                 .build();
 
         log.info("S3StorageService initialized for bucket: {} in region: {} using IAM credentials",
-                 bucketName, region);
+                bucketName, region);
     }
 
     @Override
