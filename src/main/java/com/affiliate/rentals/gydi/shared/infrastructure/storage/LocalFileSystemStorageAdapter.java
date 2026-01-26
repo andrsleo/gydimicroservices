@@ -8,7 +8,8 @@ import java.nio.file.StandardCopyOption;
 import java.util.UUID;
 
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.context.annotation.Profile;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
+import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,7 +24,7 @@ import lombok.extern.slf4j.Slf4j;
  * <p>Stores files in a local directory (default: {@code ./uploads/})
  * and returns URLs like {@code http://localhost:8080/uploads/profile-images/uuid.jpg}</p>
  *
- * <p><b>Active only in development profile ({@code @Profile("dev")})</b></p>
+ * <p><b>Active only when {@code storage.provider=local}</b></p>
  *
  * <p><b>Benefits:</b></p>
  * <ul>
@@ -33,9 +34,10 @@ import lombok.extern.slf4j.Slf4j;
  *   <li>Fast local I/O</li>
  * </ul>
  *
- * <p><b>Configuration in application-dev.yml:</b></p>
+ * <p><b>Configuration in application.yml:</b></p>
  * <pre>
  * storage:
+ *   provider: local  # Activates this adapter
  *   local:
  *     directory: ./uploads
  *     base-url: http://localhost:8080/uploads
@@ -44,8 +46,8 @@ import lombok.extern.slf4j.Slf4j;
  * @author GYDI Development Team
  */
 @Service
-@Profile("dev")
-@org.springframework.context.annotation.Primary
+@Primary
+@ConditionalOnProperty(name = "storage.provider", havingValue = "local", matchIfMissing = false)
 @Slf4j
 public class LocalFileSystemStorageAdapter implements StoragePort {
 
