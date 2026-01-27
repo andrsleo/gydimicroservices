@@ -5,11 +5,13 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRepository;
 import org.springframework.security.web.csrf.DefaultCsrfToken;
 import org.springframework.util.StringUtils;
 
+import java.time.Duration;
 import java.util.UUID;
 
 /**
@@ -54,23 +56,16 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
         boolean isSecure = !isLocalhost; // Secure for non-local environments
         String sameSite = isLocalhost ? "Lax" : "None";
 
-        Cookie cookie = new Cookie(CSRF_COOKIE_NAME, tokenValue);
-        cookie.setPath("/");
-        cookie.setHttpOnly(false); // MUST be false so JavaScript can read it
-        cookie.setSecure(isSecure); // HTTPS only for cross-origin (SameSite=None requires Secure)
-        cookie.setMaxAge(csrfToken != null ? -1 : 0); // Session cookie or delete
+        // Use Spring's ResponseCookie for proper SameSite support
+        ResponseCookie cookie = ResponseCookie.from(CSRF_COOKIE_NAME, tokenValue)
+            .path("/")
+            .httpOnly(false) // MUST be false so JavaScript can read it
+            .secure(isSecure) // HTTPS only for cross-origin (SameSite=None requires Secure)
+            .sameSite(sameSite)
+            .maxAge(csrfToken != null ? Duration.ofDays(1) : Duration.ZERO) // 1 day or delete
+            .build();
 
-        // Build cookie header with SameSite manually (Spring Cookie class doesn't support SameSite)
-        String cookieHeader = String.format(
-            "%s=%s; Path=/; HttpOnly=%s; Secure=%s; SameSite=%s",
-            CSRF_COOKIE_NAME,
-            tokenValue,
-            false, // Must be false for JavaScript to read
-            isSecure,
-            sameSite
-        );
-
-        response.addHeader("Set-Cookie", cookieHeader);
+        response.addHeader("Set-Cookie", cookie.toString());
     }
 
     @Override
