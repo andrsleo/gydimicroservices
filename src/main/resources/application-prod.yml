@@ -166,8 +166,10 @@ storage:
   provider: ${STORAGE_PROVIDER}
 
 # Email provider
+# NOTE: Email service disabled in production (will use NoOpEmailServiceAdapter)
+# Uncomment and configure when email provider is selected
 email:
-  provider: resend
+  # provider: resend  # Disabled - no email provider configured yet
 
 # ============================================
 # Stripe Payment Configuration (LIVE MODE - Real money!)

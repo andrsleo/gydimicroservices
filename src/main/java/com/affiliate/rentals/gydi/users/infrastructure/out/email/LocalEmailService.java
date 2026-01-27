@@ -1,7 +1,6 @@
 package com.affiliate.rentals.gydi.users.infrastructure.out.email;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
-import org.springframework.context.annotation.Primary;
 import org.springframework.stereotype.Service;
 
 import com.affiliate.rentals.gydi.users.domain.ports.EmailServicePort;
@@ -57,9 +56,12 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Slf4j
 @Service
-@Primary
-@ConditionalOnProperty(name = "email.provider", havingValue = "local", matchIfMissing = true)
+@ConditionalOnProperty(name = "email.provider", havingValue = "local", matchIfMissing = false)
 public class LocalEmailService implements EmailServicePort {
+
+    public LocalEmailService() {
+        log.info("LocalEmailService initialized - emails will be logged to console (no actual emails sent)");
+    }
 
     @Override
     public void sendPasswordResetEmail(String toEmail, String resetLink, String userName) {

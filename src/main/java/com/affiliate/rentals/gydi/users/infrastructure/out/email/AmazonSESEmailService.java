@@ -15,7 +15,7 @@ import software.amazon.awssdk.services.ses.model.*;
 @Slf4j
 @Service
 @Profile("prod")
-@ConditionalOnProperty(name = "storage.provider", havingValue = "s3")
+@ConditionalOnProperty(name = "email.provider", havingValue = "ses")
 public class AmazonSESEmailService implements EmailServicePort {
         private final SesClient sesClient;
         private final String fromEmail;
