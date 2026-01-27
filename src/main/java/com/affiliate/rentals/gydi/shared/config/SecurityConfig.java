@@ -1,11 +1,13 @@
 package com.affiliate.rentals.gydi.shared.config;
 
 import com.affiliate.rentals.gydi.shared.security.CsrfCookieFilter;
+import com.affiliate.rentals.gydi.shared.security.CustomCsrfTokenRepository;
 import com.affiliate.rentals.gydi.shared.security.JwtAuthenticationFilter;
 import com.affiliate.rentals.gydi.shared.security.SpaCsrfTokenRequestHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.core.env.Environment;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.config.annotation.authentication.configuration.AuthenticationConfiguration;
@@ -52,6 +54,7 @@ public class SecurityConfig {
 
         private final JwtAuthenticationFilter jwtAuthFilter;
         private final UserDetailsService userDetailsService;
+        private final Environment environment;
 
         @Value("${cors.allowed-origins:http://localhost:3000,http://127.0.0.1:3000}")
         private String allowedOrigins;
@@ -59,9 +62,10 @@ public class SecurityConfig {
         @Value("${cors.allowed-origin-patterns:}")
         private String allowedOriginPatterns;
 
-        public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, UserDetailsService userDetailsService) {
+        public SecurityConfig(JwtAuthenticationFilter jwtAuthFilter, UserDetailsService userDetailsService, Environment environment) {
                 this.jwtAuthFilter = jwtAuthFilter;
                 this.userDetailsService = userDetailsService;
+                this.environment = environment;
         }
 
         /**
@@ -123,7 +127,7 @@ public class SecurityConfig {
                 http
                                 // ✅ ENABLE CSRF protection for SPA with custom handler
                                 .csrf(csrf -> csrf
-                                                .csrfTokenRepository(CookieCsrfTokenRepository.withHttpOnlyFalse())
+                                                .csrfTokenRepository(new CustomCsrfTokenRepository(environment))
                                                 .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
                                                 // Exempt authentication endpoints (no state to protect yet)
                                                 .ignoringRequestMatchers(
