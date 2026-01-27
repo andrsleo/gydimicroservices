@@ -7,6 +7,7 @@ import java.util.UUID;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -23,21 +24,28 @@ import lombok.extern.slf4j.Slf4j;
  * <p>
  * Cloudinary provides:
  * <ul>
- *   <li><b>CDN</b> - Global content delivery network for fast image/video loading</li>
- *   <li><b>Automatic optimization</b> - Format conversion (WebP), quality optimization, compression</li>
- *   <li><b>Transformations</b> - On-the-fly image resizing, cropping, effects</li>
- *   <li><b>Responsive images</b> - Generate multiple sizes for different devices</li>
- *   <li><b>Video streaming</b> - Adaptive bitrate streaming for videos</li>
- *   <li><b>Persistence</b> - Files never lost (unlike ephemeral container storage)</li>
+ * <li><b>CDN</b> - Global content delivery network for fast image/video
+ * loading</li>
+ * <li><b>Automatic optimization</b> - Format conversion (WebP), quality
+ * optimization, compression</li>
+ * <li><b>Transformations</b> - On-the-fly image resizing, cropping,
+ * effects</li>
+ * <li><b>Responsive images</b> - Generate multiple sizes for different
+ * devices</li>
+ * <li><b>Video streaming</b> - Adaptive bitrate streaming for videos</li>
+ * <li><b>Persistence</b> - Files never lost (unlike ephemeral container
+ * storage)</li>
  * </ul>
  * </p>
  *
  * <p>
- * <b>Active when:</b> {@code storage.provider=cloudinary}
+ * <b>Active when:</b> {@code storage.provider=cloudinary} and NOT in test
+ * profile
  * </p>
  *
  * <p>
  * <b>Configuration in application.yml:</b>
+ * 
  * <pre>
  * cloudinary:
  *   url: cloudinary://api_key:api_secret@cloud_name
@@ -49,6 +57,7 @@ import lombok.extern.slf4j.Slf4j;
  *
  * <p>
  * <b>Environment Variables (Railway/Vercel):</b>
+ * 
  * <pre>
  * CLOUDINARY_URL=cloudinary://595781714461924:1VW549K9XIyLrBlco4mJYcWu4NU@cloudestoragegydi
  * STORAGE_PROVIDER=cloudinary
@@ -58,21 +67,24 @@ import lombok.extern.slf4j.Slf4j;
  * <p>
  * <b>Upload Flow:</b>
  * <ol>
- *   <li>Frontend sends file to backend</li>
- *   <li>Backend validates file (type, size, magic numbers)</li>
- *   <li>Backend uploads to Cloudinary via this adapter</li>
- *   <li>Cloudinary returns public URL with CDN</li>
- *   <li>Backend stores URL in database</li>
- *   <li>Frontend displays image from Cloudinary CDN</li>
+ * <li>Frontend sends file to backend</li>
+ * <li>Backend validates file (type, size, magic numbers)</li>
+ * <li>Backend uploads to Cloudinary via this adapter</li>
+ * <li>Cloudinary returns public URL with CDN</li>
+ * <li>Backend stores URL in database</li>
+ * <li>Frontend displays image from Cloudinary CDN</li>
  * </ol>
  * </p>
  *
  * <p>
  * <b>Example URLs:</b>
  * <ul>
- *   <li>Original: {@code https://res.cloudinary.com/cloudestoragegydi/image/upload/v1234/property-images/uuid.jpg}</li>
- *   <li>Optimized: {@code ...image/upload/q_auto,f_auto/v1234/property-images/uuid.jpg}</li>
- *   <li>Resized: {@code ...image/upload/w_800,h_600,c_fill/v1234/property-images/uuid.jpg}</li>
+ * <li>Original:
+ * {@code https://res.cloudinary.com/cloudestoragegydi/image/upload/v1234/property-images/uuid.jpg}</li>
+ * <li>Optimized:
+ * {@code ...image/upload/q_auto,f_auto/v1234/property-images/uuid.jpg}</li>
+ * <li>Resized:
+ * {@code ...image/upload/w_800,h_600,c_fill/v1234/property-images/uuid.jpg}</li>
  * </ul>
  * </p>
  *
@@ -82,6 +94,7 @@ import lombok.extern.slf4j.Slf4j;
 @Slf4j
 @Service
 @Primary
+@Profile("!test")
 @ConditionalOnProperty(name = "storage.provider", havingValue = "cloudinary")
 public class CloudinaryStorageAdapter implements StoragePort {
 
@@ -103,11 +116,11 @@ public class CloudinaryStorageAdapter implements StoragePort {
      * <p>
      * Cloudinary automatically:
      * <ul>
-     *   <li>Optimizes image quality</li>
-     *   <li>Converts to modern formats (WebP) when requested</li>
-     *   <li>Generates multiple responsive sizes</li>
-     *   <li>Applies CDN caching</li>
-     *   <li>Generates unique public_id to prevent collisions</li>
+     * <li>Optimizes image quality</li>
+     * <li>Converts to modern formats (WebP) when requested</li>
+     * <li>Generates multiple responsive sizes</li>
+     * <li>Applies CDN caching</li>
+     * <li>Generates unique public_id to prevent collisions</li>
      * </ul>
      * </p>
      *
@@ -152,30 +165,29 @@ public class CloudinaryStorageAdapter implements StoragePort {
 
             // Upload to Cloudinary
             log.debug("Uploading file to Cloudinary: folder={}, fileName={}, size={}",
-                folder, fileName, file.getSize());
+                    folder, fileName, file.getSize());
 
             @SuppressWarnings("unchecked")
             Map<String, Object> uploadResult = cloudinary.uploader().upload(
-                file.getBytes(),
-                uploadOptions
-            );
+                    file.getBytes(),
+                    uploadOptions);
 
             // Extract public URL
             String secureUrl = (String) uploadResult.get("secure_url");
             String publicIdResult = (String) uploadResult.get("public_id");
 
             log.info("File uploaded successfully to Cloudinary: publicId={}, url={}",
-                publicIdResult, secureUrl);
+                    publicIdResult, secureUrl);
 
             return secureUrl;
 
         } catch (IOException e) {
             log.error("Failed to upload file to Cloudinary: fileName={}, folder={}",
-                originalFilename, folder, e);
+                    originalFilename, folder, e);
             throw new StorageException("Failed to upload file to Cloudinary: " + e.getMessage(), e);
         } catch (Exception e) {
             log.error("Unexpected error uploading to Cloudinary: fileName={}, folder={}",
-                originalFilename, folder, e);
+                    originalFilename, folder, e);
             throw new StorageException("Unexpected error uploading to Cloudinary: " + e.getMessage(), e);
         }
     }
@@ -247,7 +259,7 @@ public class CloudinaryStorageAdapter implements StoragePort {
                 log.warn("File not found in Cloudinary: publicId={}", publicId);
             } else {
                 log.warn("Unexpected deletion result from Cloudinary: result={}, publicId={}",
-                    result, publicId);
+                        result, publicId);
             }
 
         } catch (Exception e) {
@@ -280,12 +292,15 @@ public class CloudinaryStorageAdapter implements StoragePort {
      * </p>
      *
      * @param url the Cloudinary URL
-     * @return the public_id without version and extension, or null if extraction fails
+     * @return the public_id without version and extension, or null if extraction
+     *         fails
      */
     private String extractPublicIdFromUrl(String url) {
         try {
-            // URL format: https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/v{version}/{public_id}.{format}
-            // Example: https://res.cloudinary.com/cloudestoragegydi/image/upload/v1234567890/property-images/uuid.jpg
+            // URL format:
+            // https://res.cloudinary.com/{cloud_name}/{resource_type}/upload/v{version}/{public_id}.{format}
+            // Example:
+            // https://res.cloudinary.com/cloudestoragegydi/image/upload/v1234567890/property-images/uuid.jpg
 
             if (!url.contains("res.cloudinary.com")) {
                 log.warn("URL is not a Cloudinary URL: {}", url);
@@ -338,10 +353,10 @@ public class CloudinaryStorageAdapter implements StoragePort {
      * <p>
      * SECURITY: This validates:
      * <ul>
-     *   <li>File size limits (10MB images, 500MB videos)</li>
-     *   <li>File type (MIME type)</li>
-     *   <li>Magic number verification (prevents MIME spoofing)</li>
-     *   <li>Malicious content detection</li>
+     * <li>File size limits (10MB images, 500MB videos)</li>
+     * <li>File type (MIME type)</li>
+     * <li>Magic number verification (prevents MIME spoofing)</li>
+     * <li>Malicious content detection</li>
      * </ul>
      * </p>
      *
