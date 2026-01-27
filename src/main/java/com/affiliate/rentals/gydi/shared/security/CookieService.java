@@ -4,9 +4,12 @@ import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
+import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Service;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+
+import java.time.Duration;
 
 /**
  * Service for managing authentication cookies with profile-aware security settings.
@@ -87,16 +90,30 @@ public class CookieService {
                  environment.getActiveProfiles().length > 0 ? environment.getActiveProfiles()[0] : "default",
                  isSecure, sameSite);
 
-        // Set access token cookie
-        Cookie accessCookie = createSecureCookie(ACCESS_TOKEN_COOKIE, accessToken, ACCESS_TOKEN_MAX_AGE, isSecure);
-        response.addCookie(accessCookie);
+        // Set access token cookie using Spring's ResponseCookie for proper SameSite support
+        ResponseCookie accessCookie = ResponseCookie.from(ACCESS_TOKEN_COOKIE, accessToken)
+                .path("/")
+                .httpOnly(true) // XSS protection
+                .secure(isSecure) // HTTPS only (required for SameSite=None)
+                .sameSite(sameSite)
+                .maxAge(Duration.ofSeconds(ACCESS_TOKEN_MAX_AGE))
+                .build();
+
+        response.addHeader("Set-Cookie", accessCookie.toString());
         log.info("✅ Cookie set: {} (maxAge={}, Secure={}, SameSite={})",
                  ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_MAX_AGE, isSecure, sameSite);
 
         // Set refresh token cookie if provided
         if (refreshToken != null && !refreshToken.isBlank()) {
-            Cookie refreshCookie = createSecureCookie(REFRESH_TOKEN_COOKIE, refreshToken, REFRESH_TOKEN_MAX_AGE, isSecure);
-            response.addCookie(refreshCookie);
+            ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, refreshToken)
+                    .path("/")
+                    .httpOnly(true) // XSS protection
+                    .secure(isSecure) // HTTPS only (required for SameSite=None)
+                    .sameSite(sameSite)
+                    .maxAge(Duration.ofSeconds(REFRESH_TOKEN_MAX_AGE))
+                    .build();
+
+            response.addHeader("Set-Cookie", refreshCookie.toString());
             log.info("✅ Cookie set: {} (maxAge={}, Secure={}, SameSite={})",
                      REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_MAX_AGE, isSecure, sameSite);
         }
@@ -111,86 +128,32 @@ public class CookieService {
      */
     public void clearAuthCookies(HttpServletResponse response) {
         boolean isSecure = isHttpsRequest(response);
-
-        // Clear access token
-        Cookie accessCookie = createSecureCookie(ACCESS_TOKEN_COOKIE, "", 0, isSecure);
-        response.addCookie(accessCookie);
-
-        // Clear refresh token
-        Cookie refreshCookie = createSecureCookie(REFRESH_TOKEN_COOKIE, "", 0, isSecure);
-        response.addCookie(refreshCookie);
-    }
-
-    /**
-     * Creates a secure cookie with environment-aware SameSite policy.
-     *
-     * <p><b>Security attributes:</b></p>
-     * <ul>
-     *   <li>httpOnly: true - Prevents XSS (JavaScript cannot read cookie)</li>
-     *   <li>Secure: true - HTTPS only (required for SameSite=None)</li>
-     *   <li>SameSite: Dynamic - Depends on environment (see below)</li>
-     *   <li>Path: / - Available for all routes</li>
-     * </ul>
-     *
-     * <p><b>SameSite Policy by Profile:</b></p>
-     * <table border="1">
-     *   <tr>
-     *     <th>Profile</th>
-     *     <th>SameSite Value</th>
-     *     <th>Reason</th>
-     *   </tr>
-     *   <tr>
-     *     <td>local (localhost:8080)</td>
-     *     <td>Lax</td>
-     *     <td>Same-origin (localhost:3000 → localhost:8080)</td>
-     *   </tr>
-     *   <tr>
-     *     <td>dev (Railway Dev)</td>
-     *     <td>None</td>
-     *     <td>Cross-domain (Vercel → Railway Dev), CSRF protection enabled</td>
-     *   </tr>
-     *   <tr>
-     *     <td>prod (Railway Prod)</td>
-     *     <td>None</td>
-     *     <td>Cross-domain (Vercel → Railway Prod), CSRF protection enabled</td>
-     *   </tr>
-     * </table>
-     *
-     * <p>
-     * <b>Why SameSite=None in Railway (Dev & Prod):</b> Frontend (Vercel) and Backend (Railway)
-     * are on different domains (cross-site). SameSite=Strict or Lax would block cookies from
-     * being sent in cross-site requests. SameSite=None allows the frontend to send
-     * cookies to the backend API across domains.
-     * </p>
-     *
-     * <p>
-     * <b>Security Note:</b> SameSite=None requires CSRF protection. Spring Security's
-     * CSRF tokens (X-XSRF-TOKEN header) provide defense against CSRF attacks. See
-     * {@code SecurityConfig} for CSRF configuration.
-     * </p>
-     *
-     * @param name the cookie name
-     * @param value the cookie value
-     * @param maxAge the max age in seconds
-     * @param isSecure whether the cookie should have Secure flag (HTTPS only)
-     * @return the configured cookie with environment-appropriate SameSite policy
-     */
-    private Cookie createSecureCookie(String name, String value, int maxAge, boolean isSecure) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setHttpOnly(true); // XSS protection
-        cookie.setSecure(isSecure); // HTTPS only (REQUIRED with SameSite=None)
-        cookie.setPath("/"); // Available for all routes
-        cookie.setMaxAge(maxAge);
-
-        // ✅ Profile-based SameSite policy
-        // Local profile (localhost): Lax - Same-origin (localhost:3000 → localhost:8080)
-        // Railway profiles (dev, prod): None - Cross-domain (Vercel → Railway) with CSRF protection
         boolean isLocalhost = environment.acceptsProfiles(Profiles.of("local"));
         String sameSite = isLocalhost ? "Lax" : "None";
-        cookie.setAttribute("SameSite", sameSite);
 
-        return cookie;
+        // Clear access token using ResponseCookie
+        ResponseCookie accessCookie = ResponseCookie.from(ACCESS_TOKEN_COOKIE, "")
+                .path("/")
+                .httpOnly(true)
+                .secure(isSecure)
+                .sameSite(sameSite)
+                .maxAge(Duration.ZERO) // Delete cookie
+                .build();
+
+        response.addHeader("Set-Cookie", accessCookie.toString());
+
+        // Clear refresh token using ResponseCookie
+        ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_TOKEN_COOKIE, "")
+                .path("/")
+                .httpOnly(true)
+                .secure(isSecure)
+                .sameSite(sameSite)
+                .maxAge(Duration.ZERO) // Delete cookie
+                .build();
+
+        response.addHeader("Set-Cookie", refreshCookie.toString());
     }
+
 
     /**
      * Extracts the access token from cookies.
