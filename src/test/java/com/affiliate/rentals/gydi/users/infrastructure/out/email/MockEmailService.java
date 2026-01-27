@@ -2,11 +2,13 @@ package com.affiliate.rentals.gydi.users.infrastructure.out.email;
 
 import com.affiliate.rentals.gydi.users.domain.ports.EmailServicePort;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.context.annotation.Primary;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 
 @Slf4j
 @Service
+@Primary
 @Profile("test")
 public class MockEmailService implements EmailServicePort {
 
