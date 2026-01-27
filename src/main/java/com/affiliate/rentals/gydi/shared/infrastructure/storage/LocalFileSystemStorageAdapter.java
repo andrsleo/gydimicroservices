@@ -10,6 +10,7 @@ import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Primary;
+import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Service;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -21,20 +22,31 @@ import lombok.extern.slf4j.Slf4j;
 /**
  * Local filesystem implementation of StoragePort for development.
  *
- * <p>Stores files in a local directory (default: {@code ./uploads/})
- * and returns URLs like {@code http://localhost:8080/uploads/profile-images/uuid.jpg}</p>
+ * <p>
+ * Stores files in a local directory (default: {@code ./uploads/})
+ * and returns URLs like
+ * {@code http://localhost:8080/uploads/profile-images/uuid.jpg}
+ * </p>
  *
- * <p><b>Active only when {@code storage.provider=local}</b></p>
+ * <p>
+ * <b>Active only when {@code storage.provider=local} and NOT in test
+ * profile</b>
+ * </p>
  *
- * <p><b>Benefits:</b></p>
+ * <p>
+ * <b>Benefits:</b>
+ * </p>
  * <ul>
- *   <li>No AWS credentials needed</li>
- *   <li>No AWS costs</li>
- *   <li>Easy to inspect uploaded files</li>
- *   <li>Fast local I/O</li>
+ * <li>No AWS credentials needed</li>
+ * <li>No AWS costs</li>
+ * <li>Easy to inspect uploaded files</li>
+ * <li>Fast local I/O</li>
  * </ul>
  *
- * <p><b>Configuration in application.yml:</b></p>
+ * <p>
+ * <b>Configuration in application.yml:</b>
+ * </p>
+ * 
  * <pre>
  * storage:
  *   provider: local  # Activates this adapter
@@ -47,6 +59,7 @@ import lombok.extern.slf4j.Slf4j;
  */
 @Service
 @Primary
+@Profile("!test")
 @ConditionalOnProperty(name = "storage.provider", havingValue = "local", matchIfMissing = false)
 @Slf4j
 public class LocalFileSystemStorageAdapter implements StoragePort {
