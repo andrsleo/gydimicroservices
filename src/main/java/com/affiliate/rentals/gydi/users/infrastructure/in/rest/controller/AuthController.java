@@ -39,6 +39,7 @@ import org.springframework.core.env.Profiles;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
 import java.util.Optional;
 
 /**
@@ -445,60 +446,71 @@ public class AuthController {
     }
 
     /**
-     * Generates a CSRF token for the frontend.
+     * Returns a CSRF token for the frontend.
      *
      * <p>
-     * This endpoint triggers CSRF token generation by Spring Security's {@code CsrfFilter}.
-     * The CSRF token is automatically set in the {@code XSRF-TOKEN} cookie (non-httpOnly
-     * so JavaScript can read it).
+     * This endpoint returns the CSRF token in the response body (Option B: Synchronizer Token Pattern).
+     * This is required for cross-origin setups where the frontend (Vercel) cannot read
+     * cookies set by the backend (Railway) via {@code document.cookie}.
+     * </p>
+     *
+     * <p>
+     * The CSRF token is also set in the {@code XSRF-TOKEN} cookie for same-origin compatibility.
+     * Cross-origin frontends should read the token from the response body and store it in memory.
      * </p>
      *
      * <p>
      * <b>When to call:</b>
      * </p>
      * <ul>
-     *   <li>On application load (useEffect in Next.js root layout)</li>
-     *   <li>When CSRF token is missing from cookies</li>
-     *   <li>After 403 Forbidden error (to refresh expired token)</li>
+     *   <li>After successful login</li>
+     *   <li>When CSRF token is missing or expired</li>
+     *   <li>After 403 Forbidden error (to refresh token)</li>
      * </ul>
      *
      * <p>
-     * <b>Frontend Integration:</b>
+     * <b>Frontend Integration (cross-origin):</b>
      * </p>
      * <pre>{@code
-     * // Call this endpoint to ensure CSRF token cookie is set
-     * await fetch(`${API_URL}/api/v1/auth/csrf`, {
-     *   method: 'GET',
-     *   credentials: 'include' // Important: send/receive cookies
-     * });
+     * // Fetch CSRF token from response body
+     * const { data } = await apiClient.get('/api/v1/auth/csrf');
+     * const csrfToken = data.token; // Store in memory
      *
-     * // Then read token from XSRF-TOKEN cookie
-     * const csrfToken = getCsrfTokenFromCookie();
+     * // Send in X-XSRF-TOKEN header + X-Requested-With for defense in depth
+     * axios.post('/api/properties', payload, {
+     *   headers: {
+     *     'X-XSRF-TOKEN': csrfToken,
+     *     'X-Requested-With': 'XMLHttpRequest'
+     *   }
+     * });
      * }</pre>
      *
-     * <p>
-     * <b>Security Note:</b> This endpoint is public (does not require authentication).
-     * The CSRF token itself is not a secret - it only works in combination with
-     * the Same-Origin Policy and proper CORS configuration.
-     * </p>
-     *
-     * @return HTTP 200 OK with CSRF token set in XSRF-TOKEN cookie
+     * @param request the HTTP request containing the CSRF token attribute
+     * @return JSON with token and headerName
      */
     @GetMapping("/csrf")
     @Operation(
         summary = "Get CSRF token",
-        description = "Triggers CSRF token generation and sets it in XSRF-TOKEN cookie. " +
-                      "Frontend should call this on app load to ensure a valid CSRF token exists."
+        description = "Returns CSRF token in response body for cross-origin frontends. " +
+                      "Also sets XSRF-TOKEN cookie for same-origin compatibility."
     )
-    @ApiResponse(responseCode = "200", description = "CSRF token generated and set in cookie")
-    public ResponseEntity<Void> getCsrfToken() {
-        // Spring Security's CsrfFilter automatically generates and sets XSRF-TOKEN cookie
-        // CsrfCookieFilter (registered in SecurityConfig) ensures the token is generated
-        // by accessing the CsrfToken from the request attribute.
-        //
-        // No need to do anything here - just returning 200 OK is enough.
-        // The token is already in the response via CsrfCookieFilter.
-        return ResponseEntity.ok().build();
+    @ApiResponse(responseCode = "200", description = "CSRF token returned")
+    public ResponseEntity<Map<String, String>> getCsrfToken(HttpServletRequest request) {
+        // Read raw CSRF token stored by CustomCsrfTokenRepository during this request
+        // (set in both loadToken() and saveToken() via CSRF_RAW_TOKEN request attribute)
+        String csrfToken = (String) request.getAttribute(
+                com.affiliate.rentals.gydi.shared.security.CustomCsrfTokenRepository.CSRF_RAW_TOKEN_ATTR);
+
+        if (csrfToken != null && !csrfToken.isEmpty()) {
+            return ResponseEntity.ok(Map.of(
+                    "token", csrfToken,
+                    "headerName", "X-XSRF-TOKEN"
+            ));
+        }
+
+        // Token should always be available (CsrfFilter runs before controller)
+        log.warn("CSRF token not found in request attribute. CsrfFilter may not have executed.");
+        return ResponseEntity.ok(Map.of());
     }
 
     /**
