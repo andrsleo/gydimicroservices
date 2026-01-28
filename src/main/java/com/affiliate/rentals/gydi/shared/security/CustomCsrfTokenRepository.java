@@ -47,9 +47,21 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
         return new DefaultCsrfToken(CSRF_HEADER_NAME, CSRF_PARAMETER_NAME, createNewToken());
     }
 
+    /**
+     * Request attribute name for storing the raw CSRF token value.
+     * Used by AuthController to return the token in the response body
+     * for cross-origin frontends that cannot read the XSRF-TOKEN cookie.
+     */
+    public static final String CSRF_RAW_TOKEN_ATTR = "CSRF_RAW_TOKEN";
+
     @Override
     public void saveToken(CsrfToken csrfToken, HttpServletRequest request, HttpServletResponse response) {
         String tokenValue = (csrfToken != null) ? csrfToken.getToken() : "";
+
+        // Store raw token as request attribute for controller access (cross-origin support)
+        if (csrfToken != null) {
+            request.setAttribute(CSRF_RAW_TOKEN_ATTR, tokenValue);
+        }
 
         // Determine security settings based on environment
         boolean isLocalhost = environment.acceptsProfiles(Profiles.of("local"));
@@ -76,6 +88,8 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
                 if (CSRF_COOKIE_NAME.equals(cookie.getName())) {
                     String token = cookie.getValue();
                     if (StringUtils.hasText(token)) {
+                        // Store raw token as request attribute for controller access
+                        request.setAttribute(CSRF_RAW_TOKEN_ATTR, token);
                         return new DefaultCsrfToken(CSRF_HEADER_NAME, CSRF_PARAMETER_NAME, token);
                     }
                 }
