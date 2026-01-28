@@ -2,6 +2,7 @@ package com.affiliate.rentals.gydi.shared.config;
 
 import com.affiliate.rentals.gydi.shared.security.CsrfCookieFilter;
 import com.affiliate.rentals.gydi.shared.security.CustomCsrfTokenRepository;
+import com.affiliate.rentals.gydi.shared.security.CustomHeaderValidationFilter;
 import com.affiliate.rentals.gydi.shared.security.JwtAuthenticationFilter;
 import com.affiliate.rentals.gydi.shared.security.SpaCsrfTokenRequestHandler;
 import org.springframework.beans.factory.annotation.Value;
@@ -197,7 +198,9 @@ public class SecurityConfig {
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                                 // ✅ Add CSRF cookie filter to ensure CSRF token is sent in every response
-                                .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class);
+                                .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
+                                // ✅ Option D: Validate X-Requested-With header on state-changing API requests
+                                .addFilterAfter(new CustomHeaderValidationFilter(), CsrfCookieFilter.class);
 
                 return http.build();
         }
