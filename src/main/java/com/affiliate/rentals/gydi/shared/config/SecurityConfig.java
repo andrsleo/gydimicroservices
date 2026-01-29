@@ -294,17 +294,27 @@ public class SecurityConfig {
                 configuration.setAllowedMethods(Arrays.asList(
                                 "GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"));
 
-                // Allow all headers
-                configuration.setAllowedHeaders(Arrays.asList("*"));
+                // Explicitly allow required headers (wildcard doesn't work with credentials)
+                // NOTE: Do NOT include Access-Control-Request-* headers - those are preflight headers
+                configuration.setAllowedHeaders(Arrays.asList(
+                                "Content-Type",
+                                "Authorization",
+                                "X-Requested-With",
+                                "X-XSRF-TOKEN",
+                                "Accept",
+                                "Origin",
+                                "Cache-Control",
+                                "Pragma"));
 
                 // Allow credentials (cookies, authorization headers, CSRF tokens)
                 configuration.setAllowCredentials(true);
 
-                // Expose headers to frontend (Authorization for JWT, X-XSRF-TOKEN for CSRF)
+                // Expose headers to frontend (Authorization for JWT, X-XSRF-TOKEN for CSRF, rate limits)
                 configuration.setExposedHeaders(Arrays.asList(
                                 "Authorization",
                                 "X-XSRF-TOKEN",
-                                "XSRF-TOKEN"));
+                                "X-RateLimit-Limit",
+                                "X-RateLimit-Remaining"));
 
                 // Cache preflight response for 1 hour
                 configuration.setMaxAge(3600L);
