@@ -5,6 +5,7 @@ import com.affiliate.rentals.gydi.shared.security.CsrfDiagnosticFilter;
 import com.affiliate.rentals.gydi.shared.security.CustomCsrfTokenRepository;
 import com.affiliate.rentals.gydi.shared.security.CustomHeaderValidationFilter;
 import com.affiliate.rentals.gydi.shared.security.JwtAuthenticationFilter;
+import com.affiliate.rentals.gydi.shared.security.NoOpCsrfAuthenticationStrategy;
 import com.affiliate.rentals.gydi.shared.security.SpaCsrfTokenRequestHandler;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -24,6 +25,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
+import org.springframework.security.web.context.RequestAttributeSecurityContextRepository;
+import org.springframework.security.web.context.SecurityContextRepository;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
@@ -200,12 +203,16 @@ public class SecurityConfig {
                                                 .anyRequest().authenticated())
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
-                                                // ✅ Disable CSRF token rotation after authentication
-                                                // CsrfAuthenticationStrategy rotates tokens after login, which causes
-                                                // race conditions in cross-origin SPA scenarios where the frontend
-                                                // may have already fetched the old token before rotation completes.
-                                                // NullAuthenticatedSessionStrategy does nothing, keeping the token stable.
-                                                .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy()))
+                                                // ✅ CRITICAL: Use NoOp strategy to prevent CSRF token rotation
+                                                // Spring Security's CsrfAuthenticationStrategy rotates tokens after ANY
+                                                // authentication change, which breaks cross-origin SPA architectures.
+                                                // In stateless JWT, we don't need session fixation protection.
+                                                .sessionAuthenticationStrategy(new NoOpCsrfAuthenticationStrategy()))
+                                // ✅ CRITICAL: Use request-scoped security context (truly stateless)
+                                // This prevents Spring Security from detecting "authentication changes"
+                                // between requests, which was triggering unwanted CSRF token rotation.
+                                .securityContext(context -> context
+                                                .securityContextRepository(new RequestAttributeSecurityContextRepository()))
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                                 // ✅ DIAGNOSTIC: Log CSRF-related request info BEFORE CsrfFilter runs
                                 .addFilterBefore(new CsrfDiagnosticFilter(), CsrfFilter.class)
