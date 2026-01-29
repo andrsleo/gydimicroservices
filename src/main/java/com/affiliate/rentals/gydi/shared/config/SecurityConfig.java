@@ -134,18 +134,29 @@ public class SecurityConfig {
         public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
                 http
                                 // ✅ ENABLE CSRF protection for SPA with custom handler
+                                // ============================================================
+                                // CSRF PROTECTION STRATEGY FOR CROSS-ORIGIN SPA
+                                // ============================================================
+                                // CSRF token validation is DISABLED for API endpoints because:
+                                // 1. Spring Security's XOR-encoded CSRF tokens are incompatible with
+                                //    cross-origin SPA architectures (token rotation race conditions)
+                                // 2. We use ALTERNATIVE CSRF protection via CustomHeaderValidationFilter:
+                                //    - Requires X-Requested-With: XMLHttpRequest header
+                                //    - HTML forms CANNOT set custom headers (blocks form-based CSRF)
+                                //    - Cross-origin JS requests with custom headers require CORS preflight
+                                //
+                                // SECURITY LAYERS STILL ACTIVE:
+                                // ✅ JWT Authentication - Only authenticated users access protected endpoints
+                                // ✅ X-Requested-With Header - Custom header that forms can't set (Option D)
+                                // ✅ CORS Policy - Only trusted origins (gydi-front-next.vercel.app) allowed
+                                // ✅ SameSite=None + Secure cookies - Proper cross-origin cookie handling
+                                //
+                                // This is a recognized secure pattern for SPAs. See:
+                                // - OWASP: "Custom Request Headers" defense
+                                // - https://cheatsheetseries.owasp.org/cheatsheets/Cross-Site_Request_Forgery_Prevention_Cheat_Sheet.html
+                                // ============================================================
                                 .csrf(csrf -> csrf
-                                                .csrfTokenRepository(new CustomCsrfTokenRepository(environment))
-                                                .csrfTokenRequestHandler(new SpaCsrfTokenRequestHandler())
-                                                // Exempt authentication endpoints (no state to protect yet)
-                                                .ignoringRequestMatchers(
-                                                                "/api/v1/auth/login",
-                                                                "/api/v1/auth/register",
-                                                                "/api/v1/auth/refresh",
-                                                                "/api/v1/users/register", // User registration endpoint
-                                                                "/api/v1/referrals/resolve" // Public referral link
-                                                                                            // resolution
-                                                ))
+                                                .ignoringRequestMatchers("/api/**"))
                                 .cors(cors -> cors.configurationSource(corsConfigurationSource()))
                                 .authorizeHttpRequests(auth -> auth
                                                 // Public endpoints
