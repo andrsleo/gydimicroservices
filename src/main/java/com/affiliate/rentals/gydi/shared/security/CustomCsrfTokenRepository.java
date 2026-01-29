@@ -3,6 +3,8 @@ package com.affiliate.rentals.gydi.shared.security;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.core.env.Environment;
 import org.springframework.core.env.Profiles;
 import org.springframework.http.ResponseCookie;
@@ -32,6 +34,8 @@ import java.util.UUID;
  */
 public class CustomCsrfTokenRepository implements CsrfTokenRepository {
 
+    private static final Logger log = LoggerFactory.getLogger(CustomCsrfTokenRepository.class);
+
     private static final String CSRF_COOKIE_NAME = "XSRF-TOKEN";
     private static final String CSRF_HEADER_NAME = "X-XSRF-TOKEN";
     private static final String CSRF_PARAMETER_NAME = "_csrf";
@@ -57,6 +61,8 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
     @Override
     public void saveToken(CsrfToken csrfToken, HttpServletRequest request, HttpServletResponse response) {
         String tokenValue = (csrfToken != null) ? csrfToken.getToken() : "";
+        String method = request.getMethod();
+        String path = request.getRequestURI();
 
         // Store raw token as request attribute for controller access (cross-origin support)
         if (csrfToken != null) {
@@ -78,10 +84,17 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
             .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
+
+        log.debug("CSRF saveToken - {} {} - Set XSRF-TOKEN cookie (SameSite={}, Secure={}, token prefix: {})",
+                method, path, sameSite, isSecure,
+                tokenValue.length() > 0 ? tokenValue.substring(0, Math.min(8, tokenValue.length())) : "empty");
     }
 
     @Override
     public CsrfToken loadToken(HttpServletRequest request) {
+        String method = request.getMethod();
+        String path = request.getRequestURI();
+
         Cookie[] cookies = request.getCookies();
         if (cookies != null) {
             for (Cookie cookie : cookies) {
@@ -90,11 +103,15 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
                     if (StringUtils.hasText(token)) {
                         // Store raw token as request attribute for controller access
                         request.setAttribute(CSRF_RAW_TOKEN_ATTR, token);
+                        log.debug("CSRF loadToken - {} {} - Found XSRF-TOKEN cookie, token prefix: {}",
+                                method, path, token.substring(0, Math.min(8, token.length())));
                         return new DefaultCsrfToken(CSRF_HEADER_NAME, CSRF_PARAMETER_NAME, token);
                     }
                 }
             }
         }
+        log.debug("CSRF loadToken - {} {} - NO XSRF-TOKEN cookie found (cookies count: {})",
+                method, path, cookies != null ? cookies.length : 0);
         return null;
     }
 
