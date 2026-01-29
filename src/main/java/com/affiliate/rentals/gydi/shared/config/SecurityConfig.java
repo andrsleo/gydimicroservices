@@ -26,6 +26,8 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
 import org.springframework.security.web.csrf.CsrfFilter;
+import org.springframework.security.web.authentication.session.NullAuthenticatedSessionStrategy;
+import org.springframework.security.web.authentication.session.SessionAuthenticationStrategy;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -197,7 +199,13 @@ public class SecurityConfig {
                                                 // Authenticated endpoints
                                                 .anyRequest().authenticated())
                                 .sessionManagement(session -> session
-                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                                                .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
+                                                // ✅ Disable CSRF token rotation after authentication
+                                                // CsrfAuthenticationStrategy rotates tokens after login, which causes
+                                                // race conditions in cross-origin SPA scenarios where the frontend
+                                                // may have already fetched the old token before rotation completes.
+                                                // NullAuthenticatedSessionStrategy does nothing, keeping the token stable.
+                                                .sessionAuthenticationStrategy(new NullAuthenticatedSessionStrategy()))
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
                                 // ✅ DIAGNOSTIC: Log CSRF-related request info BEFORE CsrfFilter runs
                                 .addFilterBefore(new CsrfDiagnosticFilter(), CsrfFilter.class)
