@@ -1,6 +1,7 @@
 package com.affiliate.rentals.gydi.shared.config;
 
 import com.affiliate.rentals.gydi.shared.security.CsrfCookieFilter;
+import com.affiliate.rentals.gydi.shared.security.CsrfDiagnosticFilter;
 import com.affiliate.rentals.gydi.shared.security.CustomCsrfTokenRepository;
 import com.affiliate.rentals.gydi.shared.security.CustomHeaderValidationFilter;
 import com.affiliate.rentals.gydi.shared.security.JwtAuthenticationFilter;
@@ -24,6 +25,7 @@ import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 import org.springframework.security.web.authentication.www.BasicAuthenticationFilter;
 import org.springframework.security.web.csrf.CookieCsrfTokenRepository;
+import org.springframework.security.web.csrf.CsrfFilter;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
@@ -197,6 +199,8 @@ public class SecurityConfig {
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                                 .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
+                                // ✅ DIAGNOSTIC: Log CSRF-related request info BEFORE CsrfFilter runs
+                                .addFilterBefore(new CsrfDiagnosticFilter(), CsrfFilter.class)
                                 // ✅ Add CSRF cookie filter to ensure CSRF token is sent in every response
                                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
                                 // ✅ Option D: Validate X-Requested-With header on state-changing API requests
