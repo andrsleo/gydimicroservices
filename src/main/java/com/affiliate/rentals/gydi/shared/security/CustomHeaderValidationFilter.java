@@ -71,11 +71,11 @@ public final class CustomHeaderValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        String path = request.getRequestURI();
+        // Use getServletPath() for normalized path (prevents path traversal attacks)
+        String path = request.getServletPath();
 
-        // Skip exempt paths (authentication endpoints)
-        boolean isExempt = EXEMPT_PATHS.stream().anyMatch(path::startsWith);
-        if (isExempt) {
+        // Skip exempt paths (authentication endpoints) - exact match only
+        if (EXEMPT_PATHS.contains(path)) {
             filterChain.doFilter(request, response);
             return;
         }

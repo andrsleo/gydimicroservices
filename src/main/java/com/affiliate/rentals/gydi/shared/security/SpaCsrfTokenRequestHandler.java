@@ -6,7 +6,6 @@ import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.security.web.csrf.CsrfTokenRequestAttributeHandler;
 import org.springframework.security.web.csrf.CsrfTokenRequestHandler;
 import org.springframework.security.web.csrf.XorCsrfTokenRequestAttributeHandler;
-import org.springframework.util.StringUtils;
 
 import java.util.function.Supplier;
 
@@ -78,16 +77,8 @@ public final class SpaCsrfTokenRequestHandler extends CsrfTokenRequestAttributeH
      * Resolves the CSRF token value from the request.
      *
      * <p>
-     * <b>Resolution Strategy:</b>
-     * </p>
-     * <ol>
-     *   <li>First, check if token is present in the {@code X-XSRF-TOKEN} header (SPA approach)</li>
-     *   <li>If found, use the parent class's resolution logic</li>
-     *   <li>If not found, delegate to {@link XorCsrfTokenRequestAttributeHandler}</li>
-     * </ol>
-     *
-     * <p>
-     * This allows the handler to accept tokens from both:
+     * <b>Important:</b> Always delegates to {@link XorCsrfTokenRequestAttributeHandler}
+     * to ensure proper XOR decoding is applied. The delegate handles both:
      * </p>
      * <ul>
      *   <li>Request header: {@code X-XSRF-TOKEN} (SPAs like Next.js)</li>
@@ -96,21 +87,17 @@ public final class SpaCsrfTokenRequestHandler extends CsrfTokenRequestAttributeH
      *
      * @param request the HTTP request
      * @param csrfToken the CSRF token configuration
-     * @return the resolved CSRF token value from the request
+     * @return the resolved and XOR-decoded CSRF token value from the request
      */
     @Override
     public String resolveCsrfTokenValue(HttpServletRequest request, CsrfToken csrfToken) {
-        // Check if CSRF token is present in the header (SPA approach)
-        String headerName = csrfToken.getHeaderName();
-        String headerValue = request.getHeader(headerName);
-
-        if (StringUtils.hasText(headerValue)) {
-            // Token found in header - use parent's resolution logic
-            return super.resolveCsrfTokenValue(request, csrfToken);
-        }
-
-        // Token not in header - delegate to XorCsrfTokenRequestAttributeHandler
-        // This handles form-based CSRF tokens (traditional approach)
+        // ALWAYS delegate to XorCsrfTokenRequestAttributeHandler for token resolution
+        // This ensures XOR decoding is applied whether token comes from header or form
+        //
+        // The delegate will:
+        // 1. Check X-XSRF-TOKEN header (SPA approach)
+        // 2. Check _csrf form parameter (traditional approach)
+        // 3. Apply XOR decoding to validate the token
         return this.delegate.resolveCsrfTokenValue(request, csrfToken);
     }
 }
