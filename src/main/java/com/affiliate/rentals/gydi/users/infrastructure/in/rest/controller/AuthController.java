@@ -496,15 +496,18 @@ public class AuthController {
     )
     @ApiResponse(responseCode = "200", description = "CSRF token returned")
     public ResponseEntity<Map<String, String>> getCsrfToken(HttpServletRequest request) {
-        // Read raw CSRF token stored by CustomCsrfTokenRepository during this request
-        // (set in both loadToken() and saveToken() via CSRF_RAW_TOKEN request attribute)
-        String csrfToken = (String) request.getAttribute(
-                com.affiliate.rentals.gydi.shared.security.CustomCsrfTokenRepository.CSRF_RAW_TOKEN_ATTR);
+        // Get the CsrfToken from Spring Security's request attribute
+        // This returns the XOR-encoded token that Spring Security expects in the X-XSRF-TOKEN header
+        // Using the raw token from CustomCsrfTokenRepository would cause validation to fail
+        // because XorCsrfTokenRequestAttributeHandler expects XOR-encoded tokens
+        org.springframework.security.web.csrf.CsrfToken csrfToken =
+                (org.springframework.security.web.csrf.CsrfToken) request.getAttribute(
+                        org.springframework.security.web.csrf.CsrfToken.class.getName());
 
-        if (csrfToken != null && !csrfToken.isEmpty()) {
+        if (csrfToken != null) {
             return ResponseEntity.ok(Map.of(
-                    "token", csrfToken,
-                    "headerName", "X-XSRF-TOKEN"
+                    "token", csrfToken.getToken(),  // XOR-encoded token
+                    "headerName", csrfToken.getHeaderName()
             ));
         }
 
