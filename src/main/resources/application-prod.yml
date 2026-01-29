@@ -205,7 +205,14 @@ logging:
   level:
     root: ${LOG_LEVEL:WARN}
     com.affiliate.rentals.gydi: INFO # Application logs at INFO
+    # CSRF DIAGNOSTIC LOGGING (TEMPORARY - remove after debugging)
+    com.affiliate.rentals.gydi.shared.security.CsrfDiagnosticFilter: INFO
+    com.affiliate.rentals.gydi.shared.security.CsrfCookieFilter: DEBUG
+    com.affiliate.rentals.gydi.shared.security.CustomCsrfTokenRepository: DEBUG
+    com.affiliate.rentals.gydi.shared.security.CustomHeaderValidationFilter: DEBUG
+    com.affiliate.rentals.gydi.shared.security.SpaCsrfTokenRequestHandler: DEBUG
     org.springframework.security: WARN
+    org.springframework.security.web.csrf: DEBUG # Enable CSRF filter logging
     org.springframework.web: WARN
     org.hibernate.SQL: ERROR # Only log SQL errors
     org.hibernate.type.descriptor.sql.BasicBinder: ERROR

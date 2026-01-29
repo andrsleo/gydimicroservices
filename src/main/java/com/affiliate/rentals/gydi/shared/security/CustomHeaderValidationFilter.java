@@ -40,10 +40,14 @@ public final class CustomHeaderValidationFilter extends OncePerRequestFilter {
     private static final String CUSTOM_HEADER = "X-Requested-With";
     private static final String EXPECTED_VALUE = "XMLHttpRequest";
 
-    private static final Set<String> EXEMPT_PATHS = Set.of(
+    // Paths exempt from X-Requested-With validation (authentication endpoints)
+    // Using startsWith for prefix matching
+    private static final Set<String> EXEMPT_PATH_PREFIXES = Set.of(
             "/api/v1/auth/login",
             "/api/v1/auth/register",
             "/api/v1/auth/refresh",
+            "/api/v1/auth/csrf",
+            "/api/v1/auth/logout",
             "/api/v1/users/register",
             "/api/v1/referrals/resolve"
     );
@@ -64,6 +68,12 @@ public final class CustomHeaderValidationFilter extends OncePerRequestFilter {
             FilterChain filterChain) throws ServletException, IOException {
 
         String method = request.getMethod().toUpperCase();
+        // Use getRequestURI() consistently (same as shouldNotFilter)
+        String path = request.getRequestURI();
+
+        // Debug logging for production troubleshooting
+        log.debug("CustomHeaderValidationFilter - Method: {}, Path: {}, X-Requested-With: {}",
+                method, path, request.getHeader(CUSTOM_HEADER));
 
         // Skip safe (read-only) methods
         if (SAFE_METHODS.contains(method)) {
@@ -71,11 +81,10 @@ public final class CustomHeaderValidationFilter extends OncePerRequestFilter {
             return;
         }
 
-        // Use getServletPath() for normalized path (prevents path traversal attacks)
-        String path = request.getServletPath();
-
-        // Skip exempt paths (authentication endpoints) - exact match only
-        if (EXEMPT_PATHS.contains(path)) {
+        // Skip exempt paths (authentication endpoints) - prefix matching
+        boolean isExempt = EXEMPT_PATH_PREFIXES.stream().anyMatch(path::startsWith);
+        if (isExempt) {
+            log.debug("Path {} is exempt from X-Requested-With validation", path);
             filterChain.doFilter(request, response);
             return;
         }
@@ -83,7 +92,7 @@ public final class CustomHeaderValidationFilter extends OncePerRequestFilter {
         // Validate X-Requested-With header
         String headerValue = request.getHeader(CUSTOM_HEADER);
         if (!EXPECTED_VALUE.equals(headerValue)) {
-            log.warn("Rejected {} {} - Missing or invalid {} header (value: {})",
+            log.warn("Rejected {} {} - Missing or invalid {} header (value: '{}')",
                     method, path, CUSTOM_HEADER, headerValue);
             response.setStatus(HttpServletResponse.SC_FORBIDDEN);
             response.setContentType("application/json");

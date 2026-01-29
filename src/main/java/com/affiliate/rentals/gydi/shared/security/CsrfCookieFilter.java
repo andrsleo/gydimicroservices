@@ -2,12 +2,16 @@ package com.affiliate.rentals.gydi.shared.security;
 
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
+import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.web.csrf.CsrfToken;
 import org.springframework.web.filter.OncePerRequestFilter;
 
 import java.io.IOException;
+import java.util.Arrays;
 
 /**
  * Filter that ensures CSRF tokens are generated and sent to the client.
@@ -69,6 +73,8 @@ import java.io.IOException;
  */
 public final class CsrfCookieFilter extends OncePerRequestFilter {
 
+    private static final Logger log = LoggerFactory.getLogger(CsrfCookieFilter.class);
+
     /**
      * Ensures CSRF token is generated and sent in the response.
      *
@@ -90,13 +96,61 @@ public final class CsrfCookieFilter extends OncePerRequestFilter {
             HttpServletResponse response,
             FilterChain filterChain) throws ServletException, IOException {
 
+        String method = request.getMethod();
+        String path = request.getRequestURI();
+
+        // Log CSRF-related request information for debugging
+        if (path.startsWith("/api/")) {
+            // Check for XSRF-TOKEN cookie
+            Cookie[] cookies = request.getCookies();
+            boolean hasXsrfCookie = false;
+            String xsrfCookieValue = null;
+            if (cookies != null) {
+                for (Cookie cookie : cookies) {
+                    if ("XSRF-TOKEN".equals(cookie.getName())) {
+                        hasXsrfCookie = true;
+                        xsrfCookieValue = cookie.getValue();
+                        break;
+                    }
+                }
+            }
+
+            // Check for X-XSRF-TOKEN header
+            String xsrfHeader = request.getHeader("X-XSRF-TOKEN");
+            boolean hasXsrfHeader = xsrfHeader != null && !xsrfHeader.isEmpty();
+
+            // Check for X-Requested-With header
+            String requestedWith = request.getHeader("X-Requested-With");
+
+            log.debug("CSRF Debug - {} {} | Cookie: {} (value: {}), Header: {} (length: {}), X-Requested-With: {}",
+                    method, path,
+                    hasXsrfCookie, xsrfCookieValue != null ? xsrfCookieValue.substring(0, Math.min(8, xsrfCookieValue.length())) + "..." : "null",
+                    hasXsrfHeader, xsrfHeader != null ? xsrfHeader.length() : 0,
+                    requestedWith);
+
+            // Log cookie names received (for cross-origin debugging)
+            if (cookies != null && cookies.length > 0) {
+                String cookieNames = Arrays.stream(cookies)
+                        .map(Cookie::getName)
+                        .reduce((a, b) -> a + ", " + b)
+                        .orElse("none");
+                log.debug("CSRF Debug - Cookies received: [{}]", cookieNames);
+            } else {
+                log.debug("CSRF Debug - No cookies received for {} {}", method, path);
+            }
+        }
+
         // Get CSRF token from request attribute (set by Spring Security's CsrfFilter)
         CsrfToken csrfToken = (CsrfToken) request.getAttribute("_csrf");
 
         if (csrfToken != null) {
             // Force token generation by calling getToken()
             // This triggers CookieCsrfTokenRepository to set the XSRF-TOKEN cookie
-            csrfToken.getToken();
+            String token = csrfToken.getToken();
+            log.debug("CSRF Debug - Token generated/loaded for {} {}, token length: {}",
+                    method, path, token != null ? token.length() : 0);
+        } else {
+            log.debug("CSRF Debug - No CSRF token in request attributes for {} {}", method, path);
         }
 
         // Continue filter chain
