@@ -136,13 +136,15 @@ public class CloudinaryStorageAdapter implements StoragePort {
 
         String originalFilename = file.getOriginalFilename();
         String fileName = generateUniqueFileName(originalFilename);
-        String publicId = folder + "/" + fileName;
+        // NOTE: Only use fileName as public_id, NOT folder/fileName
+        // Cloudinary will automatically prepend the folder from the "folder" option
+        String publicId = fileName;
 
         try {
             // Prepare upload options
             Map<String, Object> uploadOptions = new HashMap<>();
             uploadOptions.put("public_id", publicId);
-            uploadOptions.put("folder", folder);
+            uploadOptions.put("folder", folder); // Cloudinary prepends this to public_id
             uploadOptions.put("resource_type", "auto"); // Auto-detect: image or video
             uploadOptions.put("overwrite", false); // Never overwrite existing files
             uploadOptions.put("unique_filename", true); // Cloudinary ensures uniqueness
