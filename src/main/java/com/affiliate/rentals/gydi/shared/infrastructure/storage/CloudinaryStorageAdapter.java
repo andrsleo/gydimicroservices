@@ -374,4 +374,78 @@ public class CloudinaryStorageAdapter implements StoragePort {
             fileValidator.validateImage(file);
         }
     }
+
+    /**
+     * Generate signature for direct Cloudinary upload.
+     *
+     * <p>
+     * This allows the frontend to upload files directly to Cloudinary without
+     * going through the backend, which:
+     * <ul>
+     * <li>Reduces backend load</li>
+     * <li>Enables parallel uploads (faster)</li>
+     * <li>Supports larger files (no backend timeout)</li>
+     * <li>Provides per-file progress tracking</li>
+     * </ul>
+     * </p>
+     *
+     * <p><b>Security:</b> Signature is time-limited (1 hour) and signed with API secret.</p>
+     *
+     * @param folder the Cloudinary folder (e.g., "properties/123/images")
+     * @param publicId unique identifier for this upload
+     * @return map containing signature, timestamp, and other params
+     */
+    public Map<String, Object> generateUploadSignature(String folder, String publicId) {
+        try {
+            // Generate timestamp (valid for 1 hour)
+            long timestamp = System.currentTimeMillis() / 1000L;
+
+            // Prepare parameters for signature
+            Map<String, Object> params = new HashMap<>();
+            params.put("timestamp", timestamp);
+            params.put("folder", folder);
+            params.put("public_id", publicId);
+            params.put("resource_type", "auto"); // Auto-detect image/video
+
+            // Generate signature using Cloudinary's algorithm
+            String signature = cloudinary.apiSignRequest(params, cloudinary.config.apiSecret);
+
+            // Return signed parameters for frontend
+            Map<String, Object> result = new HashMap<>();
+            result.put("signature", signature);
+            result.put("timestamp", timestamp);
+            result.put("folder", folder);
+            result.put("public_id", publicId);
+            result.put("api_key", cloudinary.config.apiKey);
+            result.put("cloud_name", cloudinary.config.cloudName);
+
+            log.debug("Generated upload signature: folder={}, publicId={}, timestamp={}",
+                    folder, publicId, timestamp);
+
+            return result;
+
+        } catch (Exception e) {
+            log.error("Failed to generate upload signature: folder={}, publicId={}",
+                    folder, publicId, e);
+            throw new StorageException("Failed to generate upload signature: " + e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Get API key for Cloudinary (used by frontend for direct uploads).
+     *
+     * @return the Cloudinary API key
+     */
+    public String getApiKey() {
+        return cloudinary.config.apiKey;
+    }
+
+    /**
+     * Get cloud name for Cloudinary (used by frontend for direct uploads).
+     *
+     * @return the Cloudinary cloud name
+     */
+    public String getCloudName() {
+        return cloudinary.config.cloudName;
+    }
 }
