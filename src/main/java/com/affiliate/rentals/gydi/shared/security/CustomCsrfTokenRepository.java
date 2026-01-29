@@ -60,14 +60,27 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
 
     @Override
     public void saveToken(CsrfToken csrfToken, HttpServletRequest request, HttpServletResponse response) {
-        String tokenValue = (csrfToken != null) ? csrfToken.getToken() : "";
         String method = request.getMethod();
         String path = request.getRequestURI();
 
-        // Store raw token as request attribute for controller access (cross-origin support)
+        // IMPORTANT: When csrfToken is null, Spring Security is trying to "clear" the token
+        // (e.g., during CsrfAuthenticationStrategy token rotation after login).
+        // In cross-origin scenarios, we should NOT delete the cookie because:
+        // 1. The frontend may have already fetched the old token
+        // 2. Parallel requests may create race conditions
+        // Instead, we generate a new token immediately to maintain consistency.
+        String tokenValue;
         if (csrfToken != null) {
-            request.setAttribute(CSRF_RAW_TOKEN_ATTR, tokenValue);
+            tokenValue = csrfToken.getToken();
+        } else {
+            // Instead of deleting, generate a new token to avoid race conditions
+            tokenValue = createNewToken();
+            log.debug("CSRF saveToken - {} {} - Token was null (rotation), generating new token instead of deleting",
+                    method, path);
         }
+
+        // Store raw token as request attribute for controller access (cross-origin support)
+        request.setAttribute(CSRF_RAW_TOKEN_ATTR, tokenValue);
 
         // Determine security settings based on environment
         boolean isLocalhost = environment.acceptsProfiles(Profiles.of("local"));
@@ -80,14 +93,14 @@ public class CustomCsrfTokenRepository implements CsrfTokenRepository {
             .httpOnly(false) // MUST be false so JavaScript can read it
             .secure(isSecure) // HTTPS only for cross-origin (SameSite=None requires Secure)
             .sameSite(sameSite)
-            .maxAge(csrfToken != null ? Duration.ofDays(1) : Duration.ZERO) // 1 day or delete
+            .maxAge(Duration.ofDays(1)) // Always 1 day, never delete
             .build();
 
         response.addHeader("Set-Cookie", cookie.toString());
 
         log.debug("CSRF saveToken - {} {} - Set XSRF-TOKEN cookie (SameSite={}, Secure={}, token prefix: {})",
                 method, path, sameSite, isSecure,
-                tokenValue.length() > 0 ? tokenValue.substring(0, Math.min(8, tokenValue.length())) : "empty");
+                tokenValue.substring(0, Math.min(8, tokenValue.length())));
     }
 
     @Override
