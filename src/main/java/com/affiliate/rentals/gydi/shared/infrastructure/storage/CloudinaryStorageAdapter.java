@@ -1,6 +1,7 @@
 package com.affiliate.rentals.gydi.shared.infrastructure.storage;
 
 import java.io.IOException;
+import java.util.Arrays;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
@@ -155,7 +156,11 @@ public class CloudinaryStorageAdapter implements StoragePort {
                 if (contentType.startsWith("video/")) {
                     uploadOptions.put("resource_type", "video");
                     // Video-specific optimizations
-                    uploadOptions.put("eager", "sp_hd"); // HD streaming profile
+                    // Note: eager transformations are processed asynchronously by Cloudinary
+                    // Using List format as required by Cloudinary SDK
+                    uploadOptions.put("eager", Arrays.asList(
+                            ObjectUtils.asMap("streaming_profile", "hd")
+                    ));
                     uploadOptions.put("eager_async", true); // Process asynchronously
                 } else if (contentType.startsWith("image/")) {
                     uploadOptions.put("resource_type", "image");
