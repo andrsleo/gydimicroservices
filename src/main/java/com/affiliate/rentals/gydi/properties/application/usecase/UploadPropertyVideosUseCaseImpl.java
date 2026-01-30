@@ -4,12 +4,16 @@ import com.affiliate.rentals.gydi.properties.domain.model.Property;
 import com.affiliate.rentals.gydi.properties.domain.ports.in.UploadPropertyVideosUseCase;
 import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
 import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyStoragePort;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @Transactional
 public class UploadPropertyVideosUseCaseImpl implements UploadPropertyVideosUseCase {
+
+    private static final Logger log = LoggerFactory.getLogger(UploadPropertyVideosUseCaseImpl.class);
 
     private final PropertyRepositoryPort propertyRepository;
     private final PropertyStoragePort storagePort;
@@ -22,10 +26,18 @@ public class UploadPropertyVideosUseCaseImpl implements UploadPropertyVideosUseC
 
     @Override
     public Property uploadVideos(UploadVideosCommand command) {
+        log.info("uploadVideos - propertyId: {}, requestingUserId: {}, videoCount: {}",
+                command.propertyId(), command.requestingUserId(), command.videos().size());
+
         Property property = propertyRepository.findById(command.propertyId())
                 .orElseThrow(() -> new IllegalArgumentException("Property not found"));
 
+        log.info("uploadVideos - Property found. hostId: {}, requestingUserId: {}, isOwner: {}",
+                property.getHostId(), command.requestingUserId(), property.isOwnedBy(command.requestingUserId()));
+
         if (!property.isOwnedBy(command.requestingUserId())) {
+            log.warn("uploadVideos - OWNERSHIP CHECK FAILED! hostId={} != requestingUserId={}",
+                    property.getHostId(), command.requestingUserId());
             throw new SecurityException("User is not authorized to modify this property");
         }
 
