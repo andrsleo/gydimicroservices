@@ -79,14 +79,20 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         // Local: ONLY Authorization header
         // Dev/Prod: ONLY cookies
         String jwt = extractTokenBasedOnProfile(request);
+        String path = request.getRequestURI();
 
         if (jwt == null) {
+            // Only log for API paths that require auth (reduce noise)
+            if (path.startsWith("/api/") && !path.startsWith("/api/v1/auth/")) {
+                logger.debug("🔒 No JWT token found for path: {}", path);
+            }
             filterChain.doFilter(request, response);
             return;
         }
 
         // Check if token is blacklisted (logged out)
         if (tokenBlacklistService.isBlacklisted(jwt)) {
+            logger.warn("⛔ JWT token is BLACKLISTED for path: {}", path);
             filterChain.doFilter(request, response);
             return;
         }
@@ -105,6 +111,12 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                             userDetails.getAuthorities());
                     authToken.setDetails(new WebAuthenticationDetailsSource().buildDetails(request));
                     SecurityContextHolder.getContext().setAuthentication(authToken);
+                    // Log successful authentication for debugging
+                    logger.info("✅ JWT Auth SUCCESS - user: {}, authorities: {}, path: {}",
+                            userEmail, userDetails.getAuthorities(), request.getRequestURI());
+                } else {
+                    logger.warn("❌ JWT Auth FAILED - token invalid for user: {}, path: {}",
+                            userEmail, request.getRequestURI());
                 }
             }
         } catch (ExpiredJwtException e) {

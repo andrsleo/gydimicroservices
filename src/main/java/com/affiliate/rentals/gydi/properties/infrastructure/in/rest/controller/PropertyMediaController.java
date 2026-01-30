@@ -33,6 +33,8 @@ import jakarta.servlet.http.HttpServletRequest;
 @Tag(name = "Property Media", description = "Property media upload endpoints")
 public class PropertyMediaController {
 
+    private static final org.slf4j.Logger log = org.slf4j.LoggerFactory.getLogger(PropertyMediaController.class);
+
     private final UploadPropertyImagesUseCase uploadImagesUseCase;
     private final UploadPropertyVideosUseCase uploadVideosUseCase;
     private final GenerateCloudinarySignaturesUseCase generateSignaturesUseCase;
@@ -92,7 +94,11 @@ public class PropertyMediaController {
             @RequestParam("files") MultipartFile[] files,
             HttpServletRequest httpRequest) throws IOException {
 
+        log.info(">>> uploadVideos CONTROLLER REACHED - propertyId: {}, filesCount: {}",
+                propertyId, files != null ? files.length : 0);
+
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+        log.info(">>> uploadVideos - userId extracted from JWT: {}", userId);
 
         List<UploadPropertyVideosUseCase.VideoUpload> videos = new ArrayList<>();
         for (int i = 0; i < files.length; i++) {
