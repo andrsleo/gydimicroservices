@@ -3,15 +3,18 @@ package com.affiliate.rentals.gydi.properties.infrastructure.in.rest.controller;
 import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Optional;
 
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.web.server.ResponseStatusException;
 
 import com.affiliate.rentals.gydi.properties.application.dto.CloudinarySignatureRequest;
 import com.affiliate.rentals.gydi.properties.application.dto.CloudinarySignatureResponse;
@@ -37,7 +40,7 @@ public class PropertyMediaController {
 
     private final UploadPropertyImagesUseCase uploadImagesUseCase;
     private final UploadPropertyVideosUseCase uploadVideosUseCase;
-    private final GenerateCloudinarySignaturesUseCase generateSignaturesUseCase;
+    private final Optional<GenerateCloudinarySignaturesUseCase> generateSignaturesUseCase;
     private final SaveUploadedMediaUseCase saveUploadedMediaUseCase;
     private final PropertyMapper mapper;
     private final JwtService jwtService;
@@ -45,7 +48,7 @@ public class PropertyMediaController {
     public PropertyMediaController(
             UploadPropertyImagesUseCase uploadImagesUseCase,
             UploadPropertyVideosUseCase uploadVideosUseCase,
-            GenerateCloudinarySignaturesUseCase generateSignaturesUseCase,
+            Optional<GenerateCloudinarySignaturesUseCase> generateSignaturesUseCase,
             SaveUploadedMediaUseCase saveUploadedMediaUseCase,
             PropertyMapper mapper,
             JwtService jwtService) {
@@ -149,16 +152,23 @@ public class PropertyMediaController {
             @ApiResponse(responseCode = "200", description = "Signatures generated successfully"),
             @ApiResponse(responseCode = "400", description = "Invalid request"),
             @ApiResponse(responseCode = "403", description = "User not authorized"),
-            @ApiResponse(responseCode = "404", description = "Property not found")
+            @ApiResponse(responseCode = "404", description = "Property not found"),
+            @ApiResponse(responseCode = "503", description = "Cloudinary not configured")
     })
     public ResponseEntity<CloudinarySignatureResponse> generateUploadSignatures(
             @PathVariable String propertyId,
             @Valid @RequestBody CloudinarySignatureRequest request,
             HttpServletRequest httpRequest) {
 
+        GenerateCloudinarySignaturesUseCase useCase = generateSignaturesUseCase
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.SERVICE_UNAVAILABLE,
+                        "Direct upload is not available. Cloudinary storage is not configured."
+                ));
+
         Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
-        CloudinarySignatureResponse response = generateSignaturesUseCase.generateSignatures(
+        CloudinarySignatureResponse response = useCase.generateSignatures(
                 PropertyId.of(propertyId),
                 userId,
                 request
