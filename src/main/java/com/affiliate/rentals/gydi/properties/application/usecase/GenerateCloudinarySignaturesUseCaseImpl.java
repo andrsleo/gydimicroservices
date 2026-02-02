@@ -8,6 +8,7 @@ import com.affiliate.rentals.gydi.properties.domain.ports.in.GenerateCloudinaryS
 import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
 import com.affiliate.rentals.gydi.shared.infrastructure.storage.CloudinaryStorageAdapter;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnBean;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -20,10 +21,14 @@ import java.util.UUID;
  * Implementation of {@link GenerateCloudinarySignaturesUseCase}.
  *
  * <p>Generates time-limited signed upload parameters for direct browser-to-Cloudinary uploads.</p>
+ *
+ * <p>This service is only available when {@link CloudinaryStorageAdapter} is configured
+ * (i.e., when storage.provider=cloudinary and not in test profile).</p>
  */
 @Slf4j
 @Service
 @Transactional(readOnly = true)
+@ConditionalOnBean(CloudinaryStorageAdapter.class)
 public class GenerateCloudinarySignaturesUseCaseImpl implements GenerateCloudinarySignaturesUseCase {
 
     private final PropertyRepositoryPort propertyRepository;
