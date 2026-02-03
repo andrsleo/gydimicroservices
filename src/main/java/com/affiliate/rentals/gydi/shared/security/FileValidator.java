@@ -57,6 +57,10 @@ public class FileValidator {
      * Magic numbers (file signatures) for supported image formats.
      * Key: MIME type
      * Value: Magic number bytes (file must start with these bytes)
+     *
+     * Note: HEIC/HEIF/AVIF use ISO Base Media File Format (ISOBMFF).
+     * Their magic number check is handled separately in {@link #hasValidMagicNumber}
+     * because the ftyp box size (first 4 bytes) can vary.
      */
     private static final Map<String, byte[]> IMAGE_MAGIC_NUMBERS = Map.of(
         "image/jpeg", new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF},
@@ -64,6 +68,14 @@ public class FileValidator {
         "image/gif", new byte[]{0x47, 0x49, 0x46, 0x38}, // "GIF8"
         "image/webp", new byte[]{0x52, 0x49, 0x46, 0x46}, // "RIFF"
         "image/bmp", new byte[]{0x42, 0x4D} // "BM"
+    );
+
+    /**
+     * MIME types that use ISO Base Media File Format (ftyp box at offset 4).
+     * These require special magic number validation since the box size varies.
+     */
+    private static final Set<String> ISOBMFF_IMAGE_TYPES = Set.of(
+        "image/heic", "image/heif", "image/avif"
     );
 
     /**
@@ -81,7 +93,8 @@ public class FileValidator {
      * SECURITY: Only safe extensions are allowed. Dangerous extensions like .jsp, .jspx, .war are blocked.
      */
     private static final Set<String> ALLOWED_IMAGE_EXTENSIONS = Set.of(
-        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp"
+        ".jpg", ".jpeg", ".png", ".gif", ".webp", ".bmp",
+        ".heic", ".heif", ".avif"
     );
 
     private static final Set<String> ALLOWED_VIDEO_EXTENSIONS = Set.of(
@@ -243,6 +256,11 @@ public class FileValidator {
             return false; // File too small to have a valid magic number
         }
 
+        // HEIC/HEIF/AVIF use ISO Base Media File Format with "ftyp" at offset 4
+        if (ISOBMFF_IMAGE_TYPES.contains(contentType)) {
+            return hasIsobmffFtypBox(fileBytes);
+        }
+
         byte[] expectedMagicNumber = magicNumbers.get(contentType);
         if (expectedMagicNumber == null) {
             log.warn("No magic number defined for content type: {}", contentType);
@@ -259,6 +277,22 @@ public class FileValidator {
         }
 
         return true;
+    }
+
+    /**
+     * Checks for ISO Base Media File Format "ftyp" box at offset 4.
+     * HEIC, HEIF, and AVIF files all use this container format.
+     * The first 4 bytes are the box size (variable), bytes 4-7 must be "ftyp".
+     */
+    private boolean hasIsobmffFtypBox(byte[] fileBytes) {
+        if (fileBytes.length < 12) {
+            return false;
+        }
+        // Bytes 4-7 must be "ftyp" (0x66 0x74 0x79 0x70)
+        return fileBytes[4] == 0x66
+            && fileBytes[5] == 0x74
+            && fileBytes[6] == 0x79
+            && fileBytes[7] == 0x70;
     }
 
     /**
