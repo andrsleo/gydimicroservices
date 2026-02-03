@@ -405,12 +405,13 @@ public class CloudinaryStorageAdapter implements StoragePort {
             // Generate timestamp (valid for 1 hour)
             long timestamp = System.currentTimeMillis() / 1000L;
 
-            // Prepare parameters for signature
+            // Prepare parameters for signature.
+            // IMPORTANT: Only include params that the frontend will send as form fields.
+            // resource_type is part of the URL path (/auto/upload), NOT a signed parameter.
             Map<String, Object> params = new HashMap<>();
             params.put("timestamp", timestamp);
             params.put("folder", folder);
             params.put("public_id", publicId);
-            params.put("resource_type", "auto"); // Auto-detect image/video
 
             // Generate signature using Cloudinary's algorithm
             String signature = cloudinary.apiSignRequest(params, cloudinary.config.apiSecret);
