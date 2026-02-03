@@ -212,6 +212,18 @@ public class SecurityConfig {
 
                                                 // Authenticated endpoints
                                                 .anyRequest().authenticated())
+                                // ✅ Return 401 (not 403) for unauthenticated API requests.
+                                // Without this, AnonymousAuthenticationFilter converts missing JWT
+                                // into an anonymous user, and Spring Security returns 403 instead of 401.
+                                // The frontend's 401 handler triggers token refresh automatically.
+                                .exceptionHandling(exceptions -> exceptions
+                                                .authenticationEntryPoint((request, response, authException) -> {
+                                                        response.setStatus(jakarta.servlet.http.HttpServletResponse.SC_UNAUTHORIZED);
+                                                        response.setContentType("application/json");
+                                                        response.getWriter().write(
+                                                                        "{\"error\":\"Unauthorized\",\"message\":\"Authentication required\",\"status\":401,\"path\":\""
+                                                                                        + request.getRequestURI() + "\"}");
+                                                }))
                                 .sessionManagement(session -> session
                                                 .sessionCreationPolicy(SessionCreationPolicy.STATELESS)
                                                 // ✅ CRITICAL: Use NoOp strategy to prevent CSRF token rotation
