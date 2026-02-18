@@ -2,143 +2,151 @@ package com.affiliate.rentals.gydi.referrals.application.usecase;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.temporal.ChronoUnit;
+import java.util.Collections;
 import java.util.List;
 
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
 
+import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommission;
+import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus;
+import com.affiliate.rentals.gydi.commissions.domain.ports.ReferralCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.referrals.application.dto.CommissionDto;
 import com.affiliate.rentals.gydi.referrals.application.dto.EarningsDto;
-import com.affiliate.rentals.gydi.referrals.domain.model.Commission;
-import com.affiliate.rentals.gydi.referrals.domain.model.CommissionStatus;
-import com.affiliate.rentals.gydi.referrals.domain.port.CommissionRepository;
 
 import lombok.extern.slf4j.Slf4j;
 
-
 /**
- * Caso de uso para obtener ganancias de un afiliado
+ * Caso de uso para obtener ganancias de un afiliado.
+ * 
+ * Implementación actualizada para usar el nuevo módulo de comisiones
+ * (commissions schema).
+ * Reemplaza la antigua implementación basada en referrals.commission_booking.
  */
 @Slf4j
 @Service
-@Transactional(readOnly = true)
 public class GetEarningsUseCase {
 
-    private static final BigDecimal MINIMUM_PAYOUT = new BigDecimal("50.00");
+    private final ReferralCommissionRepositoryPort commissionRepository;
 
-    private final CommissionRepository commissionRepository;
-
-    public GetEarningsUseCase(CommissionRepository commissionRepository) {
+    public GetEarningsUseCase(ReferralCommissionRepositoryPort commissionRepository) {
         this.commissionRepository = commissionRepository;
     }
 
     /**
-     * Obtiene el resumen de ganancias para un afiliado
+     * Obtiene el resumen de ganancias para un afiliado usando el nuevo módulo de
+     * comisiones.
      *
      * @param affiliateId ID del afiliado
-     * @param currentPlan Plan actual del afiliado (FREE, PRO, ELITE)
-     * @return EarningsDto con resumen completo
+     * @param currentPlan Plan actual del afiliado
+     * @return EarningsDto con datos reales del nuevo sistema
      */
     public EarningsDto execute(Long affiliateId, String currentPlan) {
-        log.debug("Getting earnings for affiliate: {}", affiliateId);
+        log.debug("Getting earnings for affiliate: {} from commissions module", affiliateId);
 
-        // Calcular totales por estado
-        BigDecimal totalEarnings = commissionRepository.calculateTotalEarningsByAffiliateId(affiliateId);
-        BigDecimal pendingAmount = commissionRepository.calculateEarningsByAffiliateIdAndStatus(
-            affiliateId, CommissionStatus.PENDING);
-        BigDecimal approvedAmount = commissionRepository.calculateEarningsByAffiliateIdAndStatus(
-            affiliateId, CommissionStatus.APPROVED);
-        BigDecimal paidAmount = commissionRepository.calculateEarningsByAffiliateIdAndStatus(
-            affiliateId, CommissionStatus.PAID);
+        List<ReferralCommission> commissions = commissionRepository.findByAffiliateId(affiliateId);
 
-        // Contar comisiones por estado
-        long pendingCount = commissionRepository.countByAffiliateIdAndStatus(
-            affiliateId, CommissionStatus.PENDING);
-        long approvedCount = commissionRepository.countByAffiliateIdAndStatus(
-            affiliateId, CommissionStatus.APPROVED);
-        long paidCount = commissionRepository.countByAffiliateIdAndStatus(
-            affiliateId, CommissionStatus.PAID);
+        BigDecimal totalEarnings = commissions.stream()
+                .map(c -> c.getAmount().getCommissionAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
 
-        // Próximo pago (si tiene comisiones aprobadas >= $50)
+        BigDecimal pendingAmount = commissions.stream()
+                .filter(c -> c.getStatus() == ReferralCommissionStatus.PENDING)
+                .map(c -> c.getAmount().getCommissionAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal approvedAmount = commissions.stream()
+                .filter(c -> c.getStatus() == ReferralCommissionStatus.APPROVED)
+                .map(c -> c.getAmount().getCommissionAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        BigDecimal paidAmount = commissions.stream()
+                .filter(c -> c.getStatus() == ReferralCommissionStatus.PAID)
+                .map(c -> c.getAmount().getCommissionAmount())
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+
+        long pendingCount = commissions.stream()
+                .filter(c -> c.getStatus() == ReferralCommissionStatus.PENDING).count();
+        long approvedCount = commissions.stream()
+                .filter(c -> c.getStatus() == ReferralCommissionStatus.APPROVED).count();
+        long paidCount = commissions.stream()
+                .filter(c -> c.getStatus() == ReferralCommissionStatus.PAID).count();
+
+        // Calcular próximo pago (si hay aprobadas)
+        // Lógica simple: siguiente 1 o 15 del mes
         BigDecimal nextPayoutAmount = approvedAmount;
         LocalDateTime nextPayoutDate = null;
-
-        if (approvedAmount.compareTo(MINIMUM_PAYOUT) >= 0) {
-            // Fecha de pago: próximo lunes (ejemplo)
+        if (approvedAmount.compareTo(BigDecimal.ZERO) > 0) {
             nextPayoutDate = calculateNextPayoutDate();
         }
 
-        // Historial reciente (últimas 10 comisiones)
-        List<Commission> recentCommissions = commissionRepository
-            .findByAffiliateId(affiliateId)
-            .stream()
-            .sorted((c1, c2) -> c2.getCreatedAt().compareTo(c1.getCreatedAt()))
-            .limit(10)
-            .toList();
+        // Historial reciente
+        List<CommissionDto> recentCommissions = commissions.stream()
+                .sorted((c1, c2) -> c2.getCreatedAt().compareTo(c1.getCreatedAt()))
+                .limit(10)
+                .map(this::mapToDto)
+                .toList();
 
-        // Convertir a DTOs
-        List<CommissionDto> recentCommissionDtos = recentCommissions.stream()
-            .map(this::mapToDto)
-            .toList();
-
-        // Determinar tasa de comisión actual
         BigDecimal currentCommissionRate = getCommissionRateForPlan(currentPlan);
 
         return new EarningsDto(
-            affiliateId,
-            currentPlan,
-            currentCommissionRate,
-            totalEarnings,
-            pendingAmount,
-            approvedAmount,
-            paidAmount,
-            (int) pendingCount,
-            (int) approvedCount,
-            (int) paidCount,
-            nextPayoutAmount,
-            nextPayoutDate,
-            recentCommissionDtos
-        );
+                affiliateId,
+                currentPlan,
+                currentCommissionRate,
+                totalEarnings,
+                pendingAmount,
+                approvedAmount,
+                paidAmount,
+                (int) pendingCount,
+                (int) approvedCount,
+                (int) paidCount,
+                nextPayoutAmount,
+                nextPayoutDate,
+                recentCommissions);
     }
 
-    /**
-     * Convierte Commission a CommissionDto
-     */
-    private CommissionDto mapToDto(Commission commission) {
+    private CommissionDto mapToDto(ReferralCommission c) {
+        long daysRemaining = 0;
+        if (c.getStatus() == ReferralCommissionStatus.PENDING) {
+            LocalDateTime endsAt = c.getDisputePeriod().getDisputePeriodEndsAt();
+            daysRemaining = ChronoUnit.DAYS.between(LocalDateTime.now(), endsAt);
+            if (daysRemaining < 0)
+                daysRemaining = 0;
+        }
+
         return new CommissionDto(
-            commission.getId(),
-            commission.getBookingId(),
-            commission.getCommissionRate(),
-            commission.getCommissionAmount(),
-            commission.getAffiliatePlan(),
-            commission.getStatus(),
-            commission.getRemainingHoldDays(),
-            commission.isReadyForApproval(),
-            commission.isPayable(),
-            commission.getCreatedAt()
-        );
+                c.getId(),
+                c.getBookingId(),
+                c.getAmount().getCommissionRate(),
+                c.getAmount().getCommissionAmount(),
+                c.getAffiliatePlan(),
+                c.getStatus().name(), // String status
+                daysRemaining,
+                c.isReadyForApproval(),
+                c.getStatus() == ReferralCommissionStatus.APPROVED && !c.getDisputePeriod().isActive(), // Simplification
+                                                                                                         // for
+                                                                                                         // isPayable
+                                                                                                         // logic
+                c.getCreatedAt());
     }
 
-    /**
-     * Calcula la próxima fecha de pago (próximo lunes)
-     */
     private LocalDateTime calculateNextPayoutDate() {
         LocalDateTime now = LocalDateTime.now();
-        int daysUntilMonday = (8 - now.getDayOfWeek().getValue()) % 7;
-        if (daysUntilMonday == 0) {
-            daysUntilMonday = 7; // Si hoy es lunes, el próximo pago es en 7 días
+        // Pagos el 1 y 15
+        if (now.getDayOfMonth() < 15) {
+            return now.withDayOfMonth(15).withHour(10).withMinute(0).withSecond(0);
+        } else {
+            return now.plusMonths(1).withDayOfMonth(1).withHour(10).withMinute(0).withSecond(0);
         }
-        return now.plusDays(daysUntilMonday).withHour(10).withMinute(0).withSecond(0);
     }
 
-    /**
-     * Obtiene la tasa de comisión para un plan
-     */
     private BigDecimal getCommissionRateForPlan(String plan) {
+        if (plan == null)
+            return BigDecimal.ZERO;
         return switch (plan.toUpperCase()) {
-            case "FREE", "BASIC" -> new BigDecimal("0.02");   // 2%
-            case "PRO" -> new BigDecimal("0.05");             // 5%
-            case "ELITE", "PLUS" -> new BigDecimal("0.15");   // 15%
+            case "FREE", "BASIC" -> new BigDecimal("0.02");
+            case "PRO" -> new BigDecimal("0.05");
+            case "ELITE", "PLUS" -> new BigDecimal("0.15");
             default -> BigDecimal.ZERO;
         };
     }

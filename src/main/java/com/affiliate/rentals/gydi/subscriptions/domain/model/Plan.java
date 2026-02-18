@@ -22,7 +22,9 @@ public final class Plan {
     private final String description;
     private final BigDecimal monthlyPrice;
     private final String currency;
-    private final BigDecimal commissionRate;
+    private final BigDecimal commissionRate; // Deprecated - use role-specific rates
+    private final BigDecimal affiliateCommissionRate; // Platform PAYS to affiliate
+    private final BigDecimal hostCommissionRate; // Platform CHARGES to host
     private final Integer referralLimitPerMonth;
     private final Integer propertyPublishLimit;
     private final boolean isActive;
@@ -40,6 +42,8 @@ public final class Plan {
         this.monthlyPrice = Objects.requireNonNull(builder.monthlyPrice, "Monthly price cannot be null");
         this.currency = Objects.requireNonNullElse(builder.currency, "USD");
         this.commissionRate = Objects.requireNonNull(builder.commissionRate, "Commission rate cannot be null");
+        this.affiliateCommissionRate = builder.affiliateCommissionRate;
+        this.hostCommissionRate = builder.hostCommissionRate;
         this.referralLimitPerMonth = Objects.requireNonNull(builder.referralLimitPerMonth, "Referral limit cannot be null");
         this.propertyPublishLimit = Objects.requireNonNull(builder.propertyPublishLimit, "Property limit cannot be null");
         this.isActive = builder.isActive;
@@ -79,6 +83,8 @@ public final class Plan {
     public BigDecimal monthlyPrice() { return monthlyPrice; }
     public String currency() { return currency; }
     public BigDecimal commissionRate() { return commissionRate; }
+    public BigDecimal affiliateCommissionRate() { return affiliateCommissionRate; }
+    public BigDecimal hostCommissionRate() { return hostCommissionRate; }
     public Integer referralLimitPerMonth() { return referralLimitPerMonth; }
     public Integer propertyPublishLimit() { return propertyPublishLimit; }
     public boolean isActive() { return isActive; }
@@ -137,6 +143,8 @@ public final class Plan {
         private BigDecimal monthlyPrice;
         private String currency = "USD";
         private BigDecimal commissionRate;
+        private BigDecimal affiliateCommissionRate;
+        private BigDecimal hostCommissionRate;
         private Integer referralLimitPerMonth;
         private Integer propertyPublishLimit;
         private boolean isActive = true;
@@ -155,6 +163,8 @@ public final class Plan {
         public Builder monthlyPrice(BigDecimal monthlyPrice) { this.monthlyPrice = monthlyPrice; return this; }
         public Builder currency(String currency) { this.currency = currency; return this; }
         public Builder commissionRate(BigDecimal commissionRate) { this.commissionRate = commissionRate; return this; }
+        public Builder affiliateCommissionRate(BigDecimal affiliateCommissionRate) { this.affiliateCommissionRate = affiliateCommissionRate; return this; }
+        public Builder hostCommissionRate(BigDecimal hostCommissionRate) { this.hostCommissionRate = hostCommissionRate; return this; }
         public Builder referralLimitPerMonth(Integer referralLimitPerMonth) { this.referralLimitPerMonth = referralLimitPerMonth; return this; }
         public Builder propertyPublishLimit(Integer propertyPublishLimit) { this.propertyPublishLimit = propertyPublishLimit; return this; }
         public Builder isActive(boolean isActive) { this.isActive = isActive; return this; }

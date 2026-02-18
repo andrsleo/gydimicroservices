@@ -49,6 +49,7 @@ import java.util.stream.Collectors;
 public class ReferralController {
 
         private final GenerateReferralLinkUseCase generateReferralLinkUseCase;
+        private final RenewReferralLinkUseCase renewReferralLinkUseCase;
         private final TrackClickUseCase trackClickUseCase;
         private final GetReferralStatsUseCase getReferralStatsUseCase;
         private final GetEarningsUseCase getEarningsUseCase;
@@ -61,6 +62,7 @@ public class ReferralController {
 
         public ReferralController(
                         GenerateReferralLinkUseCase generateReferralLinkUseCase,
+                        RenewReferralLinkUseCase renewReferralLinkUseCase,
                         TrackClickUseCase trackClickUseCase,
                         GetReferralStatsUseCase getReferralStatsUseCase,
                         GetEarningsUseCase getEarningsUseCase,
@@ -71,6 +73,7 @@ public class ReferralController {
                         UserJpaRepository userJpaRepository,
                         @org.springframework.beans.factory.annotation.Value("${app.frontend-url}") String frontendUrl) {
                 this.generateReferralLinkUseCase = generateReferralLinkUseCase;
+                this.renewReferralLinkUseCase = renewReferralLinkUseCase;
                 this.trackClickUseCase = trackClickUseCase;
                 this.getReferralStatsUseCase = getReferralStatsUseCase;
                 this.getEarningsUseCase = getEarningsUseCase;
@@ -118,6 +121,7 @@ public class ReferralController {
          */
         @GetMapping("/links")
         @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+        @Transactional(readOnly = true) // Fix LazyInitializationException when loading Property images
         @Operation(summary = "Listar mis enlaces de referido", description = "Obtiene todos los enlaces de referido creados por el afiliado autenticado", security = @SecurityRequirement(name = "bearerAuth"))
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Lista de enlaces obtenida exitosamente"),
@@ -140,6 +144,7 @@ public class ReferralController {
          */
         @GetMapping("/links/{id}")
         @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+        @Transactional(readOnly = true) // Fix LazyInitializationException when loading Property images
         @Operation(summary = "Obtener enlace por ID", description = "Obtiene los detalles de un enlace de referido específico", security = @SecurityRequirement(name = "bearerAuth"))
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Enlace encontrado", content = @Content(schema = @Schema(implementation = ReferralLinkDto.class))),
@@ -164,6 +169,42 @@ public class ReferralController {
                 }
 
                 return ResponseEntity.ok(mapToDto(link));
+        }
+
+        /**
+         * Renovar un enlace de referido existente
+         *
+         * FASE 2: Renovación manual de links
+         * - Genera nuevo token con expiración basada en plan ACTUAL del usuario
+         * - Actualiza el mismo registro (NO crea nuevo link)
+         * - Reactiva links expirados
+         * - Mantiene mismo short_code
+         */
+        @PutMapping("/links/{id}/renew")
+        @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
+        @Operation(summary = "Renovar enlace de referido", description = "Renueva un enlace existente con nueva expiración basada en el plan actual del usuario. "
+                        +
+                        "Reactiva enlaces expirados y genera nuevo token JWE. Mantiene el mismo código corto.", security = @SecurityRequirement(name = "bearerAuth"))
+        @ApiResponses(value = {
+                        @ApiResponse(responseCode = "200", description = "Enlace renovado exitosamente", content = @Content(schema = @Schema(implementation = RenewReferralLinkResponse.class))),
+                        @ApiResponse(responseCode = "400", description = "Datos inválidos o enlace no puede ser renovado"),
+                        @ApiResponse(responseCode = "401", description = "No autenticado"),
+                        @ApiResponse(responseCode = "403", description = "No tiene permisos para renovar este enlace"),
+                        @ApiResponse(responseCode = "404", description = "Enlace no encontrado")
+        })
+        public ResponseEntity<RenewReferralLinkResponse> renewReferralLink(
+                        @PathVariable Long id,
+                        HttpServletRequest httpRequest) {
+
+                // SECURITY: Extract user ID from JWT token (server-side, trusted source)
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+
+                log.info("Renewing referral link ID: {} for user: {}", id, userId);
+
+                // Execute use case (validates ownership inside)
+                RenewReferralLinkResponse response = renewReferralLinkUseCase.execute(id, userId);
+
+                return ResponseEntity.ok(response);
         }
 
         /**
@@ -217,7 +258,8 @@ public class ReferralController {
                 return ResponseEntity.ok(new ResolveReferralResponse(
                                 destinationUrl,
                                 link.getPropertyId(),
-                                link.getAffiliateId()));
+                                link.getAffiliateId(),
+                                link.getId()));
         }
 
         /**
@@ -295,60 +337,62 @@ public class ReferralController {
 
         /**
          * Obtener el ID del link de referido del sistema (orgánico) para una propiedad
-         * Este endpoint es público y se usa cuando un cliente llega sin link de referido
+         * Este endpoint es público y se usa cuando un cliente llega sin link de
+         * referido
          */
         @GetMapping("/public/system-link/{propertyId}")
-        @Operation(
-            summary = "Obtener link de referido del sistema",
-            description = "Retorna el ID del link de referido genérico del sistema para tracking de tráfico orgánico (sin referido)"
-        )
+        @Operation(summary = "Obtener link de referido del sistema", description = "Retorna el ID del link de referido genérico del sistema para tracking de tráfico orgánico (sin referido)")
         @ApiResponses(value = {
-            @ApiResponse(responseCode = "200", description = "Link del sistema encontrado o creado"),
-            @ApiResponse(responseCode = "404", description = "Propiedad no encontrada"),
-            @ApiResponse(responseCode = "500", description = "Error al crear link del sistema")
+                        @ApiResponse(responseCode = "200", description = "Link del sistema encontrado o creado"),
+                        @ApiResponse(responseCode = "404", description = "Propiedad no encontrada"),
+                        @ApiResponse(responseCode = "500", description = "Error al crear link del sistema")
         })
         public ResponseEntity<SystemLinkResponse> getSystemReferralLink(@PathVariable Long propertyId) {
-            log.info("GET /public/system-link/{} - Getting or creating system referral link", propertyId);
+                log.info("GET /public/system-link/{} - Getting or creating system referral link", propertyId);
 
-            try {
-                // 1. Find SYSTEM user
-                UserEntity systemUser = userJpaRepository.findByEmail("system-organic@gydi.internal")
-                    .orElseThrow(() -> new IllegalStateException(
-                        "SYSTEM user not found. Please run migration V47__create_system_user_for_organic_traffic.sql"
-                    ));
+                try {
+                        // 1. Find SYSTEM user
+                        UserEntity systemUser = userJpaRepository.findByEmail("system-organic@gydi.internal")
+                                        .orElseThrow(() -> new IllegalStateException(
+                                                        "SYSTEM user not found. Please run migration V47__create_system_user_for_organic_traffic.sql"));
 
-                Long systemUserId = systemUser.getId();
-                log.debug("SYSTEM user found with ID: {}", systemUserId);
+                        Long systemUserId = systemUser.getId();
+                        log.debug("SYSTEM user found with ID: {}", systemUserId);
 
-                // 2. Find or create system link for this property
-                java.util.Optional<ReferralLink> existingLink = referralLinkRepository
-                    .findActiveLink(systemUserId, propertyId);
+                        // 2. Find or create system link for this property
+                        java.util.Optional<ReferralLink> existingLink = referralLinkRepository
+                                        .findActiveLink(systemUserId, propertyId);
 
-                ReferralLink systemLink;
-                if (existingLink.isPresent()) {
-                    systemLink = existingLink.get();
-                    log.debug("System link already exists with ID: {}", systemLink.getId());
-                } else {
-                    // Create new system link using GenerateReferralLinkUseCase
-                    GenerateReferralLinkRequest request = new GenerateReferralLinkRequest(propertyId, 365);
-                    GenerateReferralLinkResponse response = generateReferralLinkUseCase.execute(systemUserId, request);
+                        ReferralLink systemLink;
+                        if (existingLink.isPresent()) {
+                                systemLink = existingLink.get();
+                                log.debug("System link already exists with ID: {}", systemLink.getId());
+                        } else {
+                                // Create new system link using GenerateReferralLinkUseCase
+                                // Expiration days are now calculated automatically based on user's plan
+                                GenerateReferralLinkRequest request = new GenerateReferralLinkRequest(propertyId);
+                                GenerateReferralLinkResponse response = generateReferralLinkUseCase
+                                                .execute(systemUserId, request);
 
-                    // Fetch the created link
-                    systemLink = referralLinkRepository.findById(response.id())
-                        .orElseThrow(() -> new IllegalStateException("Failed to create system link"));
+                                // Fetch the created link
+                                systemLink = referralLinkRepository.findById(response.id())
+                                                .orElseThrow(() -> new IllegalStateException(
+                                                                "Failed to create system link"));
 
-                    log.info("Created new system link with ID: {} for property: {}", systemLink.getId(), propertyId);
+                                log.info("Created new system link with ID: {} for property: {}", systemLink.getId(),
+                                                propertyId);
+                        }
+
+                        return ResponseEntity.ok(new SystemLinkResponse(systemLink.getId()));
+
+                } catch (IllegalStateException e) {
+                        log.error("System configuration error: {}", e.getMessage());
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+                } catch (Exception e) {
+                        log.error("Error getting system referral link for property {}: {}", propertyId, e.getMessage(),
+                                        e);
+                        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
                 }
-
-                return ResponseEntity.ok(new SystemLinkResponse(systemLink.getId()));
-
-            } catch (IllegalStateException e) {
-                log.error("System configuration error: {}", e.getMessage());
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-            } catch (Exception e) {
-                log.error("Error getting system referral link for property {}: {}", propertyId, e.getMessage(), e);
-                return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
-            }
         }
 
         // Métodos auxiliares
@@ -401,5 +445,6 @@ public class ReferralController {
         /**
          * Response DTO for system referral link
          */
-        public record SystemLinkResponse(Long referralLinkId) {}
+        public record SystemLinkResponse(Long referralLinkId) {
+        }
 }

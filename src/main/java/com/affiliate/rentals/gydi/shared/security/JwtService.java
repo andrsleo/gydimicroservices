@@ -367,6 +367,26 @@ public class JwtService {
     }
 
     /**
+     * Gets the access token expiration time in seconds.
+     * Used by CookieService to set cookie max-age.
+     *
+     * @return the access token expiration in seconds
+     */
+    public long getAccessTokenExpirationInSeconds() {
+        return jwtExpiration / 1000;
+    }
+
+    /**
+     * Gets the refresh token expiration time in seconds.
+     * Used by CookieService to set cookie max-age.
+     *
+     * @return the refresh token expiration in seconds
+     */
+    public long getRefreshExpirationInSeconds() {
+        return refreshExpiration / 1000;
+    }
+
+    /**
      * Extracts the user ID from the JWT token in the current request.
      *
      * @param request the HTTP servlet request

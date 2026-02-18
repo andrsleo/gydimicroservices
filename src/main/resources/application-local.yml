@@ -175,6 +175,17 @@ springdoc:
     tags-sorter: alpha
 
 # ============================================
+# Encryption Configuration (Local Development)
+# ============================================
+# SECURITY FIX (FIX-007): PII Encryption at Rest
+# IMPORTANT: This is a TEST KEY for local development only
+# For production, use: fly secrets set PII_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+encryption:
+  pii:
+    # Test key (32 bytes = 64 hex chars)
+    secret: ${PII_ENCRYPTION_KEY:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
+
+# ============================================
 # Feature Flags (Local Development - All enabled for testing)
 # ============================================
 features:

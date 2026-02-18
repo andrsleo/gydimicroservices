@@ -48,10 +48,14 @@ public class UserDetailsServiceImpl implements UserDetailsService {
                 .map(role -> new SimpleGrantedAuthority("ROLE_" + role.name().getValue()))
                 .collect(Collectors.toSet());
 
-        return org.springframework.security.core.userdetails.User.builder()
-                .username(user.email().address())
-                .password(user.passwordHash())
-                .authorities(authorities)
-                .build();
+        // ✅ SECURITY FIX: Return CustomUserDetails to include userId for ownership validation
+        return new CustomUserDetails(
+            user.id(),
+            user.email().address(),
+            user.passwordHash(),
+            authorities,
+            user.isAccountVerified(),
+            true // All users retrieved from repo are considered active
+        );
     }
 }

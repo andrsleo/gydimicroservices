@@ -155,6 +155,44 @@ public class ReferralLink {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Renueva el enlace con un nuevo token y fecha de expiración
+     *
+     * FASE 2: Renovación manual de links
+     * - Actualiza el token encriptado con nueva expiración
+     * - Actualiza la fecha de expiración
+     * - Reactiva el enlace si estaba expirado
+     * - Mantiene el mismo short_code
+     * - NO crea nuevo registro, actualiza el existente
+     *
+     * @param newEncryptedToken nuevo token JWE con expiración actualizada
+     * @param newExpiresAt nueva fecha de expiración
+     * @throws IllegalArgumentException si la nueva fecha no es futura
+     * @throws IllegalStateException si el enlace está deshabilitado
+     */
+    public void renew(String newEncryptedToken, LocalDateTime newExpiresAt) {
+        if (newEncryptedToken == null || newEncryptedToken.isBlank()) {
+            throw new IllegalArgumentException("New encrypted token cannot be empty");
+        }
+        if (newExpiresAt == null || newExpiresAt.isBefore(LocalDateTime.now())) {
+            throw new IllegalArgumentException("New expiration date must be in the future");
+        }
+        if (status == ReferralLinkStatus.DISABLED) {
+            throw new IllegalStateException("Cannot renew a deleted link");
+        }
+
+        // Actualizar token y expiración
+        this.encryptedToken = newEncryptedToken;
+        this.expiresAt = newExpiresAt;
+
+        // Si estaba expirado o pausado, reactivar
+        if (status == ReferralLinkStatus.EXPIRED || status == ReferralLinkStatus.PAUSED) {
+            this.status = ReferralLinkStatus.ACTIVE;
+        }
+
+        this.updatedAt = LocalDateTime.now();
+    }
+
     // Getters
     public Long getId() {
         return id;

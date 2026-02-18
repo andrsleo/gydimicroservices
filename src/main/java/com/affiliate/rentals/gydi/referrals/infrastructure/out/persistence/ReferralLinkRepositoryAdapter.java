@@ -102,6 +102,13 @@ public class ReferralLinkRepositoryAdapter implements ReferralLinkRepository {
         jpaRepository.deleteById(id);
     }
 
+    @Override
+    public List<ReferralLink> findActiveExpired() {
+        return jpaRepository.findActiveExpired().stream()
+                .map(this::toDomain)
+                .collect(Collectors.toList());
+    }
+
     // Mappers
     private ReferralLinkJpaEntity toEntity(ReferralLink domain) {
         ReferralLinkJpaEntity entity = new ReferralLinkJpaEntity();

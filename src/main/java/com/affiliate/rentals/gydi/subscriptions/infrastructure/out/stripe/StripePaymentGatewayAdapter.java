@@ -34,7 +34,7 @@ import java.util.Map;
  *
  * @author GYDI Development Team
  */
-@Component
+@Component("subscriptionStripePaymentGatewayAdapter")
 public class StripePaymentGatewayAdapter implements PaymentGatewayPort {
 
     private static final Logger log = LoggerFactory.getLogger(StripePaymentGatewayAdapter.class);
@@ -277,29 +277,64 @@ public class StripePaymentGatewayAdapter implements PaymentGatewayPort {
     }
 
     /**
-     * Attaches a payment method to a customer in Stripe.
+     * Attaches a payment method to a customer in Stripe and sets it as the default.
      *
-     * @throws PaymentFailedException if payment method attachment fails
+     * <p>This method performs two operations:
+     * <ol>
+     *   <li>Attaches the payment method to the customer</li>
+     *   <li>Updates the customer's invoice settings to use this payment method as default</li>
+     * </ol>
+     *
+     * <p><b>IMPORTANT:</b> Setting the payment method as default is crucial for subscription
+     * creation. Without a default payment method, Stripe will reject subscription creation requests.
+     *
+     * @throws PaymentFailedException if payment method attachment or customer update fails
      */
     @Override
     public PaymentMethodResult attachPaymentMethod(String paymentMethodId, String customerId) {
         try {
             log.info("Attaching payment method {} to customer {}", paymentMethodId, customerId);
 
+            // Step 1: Attach payment method to customer
             PaymentMethod paymentMethod = PaymentMethod.retrieve(paymentMethodId);
 
-            PaymentMethodAttachParams params = PaymentMethodAttachParams.builder()
-                .setCustomer(customerId)
+            PaymentMethod attachedMethod;
+
+            // If already attached to this customer, skip the attach call (not an error)
+            if (customerId.equals(paymentMethod.getCustomer())) {
+                log.info("Payment method {} is already attached to customer {} - skipping attachment",
+                        paymentMethodId, customerId);
+                attachedMethod = paymentMethod;
+            } else {
+                PaymentMethodAttachParams params = PaymentMethodAttachParams.builder()
+                    .setCustomer(customerId)
+                    .build();
+
+                attachedMethod = paymentMethod.attach(params);
+                log.info("✅ Payment method attached successfully: {}", attachedMethod.getId());
+            }
+
+            // Step 2: Set this payment method as the default for the customer
+            log.info("Setting payment method {} as default for customer {}", paymentMethodId, customerId);
+
+            Customer customer = Customer.retrieve(customerId);
+
+            CustomerUpdateParams customerUpdateParams = CustomerUpdateParams.builder()
+                .setInvoiceSettings(
+                    CustomerUpdateParams.InvoiceSettings.builder()
+                        .setDefaultPaymentMethod(paymentMethodId)
+                        .build()
+                )
                 .build();
 
-            PaymentMethod attachedMethod = paymentMethod.attach(params);
+            customer.update(customerUpdateParams);
 
-            log.info("Payment method attached successfully: {}", attachedMethod.getId());
+            log.info("✅ Payment method set as default successfully");
 
             return mapPaymentMethodResult(attachedMethod);
 
         } catch (StripeException e) {
-            log.error("Failed to attach payment method: {}", e.getMessage(), e);
+            log.error("❌ Failed to attach/set default payment method: {}", e.getMessage(), e);
             throw PaymentFailedException.withReason("Failed to attach payment method: " + e.getMessage());
         }
     }
@@ -350,12 +385,20 @@ public class StripePaymentGatewayAdapter implements PaymentGatewayPort {
     /**
      * Creates a subscription in Stripe.
      *
+     * <p><b>Payment Method Handling:</b></p>
+     * <ul>
+     *   <li>If {@code paymentMethodId} is provided, it will be set as the default payment method for this subscription</li>
+     *   <li>If {@code paymentMethodId} is null, Stripe will use the customer's default payment method
+     *       (set in invoice_settings.default_payment_method)</li>
+     *   <li>If neither is available, Stripe will reject the subscription creation</li>
+     * </ul>
+     *
      * @throws PaymentFailedException if subscription creation fails
      */
     @Override
     public SubscriptionResult createSubscription(String customerId, String priceId, String paymentMethodId) {
         try {
-            log.info("Creating Stripe subscription for customer: {} with price: {}", customerId, priceId);
+            log.info("📋 Creating Stripe subscription for customer: {} with price: {}", customerId, priceId);
 
             SubscriptionCreateParams.Builder paramsBuilder = SubscriptionCreateParams.builder()
                 .setCustomer(customerId)
@@ -366,17 +409,38 @@ public class StripePaymentGatewayAdapter implements PaymentGatewayPort {
                 );
 
             if (paymentMethodId != null) {
+                log.info("   → Using explicit payment method: {}", paymentMethodId);
                 paramsBuilder.setDefaultPaymentMethod(paymentMethodId);
+            } else {
+                log.info("   → No explicit payment method provided - will use customer's default payment method");
+                // Retrieve customer to log their default payment method
+                try {
+                    Customer customer = Customer.retrieve(customerId);
+                    if (customer.getInvoiceSettings() != null &&
+                        customer.getInvoiceSettings().getDefaultPaymentMethod() != null) {
+                        log.info("   → Customer has default payment method: {}",
+                            customer.getInvoiceSettings().getDefaultPaymentMethod());
+                    } else {
+                        log.warn("   ⚠️ Customer has NO default payment method - subscription creation may fail!");
+                    }
+                } catch (StripeException ex) {
+                    log.warn("   ⚠️ Could not retrieve customer details: {}", ex.getMessage());
+                }
             }
 
             Subscription subscription = Subscription.create(paramsBuilder.build());
 
-            log.info("Stripe subscription created successfully: {}", subscription.getId());
+            log.info("✅ Stripe subscription created successfully: {}", subscription.getId());
+            log.info("   → Status: {}", subscription.getStatus());
+            log.info("   → Current period end: {}", subscription.getCurrentPeriodEnd());
 
             return mapSubscriptionResult(subscription);
 
         } catch (StripeException e) {
-            log.error("Failed to create Stripe subscription: {}", e.getMessage(), e);
+            log.error("❌ Failed to create Stripe subscription: {}", e.getMessage(), e);
+            log.error("   → Customer ID: {}", customerId);
+            log.error("   → Price ID: {}", priceId);
+            log.error("   → Payment Method ID: {}", paymentMethodId != null ? paymentMethodId : "NULL");
             throw PaymentFailedException.withReason("Failed to create subscription: " + e.getMessage());
         }
     }
