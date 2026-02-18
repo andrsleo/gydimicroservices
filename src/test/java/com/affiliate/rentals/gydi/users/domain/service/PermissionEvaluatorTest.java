@@ -206,59 +206,55 @@ class PermissionEvaluatorTest {
     }
 
     @Test
-    @DisplayName("FREE user should respect 10 property limit")
-    void freeUserShouldRespect10PropertyLimit() {
+    @DisplayName("FREE user should have unlimited properties (limits disabled)")
+    void freeUserShouldHaveUnlimitedPropertiesNow() {
         // Arrange
         User freeUser = createVerifiedUserWithPlan(SubscriptionPlan.FREE);
 
-        // Act & Assert
+        // Act & Assert - Límites desactivados temporalmente
         assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.PROPERTY, 0)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.PROPERTY, 5)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.PROPERTY, 9)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.PROPERTY, 10)).isFalse();
-        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.PROPERTY, 11)).isFalse();
+        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.PROPERTY, 100)).isTrue();
+        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.PROPERTY, 1000)).isTrue();
+        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.PROPERTY, 1000000)).isTrue();
     }
 
     @Test
-    @DisplayName("FREE user should respect 50 referral limit")
-    void freeUserShouldRespect50ReferralLimit() {
+    @DisplayName("FREE user should have unlimited referrals (limits disabled)")
+    void freeUserShouldHaveUnlimitedReferralsNow() {
         // Arrange
         User freeUser = createVerifiedUserWithPlan(SubscriptionPlan.FREE);
 
-        // Act & Assert
+        // Act & Assert - Límites desactivados temporalmente
         assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.REFERRAL, 0)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.REFERRAL, 25)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.REFERRAL, 49)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.REFERRAL, 50)).isFalse();
-        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.REFERRAL, 51)).isFalse();
+        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.REFERRAL, 100)).isTrue();
+        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.REFERRAL, 1000)).isTrue();
+        assertThat(PermissionEvaluator.canExceedLimit(freeUser, ResourceType.REFERRAL, 1000000)).isTrue();
     }
 
     @Test
-    @DisplayName("PRO user should respect 50 property limit")
-    void proUserShouldRespect50PropertyLimit() {
+    @DisplayName("PRO user should have unlimited properties (limits disabled)")
+    void proUserShouldHaveUnlimitedPropertiesNow() {
         // Arrange
         User proUser = createVerifiedUserWithPlan(SubscriptionPlan.PRO);
 
-        // Act & Assert
+        // Act & Assert - Límites desactivados temporalmente
         assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.PROPERTY, 0)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.PROPERTY, 25)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.PROPERTY, 49)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.PROPERTY, 50)).isFalse();
-        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.PROPERTY, 51)).isFalse();
+        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.PROPERTY, 100)).isTrue();
+        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.PROPERTY, 1000)).isTrue();
+        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.PROPERTY, 1000000)).isTrue();
     }
 
     @Test
-    @DisplayName("PRO user should respect 200 referral limit")
-    void proUserShouldRespect200ReferralLimit() {
+    @DisplayName("PRO user should have unlimited referrals (limits disabled)")
+    void proUserShouldHaveUnlimitedReferralsNow() {
         // Arrange
         User proUser = createVerifiedUserWithPlan(SubscriptionPlan.PRO);
 
-        // Act & Assert
+        // Act & Assert - Límites desactivados temporalmente
         assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.REFERRAL, 0)).isTrue();
         assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.REFERRAL, 100)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.REFERRAL, 199)).isTrue();
-        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.REFERRAL, 200)).isFalse();
-        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.REFERRAL, 201)).isFalse();
+        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.REFERRAL, 1000)).isTrue();
+        assertThat(PermissionEvaluator.canExceedLimit(proUser, ResourceType.REFERRAL, 1000000)).isTrue();
     }
 
     @Test

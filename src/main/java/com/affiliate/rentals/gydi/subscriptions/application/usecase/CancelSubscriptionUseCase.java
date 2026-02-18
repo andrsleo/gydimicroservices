@@ -7,11 +7,15 @@ import com.affiliate.rentals.gydi.subscriptions.domain.exception.InvalidSubscrip
 import com.affiliate.rentals.gydi.subscriptions.domain.exception.SubscriptionNotFoundException;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.*;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.*;
+import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentGatewayPort.SubscriptionResult;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.Optional;
 
 /**
  * Use case for canceling a user's subscription.
@@ -30,20 +34,25 @@ import java.time.LocalDateTime;
 @Service
 public class CancelSubscriptionUseCase {
 
+    private static final Logger log = LoggerFactory.getLogger(CancelSubscriptionUseCase.class);
+
     private final UserSubscriptionRepositoryPort subscriptionRepository;
     private final PlanRepositoryPort planRepository;
     private final SubscriptionTransactionRepositoryPort transactionRepository;
     private final SubscriptionDtoMapper mapper;
+    private final Optional<PaymentGatewayPort> paymentGateway;
 
     public CancelSubscriptionUseCase(
             UserSubscriptionRepositoryPort subscriptionRepository,
             PlanRepositoryPort planRepository,
             SubscriptionTransactionRepositoryPort transactionRepository,
-            SubscriptionDtoMapper mapper) {
+            SubscriptionDtoMapper mapper,
+            Optional<PaymentGatewayPort> paymentGateway) {
         this.subscriptionRepository = subscriptionRepository;
         this.planRepository = planRepository;
         this.transactionRepository = transactionRepository;
         this.mapper = mapper;
+        this.paymentGateway = paymentGateway;
     }
 
     /**
@@ -75,17 +84,33 @@ public class CancelSubscriptionUseCase {
         UserSubscription canceledSubscription;
 
         if (request.cancelImmediately()) {
-            // Immediate cancellation: set status to CANCELED now
+            // Immediate cancellation: downgrade to FREE immediately
+            Plan freePlan = planRepository.findByPlanCode("FREE")
+                    .orElseThrow(() -> new IllegalStateException("FREE plan not found in database"));
+
+            log.info("User {} canceling subscription immediately. Downgrading from plan {} to FREE (id: {})",
+                    userId, subscription.planId(), freePlan.id());
+
             canceledSubscription = subscription.withCancelation(request.reason());
 
-            // For immediate cancellation, set expiration to now
+            // Downgrade to FREE plan immediately
             canceledSubscription = UserSubscription.builder()
                     .from(canceledSubscription)
-                    .expiresAt(now)
+                    .planId(freePlan.id())       // ✅ Downgrade to FREE
+                    .expiresAt(null)             // FREE plan doesn't expire
                     .autoRenew(false)
+                    .status(SubscriptionStatus.ACTIVE) // FREE is active, not canceled
+                    .canceledAt(now)             // Record when they canceled
+                    .cancelationReason(request.reason())
                     .build();
+
+            log.info("User {} downgraded to FREE plan immediately", userId);
         } else {
             // End-of-period cancellation: mark for cancellation but keep active until expiry
+            // Scheduler will downgrade to FREE when subscription expires
+            log.info("User {} scheduling cancellation at end of period (expires: {})",
+                    userId, subscription.expiresAt());
+
             canceledSubscription = UserSubscription.builder()
                     .from(subscription)
                     .autoRenew(false) // Disable auto-renewal
@@ -93,6 +118,9 @@ public class CancelSubscriptionUseCase {
                     .cancelationReason(request.reason())
                     .updatedAt(now)
                     .build();
+
+            log.info("User {} subscription will remain active until {}, then downgrade to FREE",
+                    userId, subscription.expiresAt());
         }
 
         UserSubscription savedSubscription = subscriptionRepository.save(canceledSubscription);
@@ -114,14 +142,24 @@ public class CancelSubscriptionUseCase {
 
         transactionRepository.save(transaction);
 
-        // TODO: For paid plans, cancel subscription in Stripe
-        // This will be implemented when PaymentGatewayPort adapter is created
-        // if (savedSubscription.stripeSubscriptionId() != null) {
-        //     paymentGateway.cancelSubscription(
-        //         savedSubscription.stripeSubscriptionId(),
-        //         request.cancelImmediately()
-        //     );
-        // }
+        // 6. Cancel subscription in Stripe (for paid plans)
+        if (savedSubscription.stripeSubscriptionId() != null && paymentGateway.isPresent()) {
+            try {
+                SubscriptionResult result = paymentGateway.get().cancelSubscription(
+                    savedSubscription.stripeSubscriptionId(),
+                    request.cancelImmediately()
+                );
+                log.info("Stripe subscription {} canceled successfully. Status: {}",
+                         savedSubscription.stripeSubscriptionId(), result.status());
+            } catch (Exception e) {
+                log.error("Failed to cancel Stripe subscription {}: {}",
+                          savedSubscription.stripeSubscriptionId(), e.getMessage());
+                // Continue anyway - local cancellation is already recorded
+                // The user's subscription is canceled in our system
+            }
+        } else {
+            log.info("Skipping Stripe cancellation - subscription has no Stripe ID or gateway not available");
+        }
 
         return mapper.toUserSubscriptionResponse(savedSubscription, plan);
     }

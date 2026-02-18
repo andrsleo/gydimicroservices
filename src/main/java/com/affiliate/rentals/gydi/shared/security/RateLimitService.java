@@ -46,6 +46,7 @@ public class RateLimitService {
     private final Map<String, Bucket> authBucketCache = new ConcurrentHashMap<>();
     private final Map<String, Bucket> passwordResetBucketCache = new ConcurrentHashMap<>();
     private final Map<String, Bucket> generalApiBucketCache = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> bookingCreationBucketCache = new ConcurrentHashMap<>();
 
     /**
      * Authentication endpoints rate limit: 10 attempts per 15 minutes.
@@ -96,6 +97,22 @@ public class RateLimitService {
     }
 
     /**
+     * Booking creation rate limit: 5 requests per 15 minutes.
+     * Prevents booking spam and abuse.
+     *
+     * ✅ SECURITY FIX: Prevents mass booking creation attacks.
+     */
+    private Bucket createBookingCreationBucket() {
+        Bandwidth limit = Bandwidth.classic(
+            5,  // 5 tokens (5 booking creation attempts)
+            Refill.intervally(5, Duration.ofMinutes(15))  // Refill 5 tokens every 15 minutes
+        );
+        return Bucket.builder()
+            .addLimit(limit)
+            .build();
+    }
+
+    /**
      * Resolves the bucket for authentication endpoints based on client IP.
      *
      * @param clientIp the client's IP address
@@ -123,6 +140,16 @@ public class RateLimitService {
      */
     private Bucket resolveGeneralApiBucket(String clientIp) {
         return generalApiBucketCache.computeIfAbsent(clientIp, k -> createGeneralApiBucket());
+    }
+
+    /**
+     * Resolves the bucket for booking creation based on client IP.
+     *
+     * @param clientIp the client's IP address
+     * @return the bucket for this IP
+     */
+    private Bucket resolveBookingCreationBucket(String clientIp) {
+        return bookingCreationBucketCache.computeIfAbsent(clientIp, k -> createBookingCreationBucket());
     }
 
     /**
@@ -186,6 +213,30 @@ public class RateLimitService {
     }
 
     /**
+     * Attempts to consume a token from the booking creation rate limit bucket.
+     *
+     * ✅ SECURITY FIX: Prevents booking spam (5 requests/15 minutes per IP).
+     *
+     * @param request the HTTP request
+     * @return true if request is allowed, false if rate limit exceeded
+     */
+    public boolean tryConsumeBookingCreation(HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        Bucket bucket = resolveBookingCreationBucket(clientIp);
+
+        boolean consumed = bucket.tryConsume(1);
+
+        if (!consumed) {
+            log.warn("Rate limit exceeded for booking creation. IP: {}. Limit: 5 requests per 15 minutes", clientIp);
+        } else {
+            log.debug("Booking creation request allowed for IP: {}. Remaining tokens: {}",
+                clientIp, bucket.getAvailableTokens());
+        }
+
+        return consumed;
+    }
+
+    /**
      * Extracts the client's IP address from the request.
      * Checks X-Forwarded-For header first (for proxies/load balancers).
      *
@@ -229,6 +280,7 @@ public class RateLimitService {
         authBucketCache.remove(ipAddress);
         passwordResetBucketCache.remove(ipAddress);
         generalApiBucketCache.remove(ipAddress);
+        bookingCreationBucketCache.remove(ipAddress);
         log.info("Cleared rate limit cache for IP: {}", ipAddress);
     }
 
@@ -240,6 +292,7 @@ public class RateLimitService {
         authBucketCache.clear();
         passwordResetBucketCache.clear();
         generalApiBucketCache.clear();
+        bookingCreationBucketCache.clear();
         log.warn("Cleared all rate limit caches");
     }
 }

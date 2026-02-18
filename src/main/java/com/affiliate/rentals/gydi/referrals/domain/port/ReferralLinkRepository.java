@@ -66,6 +66,13 @@ public interface ReferralLinkRepository {
     List<ReferralLink> findExpiredLinks();
 
     /**
+     * Busca enlaces activos cuya fecha de expiración ya pasó
+     * (status = ACTIVE AND expires_at < NOW())
+     * Usado por el scheduler para marcarlos como EXPIRED automáticamente
+     */
+    List<ReferralLink> findActiveExpired();
+
+    /**
      * Verifica si existe un enlace activo para una combinación afiliado-propiedad
      */
     boolean existsActiveLink(Long affiliateId, Long propertyId);

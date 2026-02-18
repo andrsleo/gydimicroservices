@@ -6,6 +6,7 @@ import com.affiliate.rentals.gydi.users.application.dto.ChangePasswordRequest;
 import com.affiliate.rentals.gydi.users.application.dto.CreateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UpdateUserRequest;
 import com.affiliate.rentals.gydi.users.application.dto.UserResponse;
+import com.affiliate.rentals.gydi.users.application.dto.ResourceLimitsDto;
 import com.affiliate.rentals.gydi.users.application.usecase.*;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -198,5 +199,64 @@ public class UserController {
 
         changePasswordUseCase.execute(authenticatedUserId, request);
         return ResponseEntity.ok().build();
+    }
+
+    /**
+     * Get resource limits for authenticated user.
+     *
+     * <p>Returns the user's current resource usage and limits based on their subscription plan.
+     * This endpoint is used by the frontend to display usage indicators and validate
+     * whether the user can create more resources.</p>
+     *
+     * @return ResourceLimitsDto containing limits and current usage
+     */
+    @GetMapping("/resource-limits")
+    @Operation(
+            summary = "Get resource limits",
+            description = "Returns resource usage limits for the authenticated user based on their subscription plan"
+    )
+    @ApiResponse(
+            responseCode = "200",
+            description = "Resource limits retrieved successfully",
+            content = @Content(schema = @Schema(implementation = ResourceLimitsDto.class))
+    )
+    @ApiErrorResponses.Unauthorized
+    public ResponseEntity<ResourceLimitsDto> getResourceLimits() {
+        // SECURITY: Get authenticated user's ID
+        Long authenticatedUserId = ownershipValidator.getAuthenticatedUserId();
+
+        // TODO: Get user's actual subscription plan from database
+        // For now, default to FREE plan
+        String planCode = "FREE";
+
+        // TODO: Get actual usage counts from database
+        // For now, return placeholder data
+        ResourceLimitsDto limits = ResourceLimitsDto.builder()
+                .userId(authenticatedUserId.toString())
+                .subscriptionPlan(planCode)
+                .limits(getPlanLimits(planCode))
+                .usage(ResourceLimitsDto.UsageDto.builder()
+                        .properties(0) // TODO: Count from properties table
+                        .referrals(0)  // TODO: Count from referrals table
+                        .build())
+                .build();
+
+        return ResponseEntity.ok(limits);
+    }
+
+    /**
+     * Get plan limits based on subscription plan code.
+     *
+     * ⚠️ **NOTA: LÍMITES DESACTIVADOS TEMPORALMENTE**
+     * Los planes actualmente solo se diferencian por porcentaje de comisiones.
+     * Todos los planes tienen límites ilimitados (Integer.MAX_VALUE).
+     */
+    private ResourceLimitsDto.LimitsDto getPlanLimits(String planCode) {
+        // TEMPORALMENTE: Todos los planes tienen límites ilimitados
+        // Los planes solo se diferencian por comisiones (2%, 5%, 10% affiliate / 25%, 20%, 15% host)
+        return ResourceLimitsDto.LimitsDto.builder()
+                .properties(Integer.MAX_VALUE)
+                .referrals(Integer.MAX_VALUE)
+                .build();
     }
 }

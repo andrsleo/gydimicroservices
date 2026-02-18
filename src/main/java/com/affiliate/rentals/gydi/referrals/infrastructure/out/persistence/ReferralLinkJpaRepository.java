@@ -62,6 +62,17 @@ public interface ReferralLinkJpaRepository extends JpaRepository<ReferralLinkJpa
     List<ReferralLinkJpaEntity> findExpiredLinks();
 
     /**
+     * Busca enlaces activos cuya fecha de expiración ya pasó
+     * (status = ACTIVE AND expires_at < NOW())
+     * Usado por el scheduler para marcarlos como EXPIRED automáticamente
+     */
+    @Query("SELECT r FROM ReferralLinkJpaEntity r " +
+            "WHERE r.status = 'ACTIVE' " +
+            "AND r.deletedAt IS NULL " +
+            "AND r.expiresAt < CURRENT_TIMESTAMP")
+    List<ReferralLinkJpaEntity> findActiveExpired();
+
+    /**
      * Verifica si existe un enlace activo para una combinación afiliado-propiedad
      */
     @Query("SELECT CASE WHEN COUNT(r) > 0 THEN true ELSE false END " +

@@ -4,6 +4,7 @@ import com.affiliate.rentals.gydi.subscriptions.application.dto.CreatePaymentMet
 import com.affiliate.rentals.gydi.subscriptions.application.dto.PaymentMethodResponse;
 import com.affiliate.rentals.gydi.subscriptions.application.mapper.SubscriptionDtoMapper;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethod;
+import com.affiliate.rentals.gydi.subscriptions.domain.exception.PaymentFailedException;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethodStatus;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethodType;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentGatewayPort;
@@ -80,8 +81,10 @@ public class CreatePaymentMethodUseCase {
                 List<PaymentMethod> existingMethods = paymentMethodRepository.findActiveByUserId(userId);
                 boolean isFirstPaymentMethod = existingMethods.isEmpty();
 
-                // 2. If this should be default, remove default flag from others
-                boolean shouldBeDefault = request.isDefault() || isFirstPaymentMethod;
+                // 2. Determine if this should be the default payment method.
+                // A new card is always set as default so the user's most recently added card
+                // is the one pre-selected when subscribing or changing plans.
+                boolean shouldBeDefault = true;
 
                 if (shouldBeDefault && !existingMethods.isEmpty()) {
                         existingMethods.forEach(method -> {
@@ -191,7 +194,15 @@ public class CreatePaymentMethodUseCase {
                                         stripePaymentMethod.cardExpMonth(),
                                         stripePaymentMethod.cardExpYear());
 
+                } catch (PaymentFailedException e) {
+                        // Card was declined by Stripe (insufficient funds, card blocked, etc.)
+                        // Re-throw so we do NOT save an invalid payment method to the database
+                        logger.error("❌ Stripe rejected payment method {} for user {}: {}",
+                                        stripePaymentMethodId, userId, e.getMessage());
+                        throw e;
                 } catch (Exception e) {
+                        // Stripe is temporarily unavailable or API key issue.
+                        // Fall back to saving the PM with placeholder data so the user is not blocked.
                         logger.error("Failed to retrieve/attach payment method from Stripe: {} - using fallback data. Error: {}",
                                         stripePaymentMethodId, e.getMessage(), e);
                         return getFallbackPaymentMethodDetails();

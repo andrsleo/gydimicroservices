@@ -101,7 +101,7 @@ server:
 # export JWT_REFERRAL_SECRET="$(openssl rand -base64 64)"
 jwt:
   secret: ${JWT_SECRET}
-  expiration: ${JWT_EXPIRATION:86400000} # 24 hours in milliseconds
+  expiration: ${JWT_EXPIRATION:3600000} # 1 hour in milliseconds (synchronized with inactivity timeout)
   refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
   # JWT for referral tokens (can be overridden per-link, max 365 days)
   referral:
@@ -258,6 +258,17 @@ security:
       # IMPORTANT: Must be exactly 64 hex characters (32 bytes = 256 bits)
       # Generate with: openssl rand -hex 32
       secret: ${AES_SECRET_KEY}
+
+# ============================================
+# Encryption Configuration
+# ============================================
+# SECURITY FIX (FIX-007): PII Encryption at Rest
+# Generate encryption key: openssl rand -hex 32
+# Production deployment: fly secrets set PII_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+encryption:
+  pii:
+    secret: ${PII_ENCRYPTION_KEY:#{null}}  # Optional: Will warn if not set
+
 # ============================================
 # CORS Configuration
 # ============================================

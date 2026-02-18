@@ -165,7 +165,9 @@ public class ChangePlanUseCase {
         }
         // Handle paid plan changes: sync with Stripe
         else if (!newPlan.isFree()) {
-            StripeUpdateResult stripeResult = syncWithStripe(currentSubscription, newPlan);
+            // Pass the resolved payment method token so Stripe uses the correct (new) card
+            String resolvedPaymentMethodToken = paymentMethod != null ? paymentMethod.gatewayToken() : null;
+            StripeUpdateResult stripeResult = syncWithStripe(currentSubscription, newPlan, resolvedPaymentMethodToken);
             if (stripeResult.periodEnd() != null) {
                 newExpiresAt = stripeResult.periodEnd();
             }
@@ -239,11 +241,16 @@ public class ChangePlanUseCase {
      * a new price automatically reactivates it. This allows users to upgrade from FREE
      * back to a paid plan without creating duplicate subscriptions.
      *
-     * @param subscription the current local subscription
-     * @param newPlan      the target plan
+     * @param subscription         the current local subscription
+     * @param newPlan              the target plan
+     * @param paymentMethodToken   the Stripe PM token resolved from the request (pm_xxx);
+     *                             use this instead of subscription's stored PM to ensure
+     *                             the correct (possibly new) card is used
      * @return StripeUpdateResult containing period end and subscription ID
+     * @throws PaymentFailedException if Stripe payment fails for any reason
      */
-    private StripeUpdateResult syncWithStripe(UserSubscription subscription, Plan newPlan) {
+    private StripeUpdateResult syncWithStripe(UserSubscription subscription, Plan newPlan,
+            String paymentMethodToken) {
 
         // Check if PaymentGateway is available
         if (paymentGateway.isEmpty()) {
@@ -325,13 +332,16 @@ public class ChangePlanUseCase {
             logger.info("🚀 Creating NEW Stripe subscription");
             logger.info("   → Customer: {}, Plan: {}, Price: {}",
                     user.stripeCustomerId(), newPlan.planCode(), newPlan.stripePriceId());
+            logger.info("   → Payment Method: {}", paymentMethodToken != null ? paymentMethodToken : "none");
 
-            // Get payment method token for the subscription
-            String paymentMethodToken = null;
-            if (subscription.paymentMethodId() != null) {
-                paymentMethodToken = paymentMethodRepository.findById(subscription.paymentMethodId())
-                        .map(PaymentMethod::gatewayToken)
-                        .orElse(null);
+            // Attach payment method to customer before creating subscription.
+            // Always use the token passed in from execute() — it reflects the card the user
+            // selected for THIS request, not whatever was stored from a previous attempt.
+            if (paymentMethodToken != null) {
+                logger.info("🔗 Attaching payment method {} to customer {}", paymentMethodToken,
+                        user.stripeCustomerId());
+                paymentGateway.get().attachPaymentMethod(paymentMethodToken, user.stripeCustomerId());
+                logger.info("   → Payment method attached successfully");
             }
 
             // Create NEW subscription in Stripe
@@ -349,12 +359,16 @@ public class ChangePlanUseCase {
                     stripeSubscription.currentPeriodEnd(),
                     stripeSubscription.id());
 
+        } catch (PaymentFailedException e) {
+            // Payment was declined — re-throw so @Transactional rolls back
+            logger.error("❌ Payment declined for user {} changing to plan {}: {}",
+                    subscription.userId(), newPlan.planCode(), e.getMessage());
+            throw e;
         } catch (Exception e) {
-            logger.error("❌ CRITICAL: Failed to sync Stripe subscription for user {} to plan {}",
-                    subscription.userId(), newPlan.planCode());
-            logger.error("   → Error: {}", e.getMessage(), e);
-            logger.error("   → Plan change will proceed WITHOUT Stripe sync!");
-            return StripeUpdateResult.empty();
+            // Any other Stripe/gateway error also fails the plan change
+            logger.error("❌ Failed to sync Stripe subscription for user {} to plan {}: {}",
+                    subscription.userId(), newPlan.planCode(), e.getMessage(), e);
+            throw PaymentFailedException.forPlan(newPlan.planCode(), e.getMessage());
         }
     }
 

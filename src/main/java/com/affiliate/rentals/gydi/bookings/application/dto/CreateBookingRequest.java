@@ -2,41 +2,55 @@ package com.affiliate.rentals.gydi.bookings.application.dto;
 
 import jakarta.validation.constraints.*;
 
-import java.math.BigDecimal;
 import java.time.LocalDate;
 
 /**
- * Request DTO for creating a new booking.
+ * Command DTO for creating a new booking request.
  * <p>
- * Used when a client submits a booking request via referral link.
- * Financial details (amount, currency) are tracked separately in commission_booking table.
+ * Used when a guest submits a booking request via referral link.
  * </p>
  */
 public record CreateBookingRequest(
+    @NotNull(message = "Referral link ID is required")
+    @Positive(message = "Referral link ID must be positive")
+    Long referralLinkId,
 
-        @NotBlank(message = "Referral link ID or token is required") String referralLinkId, // Can be either numeric ID
-                                                                                            // or JWT token
+    @NotNull(message = "Property ID is required")
+    @Positive(message = "Property ID must be positive")
+    Long propertyId,
 
-        @NotNull(message = "Property ID is required") @Positive(message = "Property ID must be positive") Long propertyId,
+    @NotNull(message = "Check-in date is required")
+    @FutureOrPresent(message = "Check-in date must be today or in the future")
+    LocalDate checkInDate,
 
-        @NotNull(message = "Start date is required") @Future(message = "Start date must be in the future") LocalDate startDate,
+    @NotNull(message = "Check-out date is required")
+    @Future(message = "Check-out date must be in the future")
+    LocalDate checkOutDate,
 
-        @NotNull(message = "End date is required") @Future(message = "End date must be in the future") LocalDate endDate,
+    @NotBlank(message = "Guest name is required")
+    @Size(max = 255, message = "Guest name cannot exceed 255 characters")
+    String guestName,
 
-        @NotBlank(message = "Client email is required") @Email(message = "Invalid email format") String clientEmail,
+    @NotBlank(message = "Guest email is required")
+    @Email(message = "Invalid email format")
+    @Size(max = 255, message = "Email cannot exceed 255 characters")
+    String guestEmail,
 
-        @Pattern(regexp = "^\\+?[1-9]\\d{1,14}$", message = "Invalid phone number format") String clientPhone,
+    @Size(max = 50, message = "Phone cannot exceed 50 characters")
+    String guestPhone,
 
-        @NotBlank(message = "Client first name is required") @Size(min = 2, max = 100, message = "First name must be between 2 and 100 characters") String clientFirstName,
-
-        @NotBlank(message = "Client last name is required") @Size(min = 2, max = 100, message = "Last name must be between 2 and 100 characters") String clientLastName) {
-
+    @NotNull(message = "Guests count is required")
+    @Min(value = 1, message = "At least 1 guest is required")
+    @Max(value = 50, message = "Maximum 50 guests allowed")
+    Integer guestsCount
+) {
     /**
-     * Validates that endDate is after startDate.
+     * Validates that check-out is after check-in.
+     * Called automatically by record compact constructor.
      */
     public CreateBookingRequest {
-        if (startDate != null && endDate != null && !endDate.isAfter(startDate)) {
-            throw new IllegalArgumentException("End date must be after start date");
+        if (checkOutDate != null && checkInDate != null && !checkOutDate.isAfter(checkInDate)) {
+            throw new IllegalArgumentException("Check-out date must be after check-in date");
         }
     }
 }

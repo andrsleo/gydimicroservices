@@ -111,23 +111,23 @@ class SubscriptionPlanTest {
     // ========== Property Limit Tests ==========
 
     @Test
-    @DisplayName("FREE plan should have 10 property limit")
-    void freePlanShouldHave10PropertyLimit() {
+    @DisplayName("FREE plan should have unlimited properties (limits disabled)")
+    void freePlanShouldHaveUnlimitedPropertiesNow() {
         // Act
         int limit = SubscriptionPlan.FREE.getPropertyPublishLimit();
 
-        // Assert
-        assertThat(limit).isEqualTo(10);
+        // Assert - Límites desactivados temporalmente
+        assertThat(limit).isEqualTo(Integer.MAX_VALUE);
     }
 
     @Test
-    @DisplayName("PRO plan should have 50 property limit")
-    void proPlanShouldHave50PropertyLimit() {
+    @DisplayName("PRO plan should have unlimited properties (limits disabled)")
+    void proPlanShouldHaveUnlimitedPropertiesNow() {
         // Act
         int limit = SubscriptionPlan.PRO.getPropertyPublishLimit();
 
-        // Assert
-        assertThat(limit).isEqualTo(50);
+        // Assert - Límites desactivados temporalmente
+        assertThat(limit).isEqualTo(Integer.MAX_VALUE);
     }
 
     @Test
@@ -143,23 +143,23 @@ class SubscriptionPlanTest {
     // ========== Referral Limit Tests ==========
 
     @Test
-    @DisplayName("FREE plan should have 50 referral limit")
-    void freePlanShouldHave50ReferralLimit() {
+    @DisplayName("FREE plan should have unlimited referrals (limits disabled)")
+    void freePlanShouldHaveUnlimitedReferralsNow() {
         // Act
         int limit = SubscriptionPlan.FREE.getReferralGenerateLimit();
 
-        // Assert
-        assertThat(limit).isEqualTo(50);
+        // Assert - Límites desactivados temporalmente
+        assertThat(limit).isEqualTo(Integer.MAX_VALUE);
     }
 
     @Test
-    @DisplayName("PRO plan should have 200 referral limit")
-    void proPlanShouldHave200ReferralLimit() {
+    @DisplayName("PRO plan should have unlimited referrals (limits disabled)")
+    void proPlanShouldHaveUnlimitedReferralsNow() {
         // Act
         int limit = SubscriptionPlan.PRO.getReferralGenerateLimit();
 
-        // Assert
-        assertThat(limit).isEqualTo(200);
+        // Assert - Límites desactivados temporalmente
+        assertThat(limit).isEqualTo(Integer.MAX_VALUE);
     }
 
     @Test
@@ -265,19 +265,20 @@ class SubscriptionPlanTest {
     }
 
     // ========== Unlimited Resources Tests ==========
+    // NOTA: Límites desactivados temporalmente - Todos los planes tienen unlimited
 
     @Test
-    @DisplayName("FREE should NOT have unlimited properties")
-    void freeShouldNotHaveUnlimitedProperties() {
-        // Act & Assert
-        assertThat(SubscriptionPlan.FREE.hasUnlimitedProperties()).isFalse();
+    @DisplayName("FREE should have unlimited properties (limits disabled)")
+    void freeShouldHaveUnlimitedProperties() {
+        // Act & Assert - Límites desactivados temporalmente
+        assertThat(SubscriptionPlan.FREE.hasUnlimitedProperties()).isTrue();
     }
 
     @Test
-    @DisplayName("PRO should NOT have unlimited properties")
-    void proShouldNotHaveUnlimitedProperties() {
-        // Act & Assert
-        assertThat(SubscriptionPlan.PRO.hasUnlimitedProperties()).isFalse();
+    @DisplayName("PRO should have unlimited properties (limits disabled)")
+    void proShouldHaveUnlimitedProperties() {
+        // Act & Assert - Límites desactivados temporalmente
+        assertThat(SubscriptionPlan.PRO.hasUnlimitedProperties()).isTrue();
     }
 
     @Test
@@ -288,17 +289,17 @@ class SubscriptionPlanTest {
     }
 
     @Test
-    @DisplayName("FREE should NOT have unlimited referrals")
-    void freeShouldNotHaveUnlimitedReferrals() {
-        // Act & Assert
-        assertThat(SubscriptionPlan.FREE.hasUnlimitedReferrals()).isFalse();
+    @DisplayName("FREE should have unlimited referrals (limits disabled)")
+    void freeShouldHaveUnlimitedReferrals() {
+        // Act & Assert - Límites desactivados temporalmente
+        assertThat(SubscriptionPlan.FREE.hasUnlimitedReferrals()).isTrue();
     }
 
     @Test
-    @DisplayName("PRO should NOT have unlimited referrals")
-    void proShouldNotHaveUnlimitedReferrals() {
-        // Act & Assert
-        assertThat(SubscriptionPlan.PRO.hasUnlimitedReferrals()).isFalse();
+    @DisplayName("PRO should have unlimited referrals (limits disabled)")
+    void proShouldHaveUnlimitedReferrals() {
+        // Act & Assert - Límites desactivados temporalmente
+        assertThat(SubscriptionPlan.PRO.hasUnlimitedReferrals()).isTrue();
     }
 
     @Test
@@ -309,28 +310,29 @@ class SubscriptionPlanTest {
     }
 
     // ========== Limits Description Tests ==========
+    // NOTA: Límites desactivados temporalmente - Todos muestran "Unlimited"
 
     @Test
-    @DisplayName("FREE plan limits description should be correct")
+    @DisplayName("FREE plan limits description should show unlimited (limits disabled)")
     void freePlanLimitsDescriptionShouldBeCorrect() {
         // Act
         String description = SubscriptionPlan.FREE.getLimitsDescription();
 
-        // Assert
-        assertThat(description).contains("Properties: 10");
-        assertThat(description).contains("Referrals: 50");
+        // Assert - Límites desactivados temporalmente
+        assertThat(description).contains("Properties: Unlimited");
+        assertThat(description).contains("Referrals: Unlimited");
         assertThat(description).contains("Commission: 2.00%");
     }
 
     @Test
-    @DisplayName("PRO plan limits description should be correct")
+    @DisplayName("PRO plan limits description should show unlimited (limits disabled)")
     void proPlanLimitsDescriptionShouldBeCorrect() {
         // Act
         String description = SubscriptionPlan.PRO.getLimitsDescription();
 
-        // Assert
-        assertThat(description).contains("Properties: 50");
-        assertThat(description).contains("Referrals: 200");
+        // Assert - Límites desactivados temporalmente
+        assertThat(description).contains("Properties: Unlimited");
+        assertThat(description).contains("Referrals: Unlimited");
         assertThat(description).contains("Commission: 5.00%");
     }
 
@@ -384,19 +386,19 @@ class SubscriptionPlanTest {
     // ========== Business Logic Validation Tests ==========
 
     @Test
-    @DisplayName("Higher plans should always have higher or equal limits")
+    @DisplayName("Higher plans should always have higher or equal limits (all unlimited now)")
     void higherPlansShouldAlwaysHaveHigherOrEqualLimits() {
-        // Act & Assert - Property limits
+        // Act & Assert - Property limits (todos unlimited actualmente)
         assertThat(SubscriptionPlan.PRO.getPropertyPublishLimit())
-            .isGreaterThan(SubscriptionPlan.FREE.getPropertyPublishLimit());
+            .isGreaterThanOrEqualTo(SubscriptionPlan.FREE.getPropertyPublishLimit());
         assertThat(SubscriptionPlan.ELITE.getPropertyPublishLimit())
-            .isGreaterThan(SubscriptionPlan.PRO.getPropertyPublishLimit());
+            .isGreaterThanOrEqualTo(SubscriptionPlan.PRO.getPropertyPublishLimit());
 
-        // Act & Assert - Referral limits
+        // Act & Assert - Referral limits (todos unlimited actualmente)
         assertThat(SubscriptionPlan.PRO.getReferralGenerateLimit())
-            .isGreaterThan(SubscriptionPlan.FREE.getReferralGenerateLimit());
+            .isGreaterThanOrEqualTo(SubscriptionPlan.FREE.getReferralGenerateLimit());
         assertThat(SubscriptionPlan.ELITE.getReferralGenerateLimit())
-            .isGreaterThan(SubscriptionPlan.PRO.getReferralGenerateLimit());
+            .isGreaterThanOrEqualTo(SubscriptionPlan.PRO.getReferralGenerateLimit());
     }
 
     @Test

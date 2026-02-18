@@ -6,14 +6,18 @@ import java.math.BigDecimal;
  * Enumeration of subscription plans in the GYDI platform.
  *
  * <p>This enum defines the available subscription tiers that determine a user's
- * capabilities, commission rates, and resource limits. Each plan provides different
- * levels of access to platform features.</p>
+ * commission rates. Each plan provides different commission percentages for affiliates.</p>
+ *
+ * <p>⚠️ <strong>NOTA: LÍMITES DE RECURSOS DESACTIVADOS TEMPORALMENTE</strong></p>
+ * <p>Los planes actualmente solo se diferencian por porcentaje de comisiones.
+ * Todos los planes tienen límites ilimitados (Integer.MAX_VALUE) para propiedades y referidos.
+ * Los límites de recursos NO se aplican por el momento.</p>
  *
  * <p>Plan details:</p>
  * <ul>
- *   <li>{@code FREE} - Entry-level plan with basic features (2% commission, 10 properties, 50 referrals)</li>
- *   <li>{@code PRO} - Mid-tier plan with enhanced features (5% commission, 50 properties, 200 referrals)</li>
- *   <li>{@code ELITE} - Premium plan with unlimited features (10% commission, unlimited properties and referrals)</li>
+ *   <li>{@code FREE} - Entry-level plan (2% commission, unlimited properties and referrals)</li>
+ *   <li>{@code PRO} - Mid-tier plan (5% commission, unlimited properties and referrals)</li>
+ *   <li>{@code ELITE} - Premium plan (10% commission, unlimited properties and referrals)</li>
  * </ul>
  *
  * <p>Example usage:</p>
@@ -29,24 +33,24 @@ import java.math.BigDecimal;
 public enum SubscriptionPlan {
     /**
      * Free plan with basic features.
-     * Commission: 2%, Property limit: 10, Referral limit: 50
+     * Commission: 2%, Unlimited properties and referrals (limits disabled)
      */
     FREE(
         BigDecimal.ZERO,
         new BigDecimal("0.02"),
-        10,
-        50
+        Integer.MAX_VALUE,  // Sin límite (desactivado)
+        Integer.MAX_VALUE   // Sin límite (desactivado)
     ),
 
     /**
      * Pro plan with enhanced features.
-     * Monthly price: $29.99, Commission: 5%, Property limit: 50, Referral limit: 200
+     * Monthly price: $29.99, Commission: 5%, Unlimited properties and referrals (limits disabled)
      */
     PRO(
         new BigDecimal("29.99"),
         new BigDecimal("0.05"),
-        50,
-        200
+        Integer.MAX_VALUE,  // Sin límite (desactivado)
+        Integer.MAX_VALUE   // Sin límite (desactivado)
     ),
 
     /**

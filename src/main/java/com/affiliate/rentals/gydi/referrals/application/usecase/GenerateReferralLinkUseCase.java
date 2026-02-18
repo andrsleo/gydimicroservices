@@ -11,6 +11,9 @@ import com.affiliate.rentals.gydi.referrals.application.dto.GenerateReferralLink
 import com.affiliate.rentals.gydi.referrals.domain.model.ReferralLink;
 import com.affiliate.rentals.gydi.referrals.domain.port.ReferralLinkRepository;
 import com.affiliate.rentals.gydi.shared.security.JwtReferralTokenService;
+import com.affiliate.rentals.gydi.users.domain.model.SubscriptionPlan;
+import com.affiliate.rentals.gydi.users.domain.model.User;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -18,12 +21,14 @@ import lombok.extern.slf4j.Slf4j;
  * Caso de uso para generar un nuevo enlace de referido
  *
  * Flujo:
- * 1. Validar que el afiliado no tenga ya un enlace activo para esa propiedad
- * 2. Generar token JWE (Encrypted JWT)
- * 3. Generar código corto único (para uso interno/DB)
- * 4. Crear enlace de referido
- * 5. Persistir en base de datos
- * 6. Retornar URL completa con el token
+ * 1. Obtener usuario para determinar su plan de suscripción
+ * 2. Calcular días de expiración según el plan (FREE: 30, PRO: 90, ELITE: 365)
+ * 3. Validar que el afiliado no tenga ya un enlace activo para esa propiedad
+ * 4. Generar token JWE (Encrypted JWT)
+ * 5. Generar código corto único (para uso interno/DB)
+ * 6. Crear enlace de referido
+ * 7. Persistir en base de datos
+ * 8. Retornar URL completa con el token
  */
 
 @Slf4j
@@ -35,15 +40,18 @@ public class GenerateReferralLinkUseCase {
     private static final int SHORT_CODE_LENGTH = 8;
 
     private final ReferralLinkRepository referralLinkRepository;
+    private final UserRepositoryPort userRepository;
     private final JwtReferralTokenService jwtReferralTokenService;
     private final SecureRandom secureRandom;
     private final String frontendUrl;
 
     public GenerateReferralLinkUseCase(
             ReferralLinkRepository referralLinkRepository,
+            UserRepositoryPort userRepository,
             JwtReferralTokenService jwtReferralTokenService,
             @org.springframework.beans.factory.annotation.Value("${app.frontend-url}") String frontendUrl) {
         this.referralLinkRepository = referralLinkRepository;
+        this.userRepository = userRepository;
         this.jwtReferralTokenService = jwtReferralTokenService;
         this.secureRandom = new SecureRandom();
         this.frontendUrl = frontendUrl;
@@ -52,15 +60,23 @@ public class GenerateReferralLinkUseCase {
     /**
      * Ejecuta el caso de uso
      *
-     * @param affiliateId extracted from JWT token by controller (server-side,
-     *                    trusted)
-     * @param request     contains only propertyId and expirationDays (client input)
+     * @param affiliateId extracted from JWT token by controller (server-side, trusted)
+     * @param request     contains only propertyId (expirationDays now calculated from plan)
      */
     public GenerateReferralLinkResponse execute(Long affiliateId, GenerateReferralLinkRequest request) {
         log.info("Generating referral link for affiliate: {} and property: {}",
                 affiliateId, request.propertyId());
 
-        // 1. Check if an active link already exists
+        // 1. Get user to determine subscription plan
+        User user = userRepository.findById(affiliateId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + affiliateId));
+
+        // 2. Calculate expiration days based on subscription plan
+        int expirationDays = calculateExpirationDays(user.activePlan());
+        log.debug("User {} has plan {}, link will expire in {} days",
+                affiliateId, user.activePlan(), expirationDays);
+
+        // 3. Check if an active link already exists
         java.util.Optional<ReferralLink> existingLink = referralLinkRepository.findActiveLink(
                 affiliateId,
                 request.propertyId());
@@ -81,20 +97,20 @@ public class GenerateReferralLinkUseCase {
                     link.getCreatedAt());
         }
 
-        // 2. Calcular fecha de expiración en milisegundos (debe coincidir con expiración del JWT)
-        long expirationMs = request.expirationDays() * 24L * 60 * 60 * 1000;
-        LocalDateTime expiresAt = LocalDateTime.now().plusDays(request.expirationDays());
+        // 4. Calcular fecha de expiración en milisegundos (debe coincidir con expiración del JWT)
+        long expirationMs = expirationDays * 24L * 60 * 60 * 1000;
+        LocalDateTime expiresAt = LocalDateTime.now().plusDays(expirationDays);
 
-        // 3. Generar token encriptado (JWE) con expiración personalizada
+        // 5. Generar token encriptado (JWE) con expiración personalizada
         String encryptedToken = jwtReferralTokenService.generateReferralToken(
                 affiliateId,
                 request.propertyId(),
                 expirationMs);
 
-        // 4. Generar código corto único (para persistencia y uso legacy si aplica)
+        // 6. Generar código corto único (para persistencia y uso legacy si aplica)
         String shortCode = generateUniqueShortCode();
 
-        // 5. Crear enlace de referido
+        // 7. Crear enlace de referido
         ReferralLink referralLink = ReferralLink.create(
                 affiliateId,
                 request.propertyId(),
@@ -102,13 +118,13 @@ public class GenerateReferralLinkUseCase {
                 shortCode,
                 expiresAt);
 
-        // 6. Persistir
+        // 8. Persistir
         ReferralLink savedLink = referralLinkRepository.save(referralLink);
 
-        log.info("Referral link created successfully. ID: {}, ShortCode: {}, ExpirationDays: {}",
-                savedLink.getId(), savedLink.getShortCode(), request.expirationDays());
+        log.info("Referral link created successfully. ID: {}, ShortCode: {}, ExpirationDays: {} (Plan: {})",
+                savedLink.getId(), savedLink.getShortCode(), expirationDays, user.activePlan());
 
-        // 7. Construir respuesta
+        // 9. Construir respuesta
         String fullUrl = buildFullUrl(encryptedToken);
 
         return new GenerateReferralLinkResponse(
@@ -119,6 +135,20 @@ public class GenerateReferralLinkUseCase {
                 buildQrCodeUrl(fullUrl),
                 savedLink.getExpiresAt(),
                 savedLink.getCreatedAt());
+    }
+
+    /**
+     * Calcula los días de expiración basado en el plan de suscripción
+     *
+     * @param plan plan de suscripción del usuario
+     * @return días de expiración (FREE: 30, PRO: 90, ELITE: 365)
+     */
+    private int calculateExpirationDays(SubscriptionPlan plan) {
+        return switch (plan) {
+            case FREE -> 30;
+            case PRO -> 90;
+            case ELITE -> 365;
+        };
     }
 
     /**

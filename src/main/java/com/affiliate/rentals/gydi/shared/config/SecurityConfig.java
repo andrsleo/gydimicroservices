@@ -163,6 +163,10 @@ public class SecurityConfig {
                                                 .requestMatchers("/api/v1/auth/**").permitAll()
                                                 .requestMatchers("/api/v1/referrals/resolve").permitAll()
                                                 .requestMatchers("/api/v1/referrals/public/system-link/**").permitAll()
+
+                                                // Public booking endpoints - Allow anonymous users to create bookings via referral links
+                                                .requestMatchers("/api/public/bookings/**").permitAll()
+
                                                 .requestMatchers("/swagger-ui.html", "/swagger-ui/**",
                                                                 "/v3/api-docs/**",
                                                                 "/swagger-resources/**", "/webjars/**")
@@ -242,7 +246,41 @@ public class SecurityConfig {
                                 // ✅ Add CSRF cookie filter to ensure CSRF token is sent in every response
                                 .addFilterAfter(new CsrfCookieFilter(), BasicAuthenticationFilter.class)
                                 // ✅ Option D: Validate X-Requested-With header on state-changing API requests
-                                .addFilterAfter(new CustomHeaderValidationFilter(), CsrfCookieFilter.class);
+                                .addFilterAfter(new CustomHeaderValidationFilter(), CsrfCookieFilter.class)
+                                // ✅ SECURITY FIX: Add security headers to protect against common attacks
+                                // Configured conservatively to NOT break login or existing functionality
+                                .headers(headers -> headers
+                                                // Enable default headers (X-Content-Type-Options, X-Frame-Options, etc.)
+                                                // Spring Security enables these by default, we just configure them
+
+                                                // X-Frame-Options: SAMEORIGIN
+                                                // Allows iframes from same origin, blocks external clickjacking
+                                                // Using SAMEORIGIN (not DENY) to preserve compatibility
+                                                .frameOptions(frame -> frame.sameOrigin())
+
+                                                // Referrer-Policy: strict-origin-when-cross-origin
+                                                // Controls how much referrer information is sent with requests
+                                                .referrerPolicy(referrer -> referrer
+                                                        .policy(org.springframework.security.web.header.writers.ReferrerPolicyHeaderWriter.ReferrerPolicy.STRICT_ORIGIN_WHEN_CROSS_ORIGIN))
+
+                                                // ⚠️ Content-Security-Policy: PERMISSIVE mode to avoid breaking functionality
+                                                // Allows inline scripts/styles (required for many SPAs)
+                                                // Allows connections to frontend origins (required for API calls)
+                                                .contentSecurityPolicy(csp -> csp
+                                                        .policyDirectives("default-src 'self'; " +
+                                                                "script-src 'self' 'unsafe-inline' 'unsafe-eval'; " +
+                                                                "style-src 'self' 'unsafe-inline'; " +
+                                                                "img-src 'self' data: https:; " +
+                                                                "font-src 'self' data:; " +
+                                                                "connect-src 'self' http://localhost:3000 https://gydi-front-next.vercel.app; " +
+                                                                "frame-ancestors 'self'"))
+
+                                                // ℹ️ Strict-Transport-Security (HSTS): Disabled for local development
+                                                // TODO: Enable in PRODUCTION with HTTPS
+                                                // .httpStrictTransportSecurity(hsts -> hsts
+                                                //         .maxAgeInSeconds(31536000)
+                                                //         .includeSubDomains(true))
+                                );
 
                 return http.build();
         }

@@ -1,5 +1,7 @@
 package com.affiliate.rentals.gydi.subscriptions.application.service;
 
+import com.affiliate.rentals.gydi.commissions.domain.model.HostCommission;
+import com.affiliate.rentals.gydi.commissions.domain.ports.HostCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.*;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentGatewayPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.SubscriptionTransactionRepositoryPort;
@@ -7,6 +9,7 @@ import com.affiliate.rentals.gydi.subscriptions.domain.ports.UserSubscriptionRep
 import com.stripe.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,6 +42,12 @@ public class StripeWebhookService {
     private final UserSubscriptionRepositoryPort subscriptionRepository;
     private final SubscriptionTransactionRepositoryPort transactionRepository;
     private final PaymentGatewayPort paymentGateway;
+
+    @Autowired(required = false)
+    private HostCommissionRepositoryPort hostCommissionRepository;
+
+    @Autowired(required = false)
+    private com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort connectAccountRepository;
 
     public StripeWebhookService(
             UserSubscriptionRepositoryPort subscriptionRepository,
@@ -94,6 +103,9 @@ public class StripeWebhookService {
                 case "payment_method.attached" -> handlePaymentMethodAttached(event);
                 case "payment_method.detached" -> handlePaymentMethodDetached(event);
 
+                // Connect Account Events (FASE 3: Affiliate Onboarding)
+                case "account.updated" -> handleAccountUpdated(event);
+
                 default -> log.info("Unhandled webhook event type: {}", eventType);
             }
 
@@ -143,6 +155,7 @@ public class StripeWebhookService {
      * Handles payment_intent.payment_failed event.
      *
      * <p>This event indicates that a payment attempt failed.</p>
+     * <p>Handles both subscription payments AND commission charges.</p>
      */
     private void handlePaymentIntentFailed(Event event) {
         PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer()
@@ -154,21 +167,100 @@ public class StripeWebhookService {
             return;
         }
 
-        log.warn("Payment intent failed: {} - Reason: {}",
-            paymentIntent.getId(),
-            paymentIntent.getLastPaymentError() != null
+        String failureReason = paymentIntent.getLastPaymentError() != null
                 ? paymentIntent.getLastPaymentError().getMessage()
-                : "Unknown");
+                : "Unknown";
 
+        log.warn("Payment intent failed: {} - Reason: {}", paymentIntent.getId(), failureReason);
+
+        // Check if this is a commission charge (has commission_id in metadata)
+        String commissionId = paymentIntent.getMetadata() != null
+                ? paymentIntent.getMetadata().get("commission_id")
+                : null;
+
+        if (commissionId != null && hostCommissionRepository != null) {
+            handleCommissionPaymentFailure(commissionId, failureReason);
+            return;
+        }
+
+        // Otherwise, handle as subscription payment
         String subscriptionId = paymentIntent.getMetadata() != null
-            ? paymentIntent.getMetadata().get("subscription_id")
-            : null;
+                ? paymentIntent.getMetadata().get("subscription_id")
+                : null;
 
         if (subscriptionId != null) {
             log.warn("Payment failed for subscription: {}", subscriptionId);
             // TODO: Update transaction status to FAILED
             // TODO: Potentially suspend subscription after multiple failures
         }
+    }
+
+    /**
+     * Handles commission payment failure.
+     *
+     * <p>Updates HostCommission status to FAILED and calculates next retry time.</p>
+     *
+     * @param commissionIdStr the commission ID from metadata
+     * @param failureReason the reason for failure
+     */
+    private void handleCommissionPaymentFailure(String commissionIdStr, String failureReason) {
+        try {
+            Long commissionId = Long.parseLong(commissionIdStr);
+
+            log.warn("========================================");
+            log.warn("Commission payment failed: ID={}, reason={}", commissionId, failureReason);
+            log.warn("========================================");
+
+            HostCommission commission = hostCommissionRepository.findById(commissionId)
+                    .orElse(null);
+
+            if (commission == null) {
+                log.error("HostCommission not found for ID: {}", commissionId);
+                return;
+            }
+
+            // Increment attempt count
+            int newAttemptCount = commission.getAttemptCount() + 1;
+
+            // Calculate next retry time (exponential backoff: +24h, +72h, +168h)
+            LocalDateTime nextRetryAt = calculateNextRetryTime(newAttemptCount);
+
+            // Update commission to FAILED status
+            commission.markAsFailed(
+                    failureReason,
+                    newAttemptCount,
+                    LocalDateTime.now(),
+                    nextRetryAt
+            );
+
+            hostCommissionRepository.save(commission);
+
+            log.warn("Commission {} marked as FAILED (attempt {}/3). Next retry: {}",
+                    commissionId, newAttemptCount, nextRetryAt);
+
+            // TODO: Send email notification to host
+            // TODO: If max retries reached (3), trigger property suspension
+
+        } catch (NumberFormatException e) {
+            log.error("Invalid commission_id in metadata: {}", commissionIdStr, e);
+        } catch (Exception e) {
+            log.error("Error handling commission payment failure: {}", e.getMessage(), e);
+        }
+    }
+
+    /**
+     * Calculates next retry time based on attempt count (exponential backoff).
+     *
+     * @param attemptCount current attempt count
+     * @return next retry timestamp
+     */
+    private LocalDateTime calculateNextRetryTime(int attemptCount) {
+        return switch (attemptCount) {
+            case 1 -> LocalDateTime.now().plusHours(24);   // 1st failure: retry in 24h
+            case 2 -> LocalDateTime.now().plusHours(72);   // 2nd failure: retry in 72h (3 days total)
+            case 3 -> LocalDateTime.now().plusHours(168);  // 3rd failure: retry in 168h (7 days total)
+            default -> LocalDateTime.now().plusDays(30);   // Fallback (shouldn't reach here)
+        };
     }
 
     /**
@@ -510,6 +602,71 @@ public class StripeWebhookService {
         // Mark payment method as inactive in our database
         // This would be implemented with a method to find by gatewayToken
         // TODO: Mark payment method as inactive
+    }
+
+    // ========== Connect Account Event Handlers (FASE 3) ==========
+
+    /**
+     * Handles account.updated event.
+     * <p>
+     * This event is triggered when a Stripe Connect Account is updated,
+     * typically after user completes onboarding or when capabilities are enabled/disabled.
+     * </p>
+     * <p>
+     * We use this to track:
+     * - onboarding_completed (details_submitted)
+     * - payouts_enabled
+     * - charges_enabled
+     * </p>
+     */
+    private void handleAccountUpdated(Event event) {
+        if (connectAccountRepository == null) {
+            log.debug("ConnectAccountRepository not available, skipping account.updated event");
+            return;
+        }
+
+        Account account = (Account) event.getDataObjectDeserializer()
+            .getObject()
+            .orElse(null);
+
+        if (account == null) {
+            log.warn("Account data is null for event: {}", event.getId());
+            return;
+        }
+
+        String stripeAccountId = account.getId();
+
+        log.info("========================================");
+        log.info("Connect Account updated: {}", stripeAccountId);
+        log.info("  Details Submitted: {}", account.getDetailsSubmitted());
+        log.info("  Payouts Enabled: {}", account.getPayoutsEnabled());
+        log.info("  Charges Enabled: {}", account.getChargesEnabled());
+        log.info("========================================");
+
+        // Find account in our database
+        connectAccountRepository.findByStripeAccountId(stripeAccountId)
+            .ifPresentOrElse(
+                connectAccount -> {
+                    // Update account status from Stripe webhook
+                    connectAccount.updateFromStripeWebhook(
+                        account.getDetailsSubmitted() != null && account.getDetailsSubmitted(),
+                        account.getPayoutsEnabled() != null && account.getPayoutsEnabled(),
+                        account.getChargesEnabled() != null && account.getChargesEnabled()
+                    );
+
+                    connectAccountRepository.save(connectAccount);
+
+                    log.info("StripeConnectAccount updated: userId={}, onboardingComplete={}, payoutsEnabled={}",
+                        connectAccount.getUserId(),
+                        connectAccount.isOnboardingCompleted(),
+                        connectAccount.isPayoutsEnabled());
+
+                    // TODO: If onboarding just completed, send welcome email
+                    // TODO: Update user_onboarding_status table (affiliate_connect_completed=true)
+
+                },
+                () -> log.warn("StripeConnectAccount not found in database: {}", stripeAccountId)
+            );
     }
 
     // ========== Helper Methods ==========

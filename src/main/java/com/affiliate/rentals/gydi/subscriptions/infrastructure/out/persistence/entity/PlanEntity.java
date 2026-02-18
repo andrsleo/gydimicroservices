@@ -68,9 +68,25 @@ public class PlanEntity {
 
     /**
      * The commission rate for referrals (as decimal, e.g., 0.02 for 2%).
+     * @deprecated Use affiliateCommissionRate or hostCommissionRate instead for role-specific rates.
      */
+    @Deprecated(since = "2.0", forRemoval = false)
     @Column(name = "commission_rate", nullable = false, precision = 5, scale = 4)
     private BigDecimal commissionRate;
+
+    /**
+     * Commission rate for AFFILIATE role: percentage of booking amount that platform PAYS to affiliate.
+     * Examples: 0.02 (FREE), 0.05 (PRO), 0.10 (ELITE)
+     */
+    @Column(name = "affiliate_commission_rate", precision = 5, scale = 4)
+    private BigDecimal affiliateCommissionRate;
+
+    /**
+     * Platform fee rate for HOST role: percentage of booking amount that platform CHARGES to host.
+     * Examples: 0.25 (FREE), 0.20 (PRO), 0.15 (ELITE)
+     */
+    @Column(name = "host_commission_rate", precision = 5, scale = 4)
+    private BigDecimal hostCommissionRate;
 
     /**
      * Maximum number of referrals that can be generated per month.

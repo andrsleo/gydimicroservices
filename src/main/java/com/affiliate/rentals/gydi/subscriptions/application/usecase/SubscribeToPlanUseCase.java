@@ -85,9 +85,15 @@ public class SubscribeToPlanUseCase {
             throw new InvalidSubscriptionStateException("Plan " + request.planCode() + " is not active");
         }
 
-        // 2. Check if user already has active subscription
-        subscriptionRepository.findByUserId(userId).ifPresent(existing -> {
-            if (existing.isActive()) {
+        // 2. Check if user already has subscription
+        Optional<UserSubscription> existingSubscriptionOpt = subscriptionRepository.findByUserId(userId);
+
+        // 2.1 If user has existing subscription on PAID plan and it's active → Block
+        existingSubscriptionOpt.ifPresent(existing -> {
+            Plan existingPlan = planRepository.findById(existing.planId()).orElse(null);
+
+            // Block if user has active PAID plan (PRO/ELITE)
+            if (existing.isActive() && existingPlan != null && !existingPlan.isFree()) {
                 throw InvalidSubscriptionStateException.alreadySubscribed(request.planCode());
             }
         });
@@ -113,33 +119,67 @@ public class SubscribeToPlanUseCase {
             }
         }
 
-        // 4. Create subscription
+        // 4. Create or update subscription
         LocalDateTime now = LocalDateTime.now();
         LocalDateTime expiresAt = plan.isFree() ? null : now.plusMonths(1);
         LocalDateTime nextBillingDate = plan.isFree() ? null : expiresAt;
 
-        UserSubscription subscription = UserSubscription.builder()
-                .userId(userId)
-                .planId(plan.id())
-                .status(SubscriptionStatus.ACTIVE)
-                .startedAt(now)
-                .createdAt(now)
-                .updatedAt(now)
-                .expiresAt(expiresAt)
-                .paymentMethodId(paymentMethod != null ? paymentMethod.id() : null)
-                .autoRenew(request.autoRenew())
-                .nextBillingDate(nextBillingDate)
-                .build();
+        UserSubscription subscription;
+
+        if (existingSubscriptionOpt.isPresent()) {
+            // Update existing subscription (upgrade from FREE or renew after cancellation)
+            UserSubscription existing = existingSubscriptionOpt.get();
+            logger.info("Updating existing subscription {} for user {} to plan {}",
+                    existing.id(), userId, plan.planCode());
+
+            subscription = UserSubscription.builder()
+                    .from(existing)  // Keep existing ID and other fields
+                    .planId(plan.id())
+                    .status(SubscriptionStatus.ACTIVE)
+                    .startedAt(now)  // Reset start date for new plan
+                    .updatedAt(now)
+                    .expiresAt(expiresAt)
+                    .paymentMethodId(paymentMethod != null ? paymentMethod.id() : null)
+                    .autoRenew(request.autoRenew())
+                    .nextBillingDate(nextBillingDate)
+                    .canceledAt(null)  // Clear cancellation fields
+                    .cancelationReason(null)
+                    .build();
+        } else {
+            // Create new subscription
+            logger.info("Creating new subscription for user {} on plan {}", userId, plan.planCode());
+
+            subscription = UserSubscription.builder()
+                    .userId(userId)
+                    .planId(plan.id())
+                    .status(SubscriptionStatus.ACTIVE)
+                    .startedAt(now)
+                    .createdAt(now)
+                    .updatedAt(now)
+                    .expiresAt(expiresAt)
+                    .paymentMethodId(paymentMethod != null ? paymentMethod.id() : null)
+                    .autoRenew(request.autoRenew())
+                    .nextBillingDate(nextBillingDate)
+                    .build();
+        }
 
         UserSubscription savedSubscription = subscriptionRepository.save(subscription);
 
         // 5. Create transaction record
+        // Determine transaction type: UPGRADE if existing subscription, INITIAL_SUBSCRIPTION if new
+        TransactionType transactionType = existingSubscriptionOpt.isPresent()
+                ? TransactionType.UPGRADE
+                : TransactionType.INITIAL_SUBSCRIPTION;
+
+        Long fromPlanId = existingSubscriptionOpt.map(UserSubscription::planId).orElse(null);
+
         SubscriptionTransaction transaction = SubscriptionTransaction.builder()
                 .userSubscriptionId(savedSubscription.id())
                 .userId(userId)
                 .paymentMethodId(paymentMethod != null ? paymentMethod.id() : null)
-                .transactionType(TransactionType.INITIAL_SUBSCRIPTION)
+                .transactionType(transactionType)
                 .transactionStatus(TransactionStatus.COMPLETED)
+                .fromPlanId(fromPlanId)  // Previous plan if upgrading
                 .toPlanId(plan.id())
                 .amount(plan.monthlyPrice())
                 .currency(plan.currency())
@@ -152,8 +192,7 @@ public class SubscribeToPlanUseCase {
 
         transactionRepository.save(transaction);
 
-        // 6. For paid plans, create Stripe subscription (non-blocking - fails
-        // gracefully)
+        // 6. For paid plans, create Stripe subscription (throws PaymentFailedException on any failure)
         UserSubscription finalSubscription = createStripeSubscriptionIfAvailable(
                 savedSubscription,
                 plan,
@@ -167,30 +206,18 @@ public class SubscribeToPlanUseCase {
      * Creates a Stripe subscription for paid plans.
      *
      * <p>
-     * This method attempts to create a Stripe Subscription immediately during
-     * subscription.
-     * If the PaymentGateway is not available or the creation fails, the error is
-     * logged
-     * and the subscription proceeds normally. The Stripe subscription can be
-     * created later
-     * when needed.
+     * This method attaches the payment method to the Stripe customer, then creates
+     * the Stripe Subscription. Any failure (payment declined, insufficient funds,
+     * network error, or misconfiguration) throws a {@link PaymentFailedException},
+     * causing the enclosing {@code @Transactional} to roll back the local DB record.
      * </p>
      *
-     * <p>
-     * <strong>Why fail gracefully:</strong>
-     * </p>
-     * <ul>
-     * <li>Stripe might be temporarily unavailable</li>
-     * <li>API keys might not be configured in development environments</li>
-     * <li>User subscription should not be blocked by payment system issues</li>
-     * </ul>
-     *
-     * @param subscription          the local subscription record
+     * @param subscription          the local subscription record (not yet committed)
      * @param plan                  the subscription plan
      * @param userId                the user ID
-     * @param stripePaymentMethodId the Stripe payment method ID
-     * @return the subscription with stripeSubscriptionId set if successful,
-     *         otherwise the original subscription
+     * @param stripePaymentMethodId the Stripe payment method token (pm_xxx)
+     * @return the subscription updated with the Stripe subscription ID
+     * @throws PaymentFailedException if Stripe payment fails for any reason
      */
     private UserSubscription createStripeSubscriptionIfAvailable(
             UserSubscription subscription,
@@ -238,6 +265,15 @@ public class SubscribeToPlanUseCase {
                     userId, user.stripeCustomerId(), plan.planCode(), plan.stripePriceId());
             logger.info("   → Payment Method: {}", stripePaymentMethodId != null ? stripePaymentMethodId : "default");
 
+            // Attach payment method to customer before creating subscription
+            // Stripe requires the PM to be attached to the customer first
+            if (stripePaymentMethodId != null) {
+                logger.info("🔗 Attaching payment method {} to customer {}", stripePaymentMethodId,
+                        user.stripeCustomerId());
+                paymentGateway.get().attachPaymentMethod(stripePaymentMethodId, user.stripeCustomerId());
+                logger.info("   → Payment method attached successfully");
+            }
+
             // Create Stripe subscription
             PaymentGatewayPort.SubscriptionResult stripeSubscription = paymentGateway.get().createSubscription(
                     user.stripeCustomerId(),
@@ -259,15 +295,15 @@ public class SubscribeToPlanUseCase {
             // Save updated subscription with Stripe subscription ID
             return subscriptionRepository.save(updatedSubscription);
 
+        } catch (PaymentFailedException e) {
+            // Payment was declined — re-throw so @Transactional rolls back the DB record
+            logger.error("❌ Payment declined for user {} on plan {}: {}", userId, plan.planCode(), e.getMessage());
+            throw e;
         } catch (Exception e) {
-            // Log error with full stack trace
-            logger.error("❌ CRITICAL ERROR: Failed to create Stripe subscription for user {} on plan {}",
-                    userId, plan.planCode());
-            logger.error("   → Error Type: {}", e.getClass().getSimpleName());
-            logger.error("   → Error Message: {}", e.getMessage());
-            logger.error("   → Full Stack Trace:", e);
-            logger.error("   → Subscription will proceed WITHOUT Stripe integration!");
-            return subscription;
+            // Any other Stripe/gateway error also fails the subscription
+            logger.error("❌ Failed to create Stripe subscription for user {} on plan {}: {}",
+                    userId, plan.planCode(), e.getMessage(), e);
+            throw PaymentFailedException.forPlan(plan.planCode(), e.getMessage());
         }
     }
 }

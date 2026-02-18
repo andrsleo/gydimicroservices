@@ -48,19 +48,20 @@ public class CookieService {
     private static final Logger log = LoggerFactory.getLogger(CookieService.class);
 
     private final Environment environment;
+    private final JwtService jwtService;
 
     private static final String ACCESS_TOKEN_COOKIE = "access_token";
     private static final String REFRESH_TOKEN_COOKIE = "refresh_token";
-    private static final int ACCESS_TOKEN_MAX_AGE = 24 * 60 * 60; // 24 hours
-    private static final int REFRESH_TOKEN_MAX_AGE = 7 * 24 * 60 * 60; // 7 days
 
     /**
      * Constructor for dependency injection.
      *
      * @param environment Spring Environment for profile detection
+     * @param jwtService JWT service for token expiration info
      */
-    public CookieService(Environment environment) {
+    public CookieService(Environment environment, JwtService jwtService) {
         this.environment = environment;
+        this.jwtService = jwtService;
     }
 
     /**
@@ -86,9 +87,14 @@ public class CookieService {
         boolean isLocalhost = environment.acceptsProfiles(Profiles.of("local"));
         String sameSite = isLocalhost ? "Lax" : "None";
 
-        log.info("🍪 Setting auth cookies - Profile: {}, Secure: {}, SameSite: {}",
+        // ✅ INACTIVITY TIMEOUT SYNC: Get token expiration from JwtService configuration
+        // This ensures cookie max-age matches JWT expiration (now 1 hour instead of 24h)
+        long accessTokenMaxAgeSeconds = jwtService.getAccessTokenExpirationInSeconds();
+        long refreshTokenMaxAgeSeconds = jwtService.getRefreshExpirationInSeconds();
+
+        log.info("🍪 Setting auth cookies - Profile: {}, Secure: {}, SameSite: {}, Access Token Max-Age: {}s ({}h)",
                  environment.getActiveProfiles().length > 0 ? environment.getActiveProfiles()[0] : "default",
-                 isSecure, sameSite);
+                 isSecure, sameSite, accessTokenMaxAgeSeconds, accessTokenMaxAgeSeconds / 3600);
 
         // Set access token cookie using Spring's ResponseCookie for proper SameSite support
         ResponseCookie accessCookie = ResponseCookie.from(ACCESS_TOKEN_COOKIE, accessToken)
@@ -96,12 +102,12 @@ public class CookieService {
                 .httpOnly(true) // XSS protection
                 .secure(isSecure) // HTTPS only (required for SameSite=None)
                 .sameSite(sameSite)
-                .maxAge(Duration.ofSeconds(ACCESS_TOKEN_MAX_AGE))
+                .maxAge(Duration.ofSeconds(accessTokenMaxAgeSeconds))
                 .build();
 
         response.addHeader("Set-Cookie", accessCookie.toString());
-        log.info("✅ Cookie set: {} (maxAge={}, Secure={}, SameSite={})",
-                 ACCESS_TOKEN_COOKIE, ACCESS_TOKEN_MAX_AGE, isSecure, sameSite);
+        log.info("✅ Cookie set: {} (maxAge={}s, Secure={}, SameSite={})",
+                 ACCESS_TOKEN_COOKIE, accessTokenMaxAgeSeconds, isSecure, sameSite);
 
         // Set refresh token cookie if provided
         if (refreshToken != null && !refreshToken.isBlank()) {
@@ -110,12 +116,12 @@ public class CookieService {
                     .httpOnly(true) // XSS protection
                     .secure(isSecure) // HTTPS only (required for SameSite=None)
                     .sameSite(sameSite)
-                    .maxAge(Duration.ofSeconds(REFRESH_TOKEN_MAX_AGE))
-                    .build();
+                    .maxAge(Duration.ofSeconds(refreshTokenMaxAgeSeconds))
+                .build();
 
             response.addHeader("Set-Cookie", refreshCookie.toString());
-            log.info("✅ Cookie set: {} (maxAge={}, Secure={}, SameSite={})",
-                     REFRESH_TOKEN_COOKIE, REFRESH_TOKEN_MAX_AGE, isSecure, sameSite);
+            log.info("✅ Cookie set: {} (maxAge={}s, Secure={}, SameSite={})",
+                     REFRESH_TOKEN_COOKIE, refreshTokenMaxAgeSeconds, isSecure, sameSite);
         }
     }
 

@@ -24,7 +24,7 @@ import java.math.BigDecimal;
  * but won't affect the booking status.
  * </p>
  */
-@Component
+@Component("paymentBookingFinishedEventHandler")
 public class BookingFinishedEventHandler {
 
     private static final Logger log = LoggerFactory.getLogger(BookingFinishedEventHandler.class);

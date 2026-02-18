@@ -36,6 +36,8 @@ public class PlanEntityMapper {
         entity.setMonthlyPrice(plan.monthlyPrice());
         entity.setCurrency(plan.currency());
         entity.setCommissionRate(plan.commissionRate());
+        entity.setAffiliateCommissionRate(plan.affiliateCommissionRate());
+        entity.setHostCommissionRate(plan.hostCommissionRate());
         entity.setReferralLimitPerMonth(plan.referralLimitPerMonth());
         entity.setPropertyPublishLimit(plan.propertyPublishLimit());
         entity.setIsActive(plan.isActive());
@@ -67,6 +69,8 @@ public class PlanEntityMapper {
                 .monthlyPrice(entity.getMonthlyPrice())
                 .currency(entity.getCurrency())
                 .commissionRate(entity.getCommissionRate())
+                .affiliateCommissionRate(entity.getAffiliateCommissionRate())
+                .hostCommissionRate(entity.getHostCommissionRate())
                 .referralLimitPerMonth(entity.getReferralLimitPerMonth())
                 .propertyPublishLimit(entity.getPropertyPublishLimit())
                 .isActive(entity.getIsActive())
