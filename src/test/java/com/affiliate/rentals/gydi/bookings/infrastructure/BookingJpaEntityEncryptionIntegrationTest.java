@@ -3,7 +3,6 @@ package com.affiliate.rentals.gydi.bookings.infrastructure;
 import com.affiliate.rentals.gydi.bookings.domain.model.BookingStatus;
 import com.affiliate.rentals.gydi.bookings.infrastructure.out.persistence.entity.BookingJpaEntity;
 import com.affiliate.rentals.gydi.bookings.infrastructure.out.persistence.repository.BookingJpaRepository;
-import org.junit.jupiter.api.Disabled;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -37,8 +36,7 @@ import static org.junit.jupiter.api.Assertions.*;
 @DataJpaTest
 @ActiveProfiles("test")
 @AutoConfigureTestDatabase(replace = AutoConfigureTestDatabase.Replace.NONE)
-@DisplayName("Booking PII Encryption Integration Tests (DISABLED - Requires PostgreSQL)")
-@Disabled("Requires PostgreSQL with bookings schema. H2 doesn't support schemas. Run manually with PostgreSQL.")
+@DisplayName("Booking PII Encryption Integration Tests")
 class BookingJpaEntityEncryptionIntegrationTest {
 
     @Autowired
@@ -67,7 +65,7 @@ class BookingJpaEntityEncryptionIntegrationTest {
 
         // Then - Verify PII is encrypted in database (raw SQL query)
         Map<String, Object> rawData = jdbcTemplate.queryForMap(
-                "SELECT guest_name, guest_email, guest_phone FROM booking WHERE id = ?",
+                "SELECT guest_name, guest_email, guest_phone FROM bookings.booking WHERE id = ?",
                 saved.getId()
         );
 
@@ -190,11 +188,11 @@ class BookingJpaEntityEncryptionIntegrationTest {
 
         // Then - Encrypted values in DB should be different (due to random IV)
         Map<String, Object> raw1 = jdbcTemplate.queryForMap(
-                "SELECT guest_name, guest_email FROM booking WHERE id = ?",
+                "SELECT guest_name, guest_email FROM bookings.booking WHERE id = ?",
                 saved1.getId()
         );
         Map<String, Object> raw2 = jdbcTemplate.queryForMap(
-                "SELECT guest_name, guest_email FROM booking WHERE id = ?",
+                "SELECT guest_name, guest_email FROM bookings.booking WHERE id = ?",
                 saved2.getId()
         );
 

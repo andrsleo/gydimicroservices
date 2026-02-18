@@ -12,6 +12,7 @@ import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentMethodReposi
 import com.affiliate.rentals.gydi.users.domain.model.Email;
 import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
@@ -19,7 +20,6 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.test.context.ActiveProfiles;
-import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -47,7 +47,6 @@ import static org.mockito.Mockito.when;
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@Transactional
 @DisplayName("Simple E2E Test: Host Commission Charge")
 class HostCommissionChargeSimpleE2ETest {
 
@@ -115,6 +114,13 @@ class HostCommissionChargeSimpleE2ETest {
         );
 
         pendingCommission = hostCommissionRepository.save(pendingCommission);
+    }
+
+    @AfterEach
+    void tearDown() {
+        if (pendingCommission != null && pendingCommission.getId() != null) {
+            hostCommissionRepository.deleteById(pendingCommission.getId());
+        }
     }
 
     @Test
