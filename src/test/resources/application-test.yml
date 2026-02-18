@@ -51,6 +51,10 @@ security:
     aes:
       secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
 
+encryption:
+  pii:
+    secret: 0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef
+
 jwt:
   secret: test-jwt-secret-key-for-tests-should-be-long-enough-to-be-secure
   expiration: 86400000 # 24 hours
