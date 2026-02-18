@@ -12,22 +12,17 @@ WORKDIR /app
 # Install Maven (Railway doesn't include it by default)
 RUN apk add --no-cache maven
 
-# Copy Maven wrapper and pom.xml first (for dependency caching)
+# Copy pom.xml first (for dependency caching)
 COPY pom.xml .
-COPY .mvn .mvn
-COPY mvnw .
-
-# Make mvnw executable
-RUN chmod +x mvnw
 
 # Download dependencies (this layer will be cached unless pom.xml changes)
-RUN ./mvnw dependency:go-offline -B
+RUN mvn dependency:go-offline -B
 
 # Copy source code
 COPY src src
 
 # Build the application (skip tests for faster builds)
-RUN ./mvnw clean package -DskipTests
+RUN mvn clean package -DskipTests
 
 # Verify JAR was created
 RUN ls -lh target/*.jar
