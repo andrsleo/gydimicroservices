@@ -86,8 +86,7 @@ public class SaveUploadedMediaUseCaseImpl implements SaveUploadedMediaUseCase {
             // Format: .../video/upload/v123/folder/filename.mp4
             // Thumbnail: .../video/upload/v123/folder/filename.jpg (same public_id, .jpg extension)
             String thumbnailUrl = generateVideoThumbnailUrl(mediaUrl.url());
-            // Duration will be null as we don't know it yet - frontend can update later if needed
-            property.addVideo(mediaUrl.url(), thumbnailUrl, mediaUrl.displayOrder(), null);
+            property.addVideo(mediaUrl.url(), thumbnailUrl, mediaUrl.displayOrder(), mediaUrl.durationSeconds());
         }
 
         // 4. Save and return
@@ -120,7 +119,9 @@ public class SaveUploadedMediaUseCaseImpl implements SaveUploadedMediaUseCase {
      * </ul>
      */
     private String generateVideoThumbnailUrl(String videoUrl) {
-        // Replace extension with .jpg (Cloudinary auto-generates)
-        return videoUrl.replaceFirst("\\.(mp4|mov|webm|avi|MOV)$", ".jpg");
+        // Insert so_0 transformation and replace extension with .jpg
+        return videoUrl
+                .replace("/video/upload/", "/video/upload/so_0/")
+                .replaceFirst("\\.(mp4|mov|webm|avi|MOV)$", ".jpg");
     }
 }

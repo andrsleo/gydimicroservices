@@ -12,7 +12,7 @@ public class PropertyVideo {
     private final PropertyId propertyId;
     private final String url;
     private final String thumbnailUrl;
-    private final int displayOrder;
+    private int displayOrder;
     private final Integer durationSeconds;
     private final LocalDateTime uploadedAt;
 
@@ -82,6 +82,13 @@ public class PropertyVideo {
 
     public int getDisplayOrder() {
         return displayOrder;
+    }
+
+    void setDisplayOrder(int newOrder) {
+        if (newOrder < 0) {
+            throw new IllegalArgumentException("Display order cannot be negative");
+        }
+        this.displayOrder = newOrder;
     }
 
     public Integer getDurationSeconds() {

@@ -387,6 +387,34 @@ public class Property {
     }
 
     /**
+     * Reorders property videos based on provided mapping.
+     *
+     * @param videoOrders map of video ID to new display order
+     * @throws IllegalArgumentException if validation fails
+     */
+    public void reorderVideos(java.util.Map<Long, Integer> videoOrders) {
+        if (videoOrders.isEmpty()) {
+            throw new IllegalArgumentException("Cannot reorder with empty orders");
+        }
+        java.util.Set<Long> currentIds = videos.stream()
+                .map(PropertyVideo::getId)
+                .collect(java.util.stream.Collectors.toSet());
+        if (!videoOrders.keySet().equals(currentIds)) {
+            throw new IllegalArgumentException("Video IDs in reorder request do not match current videos");
+        }
+        long distinctOrders = videoOrders.values().stream().distinct().count();
+        if (distinctOrders != videoOrders.size()) {
+            throw new IllegalArgumentException("Duplicate display orders detected");
+        }
+        for (PropertyVideo video : this.videos) {
+            Integer newOrder = videoOrders.get(video.getId());
+            video.setDisplayOrder(newOrder);
+        }
+        this.videos.sort(java.util.Comparator.comparingInt(PropertyVideo::getDisplayOrder));
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * Sets the cover/main image for this property.
      * The cover image is displayed in property listings.
      *

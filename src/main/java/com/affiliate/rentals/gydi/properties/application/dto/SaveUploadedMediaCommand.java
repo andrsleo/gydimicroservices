@@ -26,6 +26,8 @@ public record SaveUploadedMediaCommand(
                 message = "Must be a valid Cloudinary URL")
         String url,
 
-        int displayOrder
+        int displayOrder,
+
+        Integer durationSeconds
     ) {}
 }

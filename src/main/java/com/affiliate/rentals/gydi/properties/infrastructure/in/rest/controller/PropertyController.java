@@ -21,6 +21,9 @@ import com.affiliate.rentals.gydi.properties.application.dto.PropertyDetailRespo
 import com.affiliate.rentals.gydi.properties.application.dto.PropertyResponse;
 import com.affiliate.rentals.gydi.properties.application.dto.ReorderImagesRequest;
 import com.affiliate.rentals.gydi.properties.application.dto.ReorderImagesResponse;
+import com.affiliate.rentals.gydi.properties.application.dto.ReorderVideosRequest;
+import com.affiliate.rentals.gydi.properties.application.dto.ReorderVideosResponse;
+import com.affiliate.rentals.gydi.properties.application.usecase.ReorderPropertyVideosUseCase;
 import com.affiliate.rentals.gydi.properties.application.dto.UpdatePropertyRequest;
 import com.affiliate.rentals.gydi.properties.application.mapper.PropertyMapper;
 import com.affiliate.rentals.gydi.properties.domain.model.Property;
@@ -57,6 +60,7 @@ public class PropertyController {
         private final DeactivatePropertyUseCase deactivatePropertyUseCase;
         private final DeletePropertyUseCase deletePropertyUseCase;
         private final ReorderPropertyImagesUseCase reorderPropertyImagesUseCase;
+        private final ReorderPropertyVideosUseCase reorderPropertyVideosUseCase;
         private final DeletePropertyImageUseCase deletePropertyImageUseCase;
         private final DeletePropertyVideoUseCase deletePropertyVideoUseCase;
         private final PropertyRepositoryPort propertyRepository;
@@ -74,6 +78,7 @@ public class PropertyController {
                         DeactivatePropertyUseCase deactivatePropertyUseCase,
                         DeletePropertyUseCase deletePropertyUseCase,
                         ReorderPropertyImagesUseCase reorderPropertyImagesUseCase,
+                        ReorderPropertyVideosUseCase reorderPropertyVideosUseCase,
                         DeletePropertyImageUseCase deletePropertyImageUseCase,
                         DeletePropertyVideoUseCase deletePropertyVideoUseCase,
                         PropertyRepositoryPort propertyRepository,
@@ -90,6 +95,7 @@ public class PropertyController {
                 this.deactivatePropertyUseCase = deactivatePropertyUseCase;
                 this.deletePropertyUseCase = deletePropertyUseCase;
                 this.reorderPropertyImagesUseCase = reorderPropertyImagesUseCase;
+                this.reorderPropertyVideosUseCase = reorderPropertyVideosUseCase;
                 this.deletePropertyImageUseCase = deletePropertyImageUseCase;
                 this.deletePropertyVideoUseCase = deletePropertyVideoUseCase;
                 this.propertyRepository = propertyRepository;
@@ -347,6 +353,22 @@ public class PropertyController {
                 Long userId = jwtService.extractUserIdFromRequest(httpRequest);
 
                 ReorderImagesResponse response = reorderPropertyImagesUseCase.execute(
+                                Long.parseLong(id),
+                                userId,
+                                request);
+
+                return ResponseEntity.ok(response);
+        }
+
+        @org.springframework.web.bind.annotation.PatchMapping("/{id}/videos/reorder")
+        public ResponseEntity<ReorderVideosResponse> reorderVideos(
+                        @PathVariable String id,
+                        @Valid @RequestBody ReorderVideosRequest request,
+                        HttpServletRequest httpRequest) {
+
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+
+                ReorderVideosResponse response = reorderPropertyVideosUseCase.execute(
                                 Long.parseLong(id),
                                 userId,
                                 request);
