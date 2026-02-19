@@ -46,11 +46,13 @@ class SaveUploadedMediaUseCaseImplTest {
         List<SaveUploadedMediaCommand.MediaUrl> mediaUrls = List.of(
                 new SaveUploadedMediaCommand.MediaUrl(
                         "https://res.cloudinary.com/test/image/upload/v123/property/img1.jpg",
-                        0
+                        0,
+                        null
                 ),
                 new SaveUploadedMediaCommand.MediaUrl(
                         "https://res.cloudinary.com/test/image/upload/v123/property/img2.jpg",
-                        1
+                        1,
+                        null
                 )
         );
         SaveUploadedMediaCommand command = new SaveUploadedMediaCommand(mediaUrls);
@@ -74,7 +76,8 @@ class SaveUploadedMediaUseCaseImplTest {
         List<SaveUploadedMediaCommand.MediaUrl> mediaUrls = List.of(
                 new SaveUploadedMediaCommand.MediaUrl(
                         "https://res.cloudinary.com/test/video/upload/v123/property/video1.mp4",
-                        0
+                        0,
+                        null
                 )
         );
         SaveUploadedMediaCommand command = new SaveUploadedMediaCommand(mediaUrls);
@@ -90,7 +93,7 @@ class SaveUploadedMediaUseCaseImplTest {
         assertThat(result).isNotNull();
         verify(property).addVideo(
                 eq("https://res.cloudinary.com/test/video/upload/v123/property/video1.mp4"),
-                eq("https://res.cloudinary.com/test/video/upload/v123/property/video1.jpg"),
+                eq("https://res.cloudinary.com/test/video/upload/so_0/v123/property/video1.jpg"),
                 eq(0),
                 isNull()
         );
@@ -103,7 +106,8 @@ class SaveUploadedMediaUseCaseImplTest {
         SaveUploadedMediaCommand command = new SaveUploadedMediaCommand(List.of(
                 new SaveUploadedMediaCommand.MediaUrl(
                         "https://res.cloudinary.com/test/image/upload/v123/img.jpg",
-                        0
+                        0,
+                        null
                 )
         ));
 
@@ -124,7 +128,8 @@ class SaveUploadedMediaUseCaseImplTest {
         SaveUploadedMediaCommand command = new SaveUploadedMediaCommand(List.of(
                 new SaveUploadedMediaCommand.MediaUrl(
                         "https://res.cloudinary.com/test/image/upload/v123/img.jpg",
-                        0
+                        0,
+                        null
                 )
         ));
 
@@ -146,7 +151,8 @@ class SaveUploadedMediaUseCaseImplTest {
         SaveUploadedMediaCommand command = new SaveUploadedMediaCommand(List.of(
                 new SaveUploadedMediaCommand.MediaUrl(
                         "https://evil.com/malicious/file.jpg", // Not a Cloudinary URL
-                        0
+                        0,
+                        null
                 )
         ));
 
@@ -168,7 +174,8 @@ class SaveUploadedMediaUseCaseImplTest {
         SaveUploadedMediaCommand command = new SaveUploadedMediaCommand(List.of(
                 new SaveUploadedMediaCommand.MediaUrl(
                         "https://res.cloudinary.com/test/video/upload/v123/property/video.mp4",
-                        0
+                        0,
+                        null
                 )
         ));
 
@@ -182,7 +189,7 @@ class SaveUploadedMediaUseCaseImplTest {
         // Then
         verify(property).addVideo(
                 eq("https://res.cloudinary.com/test/video/upload/v123/property/video.mp4"),
-                eq("https://res.cloudinary.com/test/video/upload/v123/property/video.jpg"), // Thumbnail
+                eq("https://res.cloudinary.com/test/video/upload/so_0/v123/property/video.jpg"), // Thumbnail with so_0
                 eq(0),
                 isNull()
         );
