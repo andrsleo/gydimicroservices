@@ -3,7 +3,6 @@ package com.affiliate.rentals.gydi.properties.application.service;
 import org.springframework.stereotype.Component;
 
 import java.net.URI;
-import java.util.List;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -19,17 +18,10 @@ import java.util.regex.Pattern;
 @Component
 public class AirbnbUrlValidator {
 
-    private static final List<String> ALLOWED_DOMAINS = List.of(
-        "airbnb.com",
-        "www.airbnb.com",
-        "airbnb.es",
-        "www.airbnb.es",
-        "airbnb.mx",
-        "www.airbnb.mx",
-        "airbnb.ca",
-        "www.airbnb.ca",
-        "airbnb.co.uk",
-        "www.airbnb.co.uk"
+    // Matches any official Airbnb domain: airbnb.com, airbnb.com.co, airbnb.co.uk, airbnb.es, etc.
+    private static final Pattern AIRBNB_DOMAIN_PATTERN = Pattern.compile(
+        "^(?:www\\.)?airbnb\\.[a-z]{2,3}(?:\\.[a-z]{2})?$",
+        Pattern.CASE_INSENSITIVE
     );
 
     private static final Pattern AIRBNB_LISTING_PATTERN = Pattern.compile(
@@ -100,10 +92,11 @@ public class AirbnbUrlValidator {
     }
 
     /**
-     * Checks if a domain is in the allowed list.
+     * Checks if a domain matches the Airbnb domain pattern.
+     * Accepts any official Airbnb domain (e.g. airbnb.com, airbnb.com.co, airbnb.co.uk, airbnb.es).
      */
     private boolean isDomainAllowed(String host) {
-        return ALLOWED_DOMAINS.stream().anyMatch(host::equals);
+        return AIRBNB_DOMAIN_PATTERN.matcher(host).matches();
     }
 
     /**
