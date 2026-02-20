@@ -35,5 +35,8 @@ public record PropertyDetailResponse(
         String icalUrlAirbnb,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
-        LocalDateTime publishedAt) {
+        LocalDateTime publishedAt,
+        String denialReason,
+        LocalDateTime submittedAt,
+        LocalDateTime approvedAt) {
 }

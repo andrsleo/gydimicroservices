@@ -29,5 +29,8 @@ public record PropertyResponse(
         String importMode, // MANUAL or SEMI_IMPORT (for display purposes)
         LocalDateTime createdAt,
         LocalDateTime publishedAt,
-        String icalUrlAirbnb) {
+        String icalUrlAirbnb,
+        String denialReason,
+        LocalDateTime submittedAt,
+        LocalDateTime approvedAt) {
 }

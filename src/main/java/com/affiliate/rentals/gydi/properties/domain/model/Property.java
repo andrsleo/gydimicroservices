@@ -1,6 +1,7 @@
 package com.affiliate.rentals.gydi.properties.domain.model;
 
 import com.affiliate.rentals.gydi.properties.domain.exception.PropertyCannotBePublishedException;
+import com.affiliate.rentals.gydi.properties.domain.exception.PropertyTransitionNotAllowedException;
 
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -42,6 +43,11 @@ public class Property {
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
     private LocalDateTime publishedAt;
+    // Admin approval workflow fields
+    private String denialReason;
+    private LocalDateTime submittedAt;
+    private LocalDateTime approvedAt;
+    private LocalDateTime deniedAt;
 
     private Property(Builder builder) {
         // Allow null ID for new entities (will be assigned by repository/database)
@@ -69,6 +75,10 @@ public class Property {
         this.createdAt = builder.createdAt != null ? builder.createdAt : LocalDateTime.now();
         this.updatedAt = builder.updatedAt != null ? builder.updatedAt : LocalDateTime.now();
         this.publishedAt = builder.publishedAt;
+        this.denialReason = builder.denialReason;
+        this.submittedAt = builder.submittedAt;
+        this.approvedAt = builder.approvedAt;
+        this.deniedAt = builder.deniedAt;
 
         validate();
     }
@@ -124,7 +134,35 @@ public class Property {
     }
 
     /**
-     * Collects all validation errors that prevent publishing.
+     * Checks if this property meets the minimum content requirements to be submitted for approval.
+     * Used by the update use case to decide whether to auto-transition DRAFT → SEND_GYDI_COHOST.
+     *
+     * @return true if all content validations pass
+     */
+    public boolean meetsSubmitConditions() {
+        return collectSubmitValidationErrors().isEmpty();
+    }
+
+    /**
+     * Transitions property to SEND_GYDI_COHOST state.
+     * Called automatically after an update when a DRAFT property satisfies all content requirements.
+     * Also called when the iCal/Airbnb URL changes on a PUBLISHED or INACTIVE property,
+     * requiring the host to re-add GYDI as co-host on the new Airbnb listing.
+     *
+     * @throws PropertyTransitionNotAllowedException if current status is not DRAFT, PUBLISHED, or INACTIVE
+     */
+    public void transitionToSendGydiCohost() {
+        if (this.status != PropertyStatus.DRAFT
+                && this.status != PropertyStatus.PUBLISHED
+                && this.status != PropertyStatus.INACTIVE) {
+            throw new PropertyTransitionNotAllowedException(this.status, PropertyStatus.SEND_GYDI_COHOST);
+        }
+        this.status = PropertyStatus.SEND_GYDI_COHOST;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Collects all validation errors that prevent publishing (legacy flow).
      *
      * @return list of validation error messages
      */
@@ -139,6 +177,26 @@ public class Property {
         validateAmenities(errors);
         validateListingType(errors);
         validateStatus(errors);
+
+        return errors;
+    }
+
+    /**
+     * Collects content validation errors for the submit-for-approval flow.
+     * Does not check status (caller is responsible for status transitions).
+     *
+     * @return list of validation error messages
+     */
+    private List<String> collectSubmitValidationErrors() {
+        List<String> errors = new ArrayList<>();
+
+        validateImages(errors);
+        validateBasicInfo(errors);
+        validatePricing(errors);
+        validateLocation(errors);
+        validateSpecs(errors);
+        validateAmenities(errors);
+        validateListingType(errors);
 
         return errors;
     }
@@ -236,8 +294,10 @@ public class Property {
     }
 
     private void validateStatus(List<String> errors) {
-        if (status != PropertyStatus.DRAFT) {
-            errors.add("Only properties in DRAFT status can be published");
+        if (status != PropertyStatus.DRAFT && status != PropertyStatus.DENY
+                && status != PropertyStatus.SEND_GYDI_COHOST
+                && status != PropertyStatus.PUBLISHED && status != PropertyStatus.INACTIVE) {
+            errors.add("Property cannot be submitted for approval from status: " + status);
         }
     }
 
@@ -578,6 +638,79 @@ public class Property {
         this.updatedAt = LocalDateTime.now();
     }
 
+    /**
+     * Submits the property for admin review.
+     * Allowed from: SEND_GYDI_COHOST (host confirmed co-host addition) and DENY (re-submission).
+     * DRAFT properties must first auto-transition to SEND_GYDI_COHOST via an update.
+     * DENY re-submissions go directly here without revisiting the SEND_GYDI_COHOST step.
+     *
+     * @throws PropertyTransitionNotAllowedException if current status does not allow submission
+     * @throws PropertyCannotBePublishedException    if property content validation fails
+     */
+    public void submitForApproval() {
+        if (this.status != PropertyStatus.SEND_GYDI_COHOST && this.status != PropertyStatus.DENY) {
+            throw new PropertyTransitionNotAllowedException(this.status, PropertyStatus.PENDING_APPROVAL);
+        }
+
+        List<String> errors = collectSubmitValidationErrors();
+        if (!errors.isEmpty()) {
+            throw new PropertyCannotBePublishedException(errors);
+        }
+
+        this.status = PropertyStatus.PENDING_APPROVAL;
+        this.submittedAt = LocalDateTime.now();
+        this.denialReason = null;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Approves a pending property, making it publicly visible.
+     * Only allowed when status is PENDING_APPROVAL.
+     *
+     * @throws PropertyTransitionNotAllowedException if property is not in PENDING_APPROVAL status
+     */
+    public void approvePendingProperty() {
+        if (this.status != PropertyStatus.PENDING_APPROVAL) {
+            throw new PropertyTransitionNotAllowedException(this.status, PropertyStatus.PUBLISHED);
+        }
+        this.status = PropertyStatus.PUBLISHED;
+        this.approvedAt = LocalDateTime.now();
+        this.publishedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Denies a pending property with a reason. Host can fix and re-submit.
+     * Only allowed when status is PENDING_APPROVAL.
+     *
+     * @param reason the denial reason explaining what needs to be fixed
+     * @throws PropertyTransitionNotAllowedException if property is not in PENDING_APPROVAL status
+     */
+    public void denyProperty(String reason) {
+        if (this.status != PropertyStatus.PENDING_APPROVAL) {
+            throw new PropertyTransitionNotAllowedException(this.status, PropertyStatus.DENY);
+        }
+        this.status = PropertyStatus.DENY;
+        this.denialReason = reason;
+        this.deniedAt = LocalDateTime.now();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Reactivates a property that was previously approved and is now inactive.
+     * Goes directly back to PUBLISHED without re-review (already approved before).
+     * Only allowed when status is INACTIVE.
+     *
+     * @throws PropertyTransitionNotAllowedException if property is not in INACTIVE status
+     */
+    public void reactivate() {
+        if (this.status != PropertyStatus.INACTIVE) {
+            throw new PropertyTransitionNotAllowedException(this.status, PropertyStatus.PUBLISHED);
+        }
+        this.status = PropertyStatus.PUBLISHED;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public void delete() {
         this.status = PropertyStatus.DELETED;
         this.updatedAt = LocalDateTime.now();
@@ -698,6 +831,22 @@ public class Property {
         return icalUrlAirbnb;
     }
 
+    public String getDenialReason() {
+        return denialReason;
+    }
+
+    public LocalDateTime getSubmittedAt() {
+        return submittedAt;
+    }
+
+    public LocalDateTime getApprovedAt() {
+        return approvedAt;
+    }
+
+    public LocalDateTime getDeniedAt() {
+        return deniedAt;
+    }
+
     @Override
     public boolean equals(Object o) {
         if (this == o)
@@ -744,6 +893,10 @@ public class Property {
         private LocalDateTime createdAt;
         private LocalDateTime updatedAt;
         private LocalDateTime publishedAt;
+        private String denialReason;
+        private LocalDateTime submittedAt;
+        private LocalDateTime approvedAt;
+        private LocalDateTime deniedAt;
 
         public Builder id(PropertyId id) {
             this.id = id;
@@ -862,6 +1015,26 @@ public class Property {
 
         public Builder publishedAt(LocalDateTime publishedAt) {
             this.publishedAt = publishedAt;
+            return this;
+        }
+
+        public Builder denialReason(String denialReason) {
+            this.denialReason = denialReason;
+            return this;
+        }
+
+        public Builder submittedAt(LocalDateTime submittedAt) {
+            this.submittedAt = submittedAt;
+            return this;
+        }
+
+        public Builder approvedAt(LocalDateTime approvedAt) {
+            this.approvedAt = approvedAt;
+            return this;
+        }
+
+        public Builder deniedAt(LocalDateTime deniedAt) {
+            this.deniedAt = deniedAt;
             return this;
         }
 

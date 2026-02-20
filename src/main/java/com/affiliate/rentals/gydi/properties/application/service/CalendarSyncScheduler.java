@@ -47,11 +47,30 @@ public class CalendarSyncScheduler {
     }
 
     private void syncProperty(Property property) {
+        String icalUrl = property.getIcalUrlAirbnb();
+        if (icalUrl == null || icalUrl.isBlank()) {
+            log.debug("Skipping property {} - no iCal URL configured", property.getId());
+            return;
+        }
+
+        URI uri;
+        try {
+            uri = URI.create(icalUrl);
+        } catch (IllegalArgumentException e) {
+            log.warn("Skipping property {} - malformed iCal URL: {}", property.getId(), icalUrl);
+            return;
+        }
+
+        if (!uri.isAbsolute()) {
+            log.warn("Skipping property {} - iCal URL is not absolute: {}", property.getId(), icalUrl);
+            return;
+        }
+
         try {
             log.debug("Syncing calendar for property: {}", property.getId());
 
             // 1. Fetch iCal content
-            try (InputStream is = URI.create(property.getIcalUrlAirbnb()).toURL().openStream()) {
+            try (InputStream is = uri.toURL().openStream()) {
 
                 // 2. Parse
                 List<DateRange> blockedRanges = icalParser.parse(is);

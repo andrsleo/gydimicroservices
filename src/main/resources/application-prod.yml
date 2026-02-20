@@ -1,7 +1,7 @@
 # ============================================
 # PRODUCTION PROFILE (Railway Production Environment)
 # ============================================
-# Deployed to: https://api.gydi.com (custom domain)
+# Deployed to: https://api.gydi.app (custom domain) + Railway URL kept as fallback
 # Deploy trigger: Manual deployment from main branch (after approval)
 # Purpose: Live application serving real users
 #
@@ -20,7 +20,7 @@
 # Cloud Services:
 # - CLOUDINARY_URL        # Cloudinary connection string (production folder)
 # - RESEND_API_KEY        # Resend API key (PRODUCTION API key)
-# - RESEND_FROM_EMAIL     # From email (e.g., noreply@gydi.com, verified domain)
+# - RESEND_FROM_EMAIL     # From email (e.g., noreply@gydi.app, verified domain)
 #
 # Payment:
 # - STRIPE_API_KEY        # Stripe LIVE secret key (sk_live_...)
@@ -28,8 +28,9 @@
 # - STRIPE_WEBHOOK_SECRET   # Stripe webhook secret (whsec_...)
 #
 # Application:
-# - FRONTEND_URL          # Frontend URL (e.g., https://app.gydi.com)
-# - CORS_ALLOWED_ORIGINS       # CORS allowed origins (production domains only)
+# - FRONTEND_URL                # Frontend URL: https://gydi.app
+# - CORS_ALLOWED_ORIGINS        # Explicit origins: https://gydi.app,https://www.gydi.app,https://gydi-front-next.vercel.app,http://localhost:3000
+# - CORS_ALLOWED_ORIGIN_PATTERNS  # Wildcard patterns: https://*.gydi.app
 #
 # CRITICAL SECURITY REQUIREMENTS:
 # 1. ALL secrets MUST be unique (never reuse from dev/staging)
@@ -195,8 +196,13 @@ app:
 # ============================================
 # CORS Configuration (Production - Strict whitelist)
 # ============================================
+# CORS_ALLOWED_ORIGINS: explicit origins (comma-separated)
+#   e.g., https://gydi.app,https://www.gydi.app,https://gydi-front-next.vercel.app,http://localhost:3000
+# CORS_ALLOWED_ORIGIN_PATTERNS: wildcard patterns for subdomains
+#   e.g., https://*.gydi.app
 cors:
-  allowed-origins: ${CORS_ALLOWED_ORIGINS} # Only production domains!
+  allowed-origins: ${CORS_ALLOWED_ORIGINS}
+  allowed-origin-patterns: ${CORS_ALLOWED_ORIGIN_PATTERNS:}
 
 # ============================================
 # Logging Configuration (Production - WARN level)

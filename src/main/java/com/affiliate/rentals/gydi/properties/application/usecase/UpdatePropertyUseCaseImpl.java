@@ -157,6 +157,7 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
             command.amenities().forEach(property::addAmenity);
         }
 
+        boolean icalUrlChanging = false;
         if (command.icalUrlAirbnb() != null) {
             // Validate iCal URL by fetching and verifying content
             if (!command.icalUrlAirbnb().isBlank()) {
@@ -168,12 +169,31 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
                     throw new IllegalArgumentException("Invalid iCal URL: " + icalResult.getMessage());
                 }
 
+                // Track whether the iCal URL actually changed
+                String currentIcalUrl = property.getIcalUrlAirbnb();
+                icalUrlChanging = !command.icalUrlAirbnb().equals(currentIcalUrl);
+
                 // Set the validated URL
                 property.updateIcalUrlAirbnb(command.icalUrlAirbnb());
             } else {
                 // Clear the URL if empty/blank
                 property.updateIcalUrlAirbnb(null);
             }
+        }
+
+        // If the iCal URL changed on a published/inactive property, require the host to
+        // re-add GYDI as co-host on the new Airbnb listing before re-submitting for review.
+        if (icalUrlChanging &&
+                (property.getStatus() == com.affiliate.rentals.gydi.properties.domain.model.PropertyStatus.PUBLISHED
+                        || property.getStatus() == com.affiliate.rentals.gydi.properties.domain.model.PropertyStatus.INACTIVE)) {
+            property.transitionToSendGydiCohost();
+        }
+
+        // Auto-transition DRAFT → SEND_GYDI_COHOST when minimum content requirements are met.
+        // This allows the host to proceed with adding GYDI as co-host on Airbnb before submitting.
+        if (property.getStatus() == com.affiliate.rentals.gydi.properties.domain.model.PropertyStatus.DRAFT
+                && property.meetsSubmitConditions()) {
+            property.transitionToSendGydiCohost();
         }
 
         return propertyRepository.save(property);
