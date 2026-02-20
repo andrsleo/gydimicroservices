@@ -15,6 +15,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 
 import com.affiliate.rentals.gydi.properties.domain.exception.PropertyCannotBePublishedException;
 import com.affiliate.rentals.gydi.properties.domain.exception.PropertyDomainException;
+import com.affiliate.rentals.gydi.properties.domain.exception.PropertyTransitionNotAllowedException;
 import com.affiliate.rentals.gydi.subscriptions.domain.exception.SubscriptionDomainException;
 import com.affiliate.rentals.gydi.users.domain.exception.DomainException;
 import com.affiliate.rentals.gydi.users.domain.exception.InvalidPasswordException;
@@ -422,6 +423,31 @@ public class GlobalExceptionHandler {
                 return buildResponse(
                                 HttpStatus.BAD_REQUEST,
                                 "Invalid Operation",
+                                ex.getMessage(),
+                                request.getRequestURI());
+        }
+
+        /**
+         * Handles property status transition exceptions.
+         *
+         * <p>
+         * This is thrown when an invalid state transition is attempted on a property,
+         * such as trying to approve a property that is not in PENDING_APPROVAL status.
+         * </p>
+         *
+         * @param ex      the transition exception
+         * @param request the HTTP request
+         * @return a BAD_REQUEST response
+         */
+        @ExceptionHandler(PropertyTransitionNotAllowedException.class)
+        public ResponseEntity<ErrorResponse> handlePropertyTransitionNotAllowedException(
+                        PropertyTransitionNotAllowedException ex,
+                        HttpServletRequest request) {
+                log.warn("Property transition not allowed: {}", ex.getMessage());
+
+                return buildResponse(
+                                HttpStatus.BAD_REQUEST,
+                                "Property Transition Not Allowed",
                                 ex.getMessage(),
                                 request.getRequestURI());
         }

@@ -117,6 +117,19 @@ public class PropertyJpaEntity {
     @Column(name = "cover_image_id")
     private Long coverImageId;
 
+    // Admin approval workflow fields
+    @Column(name = "denial_reason", columnDefinition = "TEXT")
+    private String denialReason;
+
+    @Column(name = "submitted_at")
+    private LocalDateTime submittedAt;
+
+    @Column(name = "approved_at")
+    private LocalDateTime approvedAt;
+
+    @Column(name = "denied_at")
+    private LocalDateTime deniedAt;
+
     // Airbnb import fields
     @Column(name = "airbnb_url", length = 500)
     private String airbnbUrl;

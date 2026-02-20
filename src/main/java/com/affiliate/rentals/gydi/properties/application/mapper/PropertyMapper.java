@@ -41,7 +41,10 @@ public class PropertyMapper {
                 property.getImportMode() != null ? property.getImportMode().name() : null,
                 property.getCreatedAt(),
                 property.getPublishedAt(),
-                property.getIcalUrlAirbnb());
+                property.getIcalUrlAirbnb(),
+                property.getDenialReason(),
+                property.getSubmittedAt(),
+                property.getApprovedAt());
     }
 
     public PropertyDetailResponse toPropertyDetailResponse(Property property) {
@@ -75,7 +78,10 @@ public class PropertyMapper {
                 property.getIcalUrlAirbnb(),
                 property.getCreatedAt(),
                 property.getUpdatedAt(),
-                property.getPublishedAt());
+                property.getPublishedAt(),
+                property.getDenialReason(),
+                property.getSubmittedAt(),
+                property.getApprovedAt());
     }
 
     public List<PropertyResponse> toPropertyResponseList(List<Property> properties) {

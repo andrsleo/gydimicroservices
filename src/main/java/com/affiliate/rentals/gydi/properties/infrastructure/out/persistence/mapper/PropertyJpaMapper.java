@@ -64,7 +64,11 @@ public class PropertyJpaMapper {
                 .icalUrlAirbnb(entity.getIcalUrlAirbnb())
                 .createdAt(entity.getCreatedAt())
                 .updatedAt(entity.getUpdatedAt())
-                .publishedAt(entity.getPublishedAt());
+                .publishedAt(entity.getPublishedAt())
+                .denialReason(entity.getDenialReason())
+                .submittedAt(entity.getSubmittedAt())
+                .approvedAt(entity.getApprovedAt())
+                .deniedAt(entity.getDeniedAt());
 
         // Set sale price if available
         if (entity.getSalePrice() != null) {
@@ -131,6 +135,10 @@ public class PropertyJpaMapper {
         entity.setCreatedAt(domain.getCreatedAt());
         entity.setUpdatedAt(domain.getUpdatedAt());
         entity.setPublishedAt(domain.getPublishedAt());
+        entity.setDenialReason(domain.getDenialReason());
+        entity.setSubmittedAt(domain.getSubmittedAt());
+        entity.setApprovedAt(domain.getApprovedAt());
+        entity.setDeniedAt(domain.getDeniedAt());
 
         List<PropertyImageJpaEntity> imageEntities = domain.getImages().stream()
                 .map(img -> toImageEntity(img, entity))

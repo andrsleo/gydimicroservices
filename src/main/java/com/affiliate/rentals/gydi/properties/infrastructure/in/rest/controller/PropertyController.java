@@ -40,6 +40,7 @@ import com.affiliate.rentals.gydi.properties.domain.ports.in.DeletePropertyUseCa
 import com.affiliate.rentals.gydi.properties.domain.ports.in.GetPropertyByIdUseCase;
 import com.affiliate.rentals.gydi.properties.domain.ports.in.ListPropertiesUseCase;
 import com.affiliate.rentals.gydi.properties.domain.ports.in.PublishPropertyUseCase;
+import com.affiliate.rentals.gydi.properties.domain.ports.in.SubmitForApprovalUseCase;
 import com.affiliate.rentals.gydi.properties.domain.ports.in.UpdatePropertyUseCase;
 import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
 import com.affiliate.rentals.gydi.shared.security.JwtService;
@@ -56,6 +57,7 @@ public class PropertyController {
         private final GetPropertyByIdUseCase getPropertyByIdUseCase;
         private final ListPropertiesUseCase listPropertiesUseCase;
         private final PublishPropertyUseCase publishPropertyUseCase;
+        private final SubmitForApprovalUseCase submitForApprovalUseCase;
         private final ActivatePropertyUseCase activatePropertyUseCase;
         private final DeactivatePropertyUseCase deactivatePropertyUseCase;
         private final DeletePropertyUseCase deletePropertyUseCase;
@@ -74,6 +76,7 @@ public class PropertyController {
                         GetPropertyByIdUseCase getPropertyByIdUseCase,
                         ListPropertiesUseCase listPropertiesUseCase,
                         PublishPropertyUseCase publishPropertyUseCase,
+                        SubmitForApprovalUseCase submitForApprovalUseCase,
                         ActivatePropertyUseCase activatePropertyUseCase,
                         DeactivatePropertyUseCase deactivatePropertyUseCase,
                         DeletePropertyUseCase deletePropertyUseCase,
@@ -91,6 +94,7 @@ public class PropertyController {
                 this.getPropertyByIdUseCase = getPropertyByIdUseCase;
                 this.listPropertiesUseCase = listPropertiesUseCase;
                 this.publishPropertyUseCase = publishPropertyUseCase;
+                this.submitForApprovalUseCase = submitForApprovalUseCase;
                 this.activatePropertyUseCase = activatePropertyUseCase;
                 this.deactivatePropertyUseCase = deactivatePropertyUseCase;
                 this.deletePropertyUseCase = deletePropertyUseCase;
@@ -301,6 +305,19 @@ public class PropertyController {
 
                 Property property = publishPropertyUseCase.publishProperty(
                                 new PublishPropertyUseCase.PublishPropertyCommand(PropertyId.of(id), userId));
+
+                return ResponseEntity.ok(mapper.toPropertyResponse(property));
+        }
+
+        @PostMapping("/{id}/submit-for-approval")
+        public ResponseEntity<PropertyResponse> submitForApproval(
+                        @PathVariable String id,
+                        HttpServletRequest httpRequest) {
+
+                Long userId = jwtService.extractUserIdFromRequest(httpRequest);
+
+                Property property = submitForApprovalUseCase.submitForApproval(
+                                new SubmitForApprovalUseCase.SubmitForApprovalCommand(PropertyId.of(id), userId));
 
                 return ResponseEntity.ok(mapper.toPropertyResponse(property));
         }

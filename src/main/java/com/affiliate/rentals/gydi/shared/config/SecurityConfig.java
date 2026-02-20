@@ -148,7 +148,7 @@ public class SecurityConfig {
                                 // SECURITY LAYERS STILL ACTIVE:
                                 // ✅ JWT Authentication - Only authenticated users access protected endpoints
                                 // ✅ X-Requested-With Header - Custom header that forms can't set (Option D)
-                                // ✅ CORS Policy - Only trusted origins (gydi-front-next.vercel.app) allowed
+                                // ✅ CORS Policy - Only trusted origins (gydi.app) allowed
                                 // ✅ SameSite=None + Secure cookies - Proper cross-origin cookie handling
                                 //
                                 // This is a recognized secure pattern for SPAs. See:
@@ -272,7 +272,7 @@ public class SecurityConfig {
                                                                 "style-src 'self' 'unsafe-inline'; " +
                                                                 "img-src 'self' data: https:; " +
                                                                 "font-src 'self' data:; " +
-                                                                "connect-src 'self' http://localhost:3000 https://gydi-front-next.vercel.app; " +
+                                                                "connect-src 'self' http://localhost:3000 https://gydi.app https://www.gydi.app https://*.gydi.app https://gydimicroservices-production.up.railway.app; " +
                                                                 "frame-ancestors 'self'"))
 
                                                 // ℹ️ Strict-Transport-Security (HSTS): Disabled for local development
