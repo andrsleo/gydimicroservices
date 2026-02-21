@@ -49,53 +49,31 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
             throw new SecurityException("User is not authorized to update this property");
         }
 
-        // TODO: Airbnb URL update temporarily disabled to prevent data loss
-        // The Property builder approach loses images/videos/other data
-        // Need to implement proper update without rebuilding entire entity
-        /*
-         * if (command.airbnbUrl() != null && !command.airbnbUrl().isBlank()) {
-         * String resolvedUrl = urlResolver.resolve(command.airbnbUrl());
-         * AirbnbUrlValidator.AirbnbUrlValidationResult validationResult =
-         * urlValidator.validate(resolvedUrl);
-         * 
-         * if (!validationResult.isValid()) {
-         * throw new IllegalArgumentException("Invalid Airbnb URL: " +
-         * validationResult.getErrorMessage());
-         * }
-         * 
-         * String listingId = validationResult.getListingId();
-         * 
-         * // Check if listing ID changed and if new one already exists elsewhere
-         * if (!listingId.equals(property.getAirbnbListingId()) &&
-         * propertyRepository.existsByAirbnbListingId(listingId)) {
-         * throw new IllegalStateException(
-         * "Property with Airbnb listing ID " + listingId + " already exists"
-         * );
-         * }
-         * 
-         * // Update Airbnb fields using the builder pattern
-         * Property updatedProperty = Property.builder()
-         * .id(property.getId())
-         * .hostId(property.getHostId())
-         * .title(property.getTitle())
-         * .slug(property.getSlug())
-         * .description(property.getDescription())
-         * .pricePerNight(property.getPricePerNight())
-         * .salePrice(property.getSalePrice())
-         * .location(property.getLocation())
-         * .amenities(property.getAmenities())
-         * .specs(property.getSpecs())
-         * .propertyType(property.getPropertyType())
-         * .listingType(property.getListingType())
-         * .status(property.getStatus())
-         * .importMode(ImportMode.MANUAL) // Always MANUAL
-         * .airbnbUrl(validationResult.getNormalizedUrl())
-         * .airbnbListingId(listingId)
-         * .build();
-         * 
-         * property = updatedProperty;
-         * }
-         */
+        // Handle Airbnb URL update
+        boolean airbnbUrlChanging = false;
+        if (command.airbnbUrl() != null && !command.airbnbUrl().isBlank()) {
+            String resolvedUrl = urlResolver.resolve(command.airbnbUrl());
+            AirbnbUrlValidator.AirbnbUrlValidationResult validationResult = urlValidator.validate(resolvedUrl);
+
+            if (!validationResult.isValid()) {
+                throw new IllegalArgumentException("Invalid Airbnb URL: " + validationResult.getErrorMessage());
+            }
+
+            String listingId = validationResult.getListingId();
+
+            // Check if listing ID changed and if the new one already exists on another property
+            if (!listingId.equals(property.getAirbnbListingId()) &&
+                    propertyRepository.existsByAirbnbListingId(listingId)) {
+                throw new IllegalStateException(
+                        "Property with Airbnb listing ID " + listingId + " already exists");
+            }
+
+            // Track whether the Airbnb URL actually changed
+            airbnbUrlChanging = !validationResult.getNormalizedUrl().equals(property.getAirbnbUrl());
+
+            // Update Airbnb fields using setter (avoids data loss from builder rebuild)
+            property.updateAirbnbUrl(validationResult.getNormalizedUrl(), listingId);
+        }
 
         // Update listing type first if provided
         if (command.listingType() != null && !command.listingType().isBlank()) {
@@ -181,9 +159,9 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
             }
         }
 
-        // If the iCal URL changed on a published/inactive property, require the host to
-        // re-add GYDI as co-host on the new Airbnb listing before re-submitting for review.
-        if (icalUrlChanging &&
+        // If the Airbnb URL or iCal URL changed on a published/inactive property, require
+        // the host to re-add GYDI as co-host on the new Airbnb listing before re-submitting.
+        if ((airbnbUrlChanging || icalUrlChanging) &&
                 (property.getStatus() == com.affiliate.rentals.gydi.properties.domain.model.PropertyStatus.PUBLISHED
                         || property.getStatus() == com.affiliate.rentals.gydi.properties.domain.model.PropertyStatus.INACTIVE)) {
             property.transitionToSendGydiCohost();

@@ -755,6 +755,12 @@ public class Property {
         this.updatedAt = LocalDateTime.now();
     }
 
+    public void updateAirbnbUrl(String airbnbUrl, String airbnbListingId) {
+        this.airbnbUrl = airbnbUrl;
+        this.airbnbListingId = airbnbListingId;
+        this.updatedAt = LocalDateTime.now();
+    }
+
     public String getDescription() {
         return description;
     }
