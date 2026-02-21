@@ -192,7 +192,6 @@ public class AuthController {
         // Therefore, we MUST use cookies in ALL environments (local, dev, prod)
         // CookieService handles profile-aware configuration (SameSite=Lax for local, None for prod)
         cookieService.setAuthCookies(httpResponse, response.token(), response.refreshToken());
-        log.info("🍪 Auth cookies set (required for Next.js middleware)");
 
         if (isProduction()) {
             // Production: Return response WITHOUT tokens in body (cookies only)
