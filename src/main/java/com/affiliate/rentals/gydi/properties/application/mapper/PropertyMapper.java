@@ -41,6 +41,7 @@ public class PropertyMapper {
                 property.getImportMode() != null ? property.getImportMode().name() : null,
                 property.getCreatedAt(),
                 property.getPublishedAt(),
+                property.getAirbnbUrl(),
                 property.getIcalUrlAirbnb(),
                 property.getDenialReason(),
                 property.getSubmittedAt(),
