@@ -3,36 +3,43 @@ package com.affiliate.rentals.gydi.users.application.usecase;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import com.affiliate.rentals.gydi.shared.domain.port.EmailServicePort;
 import com.affiliate.rentals.gydi.users.application.dto.PasswordResetResponse;
 import com.affiliate.rentals.gydi.users.application.dto.ResetPasswordRequest;
 import com.affiliate.rentals.gydi.users.domain.model.PasswordResetToken;
 import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.EmailServicePort;
 import com.affiliate.rentals.gydi.users.domain.ports.PasswordResetTokenRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
+import com.affiliate.rentals.gydi.users.domain.service.UserEmailTemplateFactory;
+import com.affiliate.rentals.gydi.shared.domain.model.EmailMessage;
 
 import lombok.extern.slf4j.Slf4j;
 
 /**
  * Use case for resetting a user's password using a valid reset token.
  *
- * <p>This service handles the complete password reset process, including:</p>
+ * <p>
+ * This service handles the complete password reset process, including:
+ * </p>
  * <ul>
- *   <li>Validating the reset token</li>
- *   <li>Hashing the new password</li>
- *   <li>Updating the user's password</li>
- *   <li>Marking the token as used</li>
- *   <li>Invalidating all other tokens for the user</li>
- *   <li>Sending confirmation email</li>
+ * <li>Validating the reset token</li>
+ * <li>Hashing the new password</li>
+ * <li>Updating the user's password</li>
+ * <li>Marking the token as used</li>
+ * <li>Invalidating all other tokens for the user</li>
+ * <li>Sending confirmation email</li>
  * </ul>
  *
- * <p>Security considerations:</p>
+ * <p>
+ * Security considerations:
+ * </p>
  * <ul>
- *   <li>Password is validated at DTO level with strong requirements</li>
- *   <li>Token can only be used once</li>
- *   <li>All user sessions should be invalidated (handled by frontend/auth service)</li>
- *   <li>User receives confirmation email for security awareness</li>
+ * <li>Password is validated at DTO level with strong requirements</li>
+ * <li>Token can only be used once</li>
+ * <li>All user sessions should be invalidated (handled by frontend/auth
+ * service)</li>
+ * <li>User receives confirmation email for security awareness</li>
  * </ul>
  *
  * @author GYDI Development Team
@@ -45,17 +52,19 @@ public class ResetPasswordUseCase {
     private final PasswordResetTokenRepositoryPort tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailServicePort emailService;
+    private final UserEmailTemplateFactory templateFactory;
 
     public ResetPasswordUseCase(
             UserRepositoryPort userRepository,
             PasswordResetTokenRepositoryPort tokenRepository,
             PasswordEncoder passwordEncoder,
-            EmailServicePort emailService
-    ) {
+            EmailServicePort emailService,
+            UserEmailTemplateFactory templateFactory) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
+        this.templateFactory = templateFactory;
     }
 
     /**
@@ -123,10 +132,13 @@ public class ResetPasswordUseCase {
 
             // Send confirmation email
             try {
-                emailService.sendPasswordResetConfirmationEmail(
+                String htmlTemplate = templateFactory.buildPasswordResetConfirmationHtml(user.name());
+                EmailMessage emailMessage = new EmailMessage(
                         user.email().address(),
-                        user.name()
-                );
+                        "Password Reset Confirmation - GYDI",
+                        htmlTemplate,
+                        null, null, null);
+                emailService.sendEmail(emailMessage);
             } catch (Exception e) {
                 // Log but don't fail the operation if email fails
                 log.error("Failed to send password reset confirmation email to user {}: {}", user.id(), e.getMessage());

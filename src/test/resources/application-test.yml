@@ -24,6 +24,14 @@ spring:
     username: test@test.com
     password: test-password
 
+  cloud:
+    aws:
+      region:
+        static: us-east-1
+      credentials:
+        access-key: test-key
+        secret-key: test-secret
+
 # Stripe configuration for tests
 stripe:
   api-key: sk_test_fake_key_for_unit_tests

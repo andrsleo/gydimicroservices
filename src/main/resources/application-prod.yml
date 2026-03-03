@@ -41,6 +41,17 @@
 # ============================================
 
 spring:
+  cloud:
+    aws:
+      region:
+        static: ${AWS_REGION}
+      sqs:
+        listener:
+          auto-startup: true
+      credentials:
+        # Better to use IAM Roles assigned to your ECS/EC2 rather than hardcoding here, but supported via env vars
+        access-key: ${AWS_ACCESS_KEY_ID}
+        secret-key: ${AWS_SECRET_ACCESS_KEY}
   # ============================================
   # Database Configuration (Production)
   # ============================================
@@ -167,10 +178,12 @@ storage:
   provider: ${STORAGE_PROVIDER}
 
 # Email provider
-# NOTE: Email service disabled in production (will use NoOpEmailServiceAdapter)
-# Uncomment and configure when email provider is selected
+# Configure SES and SQS for production email sending
 email:
-  # provider: resend  # Disabled - no email provider configured yet
+  provider: aws-ses
+  sqs-queue-name: ${SQS_EMAIL_QUEUE_NAME:gydi-email-queue-prod}
+  sender: ${AWS_SES_SENDER:no-reply@gydi.app}
+  copy-recipient: ${AWS_SES_BCC:gydiproperties@gmail.com}
 
 # ============================================
 # Stripe Payment Configuration (LIVE MODE - Real money!)

@@ -66,20 +66,20 @@ spring:
     clean-disabled: false # Allow clean in local (NEVER in production!)
 
   # ============================================
-  # Email Configuration (Console logging, no actual sending)
+  # Email Configuration (Gmail SMTP for Dev testing)
   # ============================================
   mail:
-    # Console logging only (no SMTP server needed)
-    host: localhost
-    port: 1025
-    username: dummy
-    password: dummy
+    host: ${MAIL_HOST:smtp.gmail.com}
+    port: ${MAIL_PORT:587}
+    username: ${GMAIL_USERNAME:gydiproperties@gmail.com}
+    password: ${GMAIL_APP_PASSWORD:iuwuuvtbjhqvclrs}
     properties:
       mail:
         smtp:
-          auth: false
+          auth: true
           starttls:
-            enable: false
+            enable: true
+            required: true
     test-connection: false
 
   # ============================================
