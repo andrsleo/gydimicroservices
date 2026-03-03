@@ -206,10 +206,10 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- AWS SDK v2 for SES (Email Service) already included here -->
+        <!-- AWS SDK v2 for SES v2 (Email Service) - uses REST/JSON protocol, avoids query-protocol issues -->
         <dependency>
             <groupId>software.amazon.awssdk</groupId>
-            <artifactId>ses</artifactId>
+            <artifactId>sesv2</artifactId>
             <version>2.20.0</version>
         </dependency>
 

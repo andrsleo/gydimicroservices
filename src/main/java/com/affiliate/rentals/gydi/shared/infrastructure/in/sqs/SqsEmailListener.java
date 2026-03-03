@@ -7,8 +7,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
 import org.springframework.stereotype.Component;
-import software.amazon.awssdk.services.ses.SesClient;
-import software.amazon.awssdk.services.ses.model.*;
+import software.amazon.awssdk.services.sesv2.SesV2Client;
+import software.amazon.awssdk.services.sesv2.model.*;
 
 @Slf4j
 @Component
@@ -16,7 +16,7 @@ import software.amazon.awssdk.services.ses.model.*;
 @RequiredArgsConstructor
 public class SqsEmailListener {
 
-    private final SesClient sesClient; // Make sure to configure SesClient bean in a @Configuration class
+    private final SesV2Client sesV2Client;
 
     @Value("${app.email.sender:no-reply@gydi.app}")
     private String senderEmail;
@@ -35,9 +35,10 @@ public class SqsEmailListener {
                     .build();
 
             Content subject = Content.builder().data(message.subject()).build();
-            Content htmlBody = Content.builder().data(message.htmlBody()).build();
 
-            Body body = Body.builder().html(htmlBody).build();
+            Body body = Body.builder()
+                    .html(Content.builder().data(message.htmlBody()).build())
+                    .build();
 
             Message sesMessage = Message.builder()
                     .subject(subject)
@@ -45,20 +46,20 @@ public class SqsEmailListener {
                     .build();
 
             SendEmailRequest request = SendEmailRequest.builder()
-                    .source(senderEmail)
+                    .fromEmailAddress(senderEmail)
                     .destination(destination)
-                    .message(sesMessage)
+                    .content(EmailContent.builder().simple(sesMessage).build())
                     .build();
 
-            SendEmailResponse response = sesClient.sendEmail(request);
-            log.info("Email successfully sent via SES! Message ID: {}", response.messageId());
+            SendEmailResponse response = sesV2Client.sendEmail(request);
+            log.info("Email successfully sent via SES v2! Message ID: {}", response.messageId());
 
-        } catch (SesException e) {
-            log.error("Amazon SES failed to send email to {}", message.toEmail(), e);
+        } catch (SesV2Exception e) {
+            log.error("Amazon SES v2 failed to send email to {}", message.toEmail(), e);
             // Throwing unchecked exception tells SQS that processing failed.
             // SQS will automatically retry based on queue configuration.
             // After max retries, it will be sent to the DLQ (Dead Letter Queue).
-            throw new RuntimeException("SES Service error while sending email", e);
+            throw new RuntimeException("SES v2 Service error while sending email", e);
         }
     }
 }
