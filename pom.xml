@@ -211,6 +211,20 @@
             <groupId>software.amazon.awssdk</groupId>
             <artifactId>sesv2</artifactId>
             <version>2.20.0</version>
+            <!-- Exclude Apache HTTP client to avoid NoClassDefFoundError in Railway -->
+            <exclusions>
+                <exclusion>
+                    <groupId>software.amazon.awssdk</groupId>
+                    <artifactId>apache-client</artifactId>
+                </exclusion>
+            </exclusions>
+        </dependency>
+
+        <!-- AWS SDK URL Connection HTTP Client (no Apache dependencies needed) -->
+        <dependency>
+            <groupId>software.amazon.awssdk</groupId>
+            <artifactId>url-connection-client</artifactId>
+            <version>2.20.0</version>
         </dependency>
 
         <!-- Spring Cloud AWS SQS for message queues -->
