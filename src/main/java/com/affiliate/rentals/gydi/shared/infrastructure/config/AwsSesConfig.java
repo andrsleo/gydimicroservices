@@ -5,6 +5,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import software.amazon.awssdk.auth.credentials.AwsCredentialsProvider;
+import software.amazon.awssdk.http.urlconnection.UrlConnectionHttpClient;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.sesv2.SesV2Client;
 
@@ -19,7 +20,12 @@ public class AwsSesConfig {
     public SesV2Client sesV2Client(AwsCredentialsProvider credentialsProvider) {
         return SesV2Client.builder()
                 .region(Region.of(awsRegion))
-                .credentialsProvider(credentialsProvider) // Provided automatically by spring-cloud-aws
+                .credentialsProvider(credentialsProvider)
+                // Explicitly use URL Connection HTTP client to avoid Apache HttpClient
+                // dependency
+                // which causes NoClassDefFoundError (DefaultClientConnectionReuseStrategy) in
+                // Railway
+                .httpClientBuilder(UrlConnectionHttpClient.builder())
                 .build();
     }
 }
