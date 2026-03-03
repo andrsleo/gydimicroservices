@@ -88,13 +88,9 @@ spring:
       prepareThreshold: 0
 
   # ============================================
-  # Email Configuration (Resend or Gmail for testing)
+  # Email Configuration (Gmail for testing)
   # ============================================
   mail:
-    # Option 1: Use Resend (preferred)
-    # Configured via email.provider=resend below
-
-    # Option 2: Gmail SMTP (for testing only, use app password)
     host: ${MAIL_HOST}
     port: ${MAIL_PORT}
     username: ${GMAIL_USERNAME}
@@ -148,21 +144,9 @@ security:
 cloudinary:
   url: ${CLOUDINARY_URL}
 
-# Resend for email service
-resend:
-  api-key: ${RESEND_API_KEY}
-  from-email: ${RESEND_FROM_EMAIL:dev@gydi.com}
-
-# Storage provider
-storage:
-  provider: ${STORAGE_PROVIDER:cloudinary}
-  local:
-    directory: ./uploads
-    base-url: ${FRONTEND_URL}/uploads
-
 # Email provider
 email:
-  provider: ${EMAIL_PROVIDER:resend}
+  provider: ${EMAIL_PROVIDER:local} # Default to local (which will use Dev Email service adapter via application profiles if setup)
 
 # ============================================
 # Stripe Payment Configuration (Test Mode)

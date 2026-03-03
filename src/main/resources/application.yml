@@ -53,6 +53,19 @@ spring:
     out-of-order: true
 
   # ============================================
+  # AWS Dummy Configuration (Fallback for dev/local)
+  # ============================================
+  # Prevents SqsAutoConfiguration context failure when AWS credentials are not present locally.
+  # These are overridden in application-prod.yml.
+  cloud:
+    aws:
+      region:
+        static: us-east-1
+      credentials:
+        access-key: local-dummy-key
+        secret-key: local-dummy-secret
+
+  # ============================================
   # MongoDB Configuration (for future use)
   # ============================================
   data:
@@ -187,11 +200,8 @@ management:
 cloudinary:
   url: ${CLOUDINARY_URL:} # Empty default for local development
 
-# Resend for Email Service (replaces AWS SES)
-# NOTE: Only required when email.provider=resend (dev/prod)
-resend:
-  api-key: ${RESEND_API_KEY:} # Empty default for local development
-  from-email: ${RESEND_FROM_EMAIL:noreply@gydi.com}
+# Email Configuration
+# Uses LocalEmailService if provider is local, or other providers like aws-ses if configured.
 
 # Storage provider selection
 # Options:
@@ -267,7 +277,8 @@ security:
 # Production deployment: fly secrets set PII_ENCRYPTION_KEY="$(openssl rand -hex 32)"
 encryption:
   pii:
-    secret: ${PII_ENCRYPTION_KEY:#{null}}  # Optional: Will warn if not set
+    secret: ${PII_ENCRYPTION_KEY:#{null}} # Optional: Will warn if not set
+
 
 # ============================================
 # CORS Configuration
