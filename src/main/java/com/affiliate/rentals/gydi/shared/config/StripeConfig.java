@@ -8,14 +8,16 @@ import org.springframework.context.annotation.Configuration;
 
 /**
  * Configuration for Stripe Payment Gateway integration.
- * Initializes the Stripe SDK with API credentials and sets global configuration.
+ * Initializes the Stripe SDK with API credentials and sets global
+ * configuration.
  *
- * <p>Security considerations:
+ * <p>
+ * Security considerations:
  * <ul>
- *   <li>API keys must be provided via environment variables</li>
- *   <li>Never commit production keys to version control</li>
- *   <li>Use test keys (sk_test_...) for development</li>
- *   <li>Use live keys (sk_live_...) only in production</li>
+ * <li>API keys must be provided via environment variables</li>
+ * <li>Never commit production keys to version control</li>
+ * <li>Use test keys (sk_test_...) for development</li>
+ * <li>Use live keys (sk_live_...) only in production</li>
  * </ul>
  *
  * @see <a href="https://stripe.com/docs/api">Stripe API Documentation</a>

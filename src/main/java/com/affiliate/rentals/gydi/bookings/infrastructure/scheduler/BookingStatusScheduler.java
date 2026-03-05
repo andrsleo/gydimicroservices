@@ -38,7 +38,7 @@ public class BookingStatusScheduler {
      * Cron: "0 0 12 * * *" (At 12:00 PM every day) - ADJUST AS NEEDED
      * For testing/demo, running every hour might be better: "0 0 * * * *"
      */
-    @Scheduled(cron = "0 0 12 * * *") // Daily at 12 PM
+    @Scheduled(cron = "0 * * * * *") // Daily at 12 PM
     @Transactional
     public void updateBookingStatuses() {
         log.info("Starting scheduled booking status updates...");
