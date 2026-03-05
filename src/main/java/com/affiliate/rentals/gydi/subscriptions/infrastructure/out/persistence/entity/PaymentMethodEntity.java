@@ -37,7 +37,7 @@ import java.time.LocalDateTime;
  * @author GYDI Development Team
  */
 @Entity
-@Table(name = "payment_methods", schema = "subscriptions")
+@Table(name = "payment_methods", schema = "payment")
 @Getter
 @Setter
 @NoArgsConstructor

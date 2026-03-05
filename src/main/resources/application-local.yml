@@ -123,9 +123,9 @@ security:
 # Stripe Payment Configuration (Test Keys)
 # ============================================
 stripe:
-  api-key: ${STRIPE_API_KEY:sk_test_51SdIGWQuBbKiBgeuKX1hhwE6kVA5QO01wntUIUg8HATDt08jtZmYWS5YOcMvoukEwgwcpBe6lOIeqEgvSMVGNUsn00upygkUds}
-  publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_51SdIGWQuBbKiBgeuyICFekmubnq6NtogWfozScafwnub3BT3Nf3j9s8qccOEomqk4MrA9bTdA86pif2BH550dLwT00CLzMTdqG}
-
+  api-key: ${STRIPE_API_KEY:sk_test_51T7GLW4o5SL3QP2uPaOzv9uaUWhKoJC6vl4v5uZxG2LovoO0f0YHmHCwUlmevHcmuWrzzoerOS2BUAFBFf67cfxM00r8zPkpBc}
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY:pk_test_51T7GLW4o5SL3QP2u8zKcLt1yIgAqlyegGChHl4nKDpWwAozD10S4lFLNogNOC72ywU2FGj5X6NZUzcLMHr4ar9Hn00JJXlb4H8}
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET:whsec_cb08b7148d9f6eed5d40b5080c514f32f6730df37fc5b697ca095ab91a8153f0}
 # ============================================
 # Logging Configuration (Verbose for debugging)
 # ============================================
