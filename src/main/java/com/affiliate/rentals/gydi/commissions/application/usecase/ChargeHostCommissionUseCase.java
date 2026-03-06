@@ -4,13 +4,13 @@ import com.affiliate.rentals.gydi.commissions.domain.exception.CommissionNotFoun
 import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus;
 import com.affiliate.rentals.gydi.commissions.domain.model.HostCommission;
 import com.affiliate.rentals.gydi.commissions.domain.model.HostCommissionStatus;
+import com.affiliate.rentals.gydi.commissions.domain.model.StripeConnectAccount;
 import com.affiliate.rentals.gydi.commissions.domain.ports.ReferralCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.HostCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.PaymentGatewayPort;
+import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethod;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentMethodRepositoryPort;
-import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -44,8 +44,8 @@ public class ChargeHostCommissionUseCase {
     private final HostCommissionRepositoryPort commissionRepository;
     private final ReferralCommissionRepositoryPort affiliateCommissionRepository;
     private final PaymentGatewayPort paymentGateway;
-    private final UserRepositoryPort userRepository;
     private final PaymentMethodRepositoryPort paymentMethodRepository;
+    private final StripeConnectAccountRepositoryPort connectAccountRepository;
 
     /**
      * Executes the host commission charge.
@@ -69,21 +69,19 @@ public class ChargeHostCommissionUseCase {
             return;
         }
 
-        // 3. Retrieve host user
-        User host = userRepository.findById(commission.getHostId())
-                .orElseThrow(() -> new IllegalStateException(
-                        "Host user not found for commission " + commissionId));
+        // 3. Retrieve host's Connect account to get platform customer ID (cus_xxx)
+        StripeConnectAccount connectAccount = connectAccountRepository
+                .findByUserId(commission.getHostId()).orElse(null);
 
-        // 4. Validate host has Stripe customer ID
-        if (host.stripeCustomerId() == null || host.stripeCustomerId().isBlank()) {
-            String reason = "Host does not have Stripe customer ID";
+        if (connectAccount == null || connectAccount.getStripePlatformCustomerId() == null) {
+            String reason = "Host does not have a Stripe Connect account with billing customer";
             logger.error("Cannot charge commission {}: {}", commissionId, reason);
             commission.markAsFailed(reason, 0, null, null);
             commissionRepository.save(commission);
             return;
         }
 
-        // 5. Retrieve host's default payment method
+        // 4. Retrieve host's default payment method
         PaymentMethod paymentMethod = paymentMethodRepository.findDefaultByUserId(commission.getHostId())
                 .orElse(null);
 
@@ -96,16 +94,11 @@ public class ChargeHostCommissionUseCase {
             return;
         }
 
-        // 6. Validate payment method purpose (must be BOTH or HOST_COMMISSION)
-        // Note: After migration V81, payment methods have 'purpose' field
-        // For now, we assume default payment method can be used
-        // Future enhancement: check paymentMethod.getPurpose() is BOTH or HOST_COMMISSION
-
-        logger.info("Charging host commission {} via Stripe: amount={} {}, host={}, paymentMethod={}",
+        logger.info("Charging host commission {} via Stripe: amount={} {}, hostId={}, paymentMethod={}",
                 commissionId,
                 commission.getAmount().getCommissionAmount(),
                 commission.getAmount().getCurrency(),
-                host.email().address(),
+                commission.getHostId(),
                 paymentMethod.cardLastFour());
 
         // 7. Update status to PROCESSING
@@ -120,7 +113,7 @@ public class ChargeHostCommissionUseCase {
                     .longValue();
 
             PaymentGatewayPort.PaymentResult result = paymentGateway.chargeHostCommission(
-                    host.stripeCustomerId(),
+                    connectAccount.getStripePlatformCustomerId(),
                     paymentMethod.gatewayToken(),
                     amountCents,
                     commission.getAmount().getCurrency(),

@@ -42,6 +42,9 @@ public class StripeConnectAccount {
     // Verification Status
     private String verificationStatus; // unverified, pending, verified, disabled
 
+    // Stripe Platform Customer ID (cus_xxx) for charging host commissions
+    private String stripePlatformCustomerId;
+
     // Audit
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -60,6 +63,7 @@ public class StripeConnectAccount {
         boolean chargesEnabled,
         String country,
         String verificationStatus,
+        String stripePlatformCustomerId,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
     ) {
@@ -73,6 +77,7 @@ public class StripeConnectAccount {
         this.chargesEnabled = chargesEnabled;
         this.country = country;
         this.verificationStatus = verificationStatus;
+        this.stripePlatformCustomerId = stripePlatformCustomerId;
         this.createdAt = Objects.requireNonNullElse(createdAt, LocalDateTime.now());
         this.updatedAt = Objects.requireNonNullElse(updatedAt, LocalDateTime.now());
     }
@@ -98,6 +103,7 @@ public class StripeConnectAccount {
             false, // Charges not enabled
             country,
             "unverified",
+            null,  // No platform customer ID yet
             now,
             now
         );
@@ -117,13 +123,14 @@ public class StripeConnectAccount {
         boolean chargesEnabled,
         String country,
         String verificationStatus,
+        String stripePlatformCustomerId,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
     ) {
         return new StripeConnectAccount(
             id, userId, stripeAccountId, accountType,
             onboardingCompleted, detailsSubmitted, payoutsEnabled, chargesEnabled,
-            country, verificationStatus, createdAt, updatedAt
+            country, verificationStatus, stripePlatformCustomerId, createdAt, updatedAt
         );
     }
 
@@ -245,6 +252,18 @@ public class StripeConnectAccount {
 
     public String getVerificationStatus() {
         return verificationStatus;
+    }
+
+    public String getStripePlatformCustomerId() {
+        return stripePlatformCustomerId;
+    }
+
+    /**
+     * Sets the Stripe Platform Customer ID (cus_xxx) used for charging host commissions.
+     */
+    public void setPlatformCustomerId(String customerId) {
+        this.stripePlatformCustomerId = customerId;
+        this.updatedAt = LocalDateTime.now();
     }
 
     public LocalDateTime getCreatedAt() {
