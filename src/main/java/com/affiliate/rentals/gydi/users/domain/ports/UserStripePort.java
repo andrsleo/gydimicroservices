@@ -3,18 +3,14 @@ package com.affiliate.rentals.gydi.users.domain.ports;
 import java.util.List;
 
 /**
- * Port for Stripe-specific user persistence operations.
+ * Port for Stripe-related user persistence operations.
  *
- * <p>This interface defines the contract for querying users that need a Stripe
- * Customer ID and for updating them once the customer has been created in Stripe.
- * It is implemented by an adapter in the infrastructure layer, keeping the domain
- * free of any persistence or external-service concerns.</p>
+ * <p>Post V95 migration: stripe_customer_id no longer lives in users.users.
+ * Platform Customer IDs (cus_xxx) are now stored in
+ * commissions.stripe_connect_accounts.stripe_platform_customer_id.</p>
  *
- * <p>The port is intentionally narrow: it exposes only the two operations required
- * by the {@code StripeCustomerSyncRunner} startup task, rather than reusing the
- * broader {@link UserRepositoryPort}. This respects the Interface Segregation
- * Principle and avoids polluting the generic repository contract with
- * Stripe-specific queries.</p>
+ * <p>This port exposes the two operations required by the
+ * {@code StripeCustomerSyncRunner} startup task.</p>
  *
  * @author GYDI Development Team
  * @see com.affiliate.rentals.gydi.users.infrastructure.out.persistence.adapter.UserStripeAdapter
@@ -23,37 +19,24 @@ import java.util.List;
 public interface UserStripePort {
 
     /**
-     * Returns all active users that do not yet have a Stripe Customer ID.
+     * Returns all active users that do not yet have a Stripe Platform Customer ID
+     * in their Connect account record.
      *
-     * <p>Only users with {@code is_active = TRUE} and a {@code NULL}
-     * {@code stripe_customer_id} are returned. The result is used by the
-     * {@code StripeCustomerSyncRunner} to know which users still need to have a
-     * Stripe Customer record created.</p>
-     *
-     * @return a list of {@link UserStripeInfo} projections; never {@code null},
-     *         may be empty
+     * @return a list of {@link UserStripeInfo} projections; never {@code null}, may be empty
      */
-    List<UserStripeInfo> findActiveUsersWithoutStripeCustomer();
+    List<UserStripeInfo> findActiveUsersWithoutPlatformCustomer();
 
     /**
-     * Persists the given Stripe Customer ID for a user.
-     *
-     * <p>The update is guarded with an additional {@code WHERE stripe_customer_id IS NULL}
-     * predicate so that concurrent or repeated invocations cannot overwrite an ID that
-     * was already set between the initial read and this write.</p>
+     * Persists the given Stripe Platform Customer ID (cus_xxx) for a user's
+     * Connect account, creating a stub record if needed.
      *
      * @param userId           the primary key of the user to update
      * @param stripeCustomerId the Stripe Customer ID (e.g. {@code cus_xxxxx}) to store
      */
-    void updateStripeCustomerId(Long userId, String stripeCustomerId);
+    void updatePlatformCustomerId(Long userId, String stripeCustomerId);
 
     /**
      * Projection used when syncing users to Stripe.
-     *
-     * <p>Contains only the fields required to call
-     * {@link com.stripe.model.Customer#create} and to log meaningful context.
-     * The {@code planCode} is stored as metadata in Stripe for reporting
-     * purposes.</p>
      *
      * @param userId    the database primary key of the user
      * @param email     the user's email address

@@ -55,6 +55,9 @@ public class StripeConnectAccountEntity {
     @Column(name = "verification_status", length = 50)
     private String verificationStatus;
 
+    @Column(name = "stripe_platform_customer_id", unique = true, length = 255)
+    private String stripePlatformCustomerId;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

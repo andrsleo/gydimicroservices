@@ -6,8 +6,7 @@ import com.affiliate.rentals.gydi.subscriptions.application.mapper.SubscriptionD
 import com.affiliate.rentals.gydi.subscriptions.domain.exception.*;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.*;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.*;
-import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
+import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -41,7 +40,7 @@ public class SubscribeToPlanUseCase {
     private final UserSubscriptionRepositoryPort subscriptionRepository;
     private final PaymentMethodRepositoryPort paymentMethodRepository;
     private final SubscriptionTransactionRepositoryPort transactionRepository;
-    private final UserRepositoryPort userRepository;
+    private final StripeConnectAccountRepositoryPort connectAccountRepository;
     private final SubscriptionDtoMapper mapper;
     private final Optional<PaymentGatewayPort> paymentGateway;
 
@@ -50,14 +49,14 @@ public class SubscribeToPlanUseCase {
             UserSubscriptionRepositoryPort subscriptionRepository,
             PaymentMethodRepositoryPort paymentMethodRepository,
             SubscriptionTransactionRepositoryPort transactionRepository,
-            UserRepositoryPort userRepository,
+            StripeConnectAccountRepositoryPort connectAccountRepository,
             SubscriptionDtoMapper mapper,
             Optional<PaymentGatewayPort> paymentGateway) {
         this.planRepository = planRepository;
         this.subscriptionRepository = subscriptionRepository;
         this.paymentMethodRepository = paymentMethodRepository;
         this.transactionRepository = transactionRepository;
-        this.userRepository = userRepository;
+        this.connectAccountRepository = connectAccountRepository;
         this.mapper = mapper;
         this.paymentGateway = paymentGateway;
     }
@@ -249,12 +248,12 @@ public class SubscribeToPlanUseCase {
         }
 
         try {
-            // Get user's Stripe Customer ID
-            User user = userRepository.findById(userId)
-                    .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+            // Get user's platform customer ID from Connect account
+            String platformCustomerId = connectAccountRepository
+                    .findPlatformCustomerIdByUserId(userId).orElse(null);
 
-            if (user.stripeCustomerId() == null) {
-                logger.error("❌ CRITICAL: User {} does not have Stripe Customer ID - cannot create subscription",
+            if (platformCustomerId == null) {
+                logger.error("❌ CRITICAL: User {} does not have a platform customer ID in Connect account - cannot create subscription",
                         userId);
                 logger.error(
                         "   → This should have been created during registration or lazy-created when adding payment method");
@@ -262,21 +261,21 @@ public class SubscribeToPlanUseCase {
             }
 
             logger.info("🚀 Creating Stripe subscription for user {} (customer: {}) on plan {} (price: {})",
-                    userId, user.stripeCustomerId(), plan.planCode(), plan.stripePriceId());
+                    userId, platformCustomerId, plan.planCode(), plan.stripePriceId());
             logger.info("   → Payment Method: {}", stripePaymentMethodId != null ? stripePaymentMethodId : "default");
 
             // Attach payment method to customer before creating subscription
             // Stripe requires the PM to be attached to the customer first
             if (stripePaymentMethodId != null) {
                 logger.info("🔗 Attaching payment method {} to customer {}", stripePaymentMethodId,
-                        user.stripeCustomerId());
-                paymentGateway.get().attachPaymentMethod(stripePaymentMethodId, user.stripeCustomerId());
+                        platformCustomerId);
+                paymentGateway.get().attachPaymentMethod(stripePaymentMethodId, platformCustomerId);
                 logger.info("   → Payment method attached successfully");
             }
 
             // Create Stripe subscription
             PaymentGatewayPort.SubscriptionResult stripeSubscription = paymentGateway.get().createSubscription(
-                    user.stripeCustomerId(),
+                    platformCustomerId,
                     plan.stripePriceId(),
                     stripePaymentMethodId);
 

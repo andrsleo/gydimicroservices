@@ -1,6 +1,8 @@
 package com.affiliate.rentals.gydi.commissions.infrastructure.scheduler;
 
 import com.affiliate.rentals.gydi.commissions.application.usecase.ChargeHostCommissionUseCase;
+import com.affiliate.rentals.gydi.commissions.application.usecase.PayAffiliateCommissionUseCase;
+import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommission;
 import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus;
 import com.affiliate.rentals.gydi.commissions.domain.model.HostCommission;
 import com.affiliate.rentals.gydi.commissions.domain.model.HostCommissionStatus;
@@ -45,6 +47,7 @@ public class CommissionPaymentScheduler {
     private final HostCommissionRepositoryPort commissionRepository;
     private final ReferralCommissionRepositoryPort affiliateCommissionRepository;
     private final ChargeHostCommissionUseCase chargeHostCommissionUseCase;
+    private final PayAffiliateCommissionUseCase payAffiliateCommissionUseCase;
 
     /**
      * Retries failed host commission charges.
@@ -222,6 +225,38 @@ public class CommissionPaymentScheduler {
 
         logger.warn("Commission {} requires manual intervention. Host {} should be contacted to update payment method.",
                 commissionId, commission.getHostId());
+    }
+
+    /**
+     * Pays approved affiliate commissions on the 1st and 15th of each month at 6 AM.
+     * <p>
+     * Covers commissions that were APPROVED but whose affiliate had not completed
+     * Stripe Connect onboarding when the webhook fired.
+     * </p>
+     */
+    @Scheduled(cron = "0 0 6 1,15 * ?")
+    public void processApprovedAffiliateCommissions() {
+        logger.info("========================================");
+        logger.info("Starting approved affiliate commission payout run");
+        logger.info("========================================");
+
+        List<ReferralCommission> approved = affiliateCommissionRepository
+                .findAllByStatus(ReferralCommissionStatus.APPROVED);
+
+        int paid = 0;
+        int failed = 0;
+
+        for (ReferralCommission commission : approved) {
+            try {
+                payAffiliateCommissionUseCase.execute(commission.getId());
+                paid++;
+            } catch (Exception e) {
+                logger.error("Error paying affiliate commission {}: {}", commission.getId(), e.getMessage());
+                failed++;
+            }
+        }
+
+        logger.info("Affiliate payout run complete: {} paid, {} failed", paid, failed);
     }
 
     /**

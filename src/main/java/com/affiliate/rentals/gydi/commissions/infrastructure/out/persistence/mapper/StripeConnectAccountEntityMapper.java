@@ -29,6 +29,7 @@ public class StripeConnectAccountEntityMapper {
             .chargesEnabled(domain.isChargesEnabled())
             .country(domain.getCountry())
             .verificationStatus(domain.getVerificationStatus())
+            .stripePlatformCustomerId(domain.getStripePlatformCustomerId())
             .createdAt(domain.getCreatedAt())
             .updatedAt(domain.getUpdatedAt())
             .build();
@@ -53,6 +54,7 @@ public class StripeConnectAccountEntityMapper {
             entity.getChargesEnabled(),
             entity.getCountry(),
             entity.getVerificationStatus(),
+            entity.getStripePlatformCustomerId(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()
         );
