@@ -47,6 +47,13 @@ public interface ReferralCommissionRepositoryPort {
     List<ReferralCommission> findByStatus(ReferralCommissionStatus status);
 
     /**
+     * Alias for findByStatus — used by scheduler for batch payout processing.
+     */
+    default List<ReferralCommission> findAllByStatus(ReferralCommissionStatus status) {
+        return findByStatus(status);
+    }
+
+    /**
      * Finds commissions ready for approval (dispute period ended).
      */
     List<ReferralCommission> findCommissionsReadyForApproval(LocalDateTime now);

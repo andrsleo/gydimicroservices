@@ -1,5 +1,6 @@
 package com.affiliate.rentals.gydi.commissions.infrastructure.out.persistence.adapter;
 
+import com.affiliate.rentals.gydi.commissions.domain.model.ConnectAccountType;
 import com.affiliate.rentals.gydi.commissions.domain.model.StripeConnectAccount;
 import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.infrastructure.out.persistence.entity.StripeConnectAccountEntity;
@@ -7,7 +8,10 @@ import com.affiliate.rentals.gydi.commissions.infrastructure.out.persistence.map
 import com.affiliate.rentals.gydi.commissions.infrastructure.out.persistence.repository.StripeConnectAccountJpaRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 
 /**
@@ -46,5 +50,50 @@ public class StripeConnectAccountRepositoryAdapter implements StripeConnectAccou
     @Override
     public boolean existsByUserId(Long userId) {
         return jpaRepository.existsByUserId(userId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Optional<String> findPlatformCustomerIdByUserId(Long userId) {
+        return jpaRepository.findPlatformCustomerIdByUserId(userId);
+    }
+
+    @Override
+    @Transactional
+    public void updatePlatformCustomerId(Long userId, String stripeCustomerId) {
+        if (jpaRepository.existsByUserId(userId)) {
+            jpaRepository.updatePlatformCustomerIdIfNull(userId, stripeCustomerId);
+        } else {
+            // Create a stub Connect account record so the customer ID is not lost
+            StripeConnectAccountEntity stub = StripeConnectAccountEntity.builder()
+                .userId(userId)
+                .stripeAccountId("pending_" + userId)
+                .accountType(ConnectAccountType.EXPRESS)
+                .onboardingCompleted(false)
+                .detailsSubmitted(false)
+                .payoutsEnabled(false)
+                .chargesEnabled(false)
+                .country("US")
+                .verificationStatus("unverified")
+                .stripePlatformCustomerId(stripeCustomerId)
+                .createdAt(LocalDateTime.now())
+                .updatedAt(LocalDateTime.now())
+                .build();
+            jpaRepository.save(stub);
+        }
+    }
+
+    @Override
+    @Transactional
+    public void upgradeStubAccount(Long userId, String realStripeAccountId) {
+        jpaRepository.updateStripeAccountId(userId, realStripeAccountId);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<StripeConnectAccount> findPendingConnectAccounts() {
+        return jpaRepository.findPendingAccounts().stream()
+            .map(mapper::toDomain)
+            .toList();
     }
 }

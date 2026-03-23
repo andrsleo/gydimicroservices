@@ -30,6 +30,7 @@ import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort;
+import com.affiliate.rentals.gydi.users.domain.ports.UserStripePort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
 
 /**
@@ -63,6 +64,9 @@ class CreateUserUseCaseTest {
     @Mock
     private UserInitializationService initializationService;
 
+    @Mock
+    private UserStripePort userStripePort;
+
     private CreateUserUseCase createUserUseCase;
 
     private CreateUserRequest validRequest;
@@ -78,7 +82,8 @@ class CreateUserUseCaseTest {
                 userProfileRepository,
                 passwordEncoder,
                 mapper,
-                initializationService
+                initializationService,
+                userStripePort
         );
 
         validRequest = new CreateUserRequest(

@@ -36,9 +36,16 @@ public record BookingFinishedEvent(
     }
 
     /**
-     * Checks if booking came from a referral (has affiliate).
+     * Checks if booking came from a real referral (has affiliate with positive commission rate).
+     * <p>
+     * Returns {@code false} for organic bookings where the affiliate is the system
+     * organic user (system-organic@gydi.internal), identified by a zero affiliate
+     * commission rate. Organic bookings generate no affiliate payout.
+     * </p>
      */
     public boolean hasAffiliate() {
-        return affiliateId != null;
+        return affiliateId != null
+                && affiliateCommissionRate != null
+                && affiliateCommissionRate.compareTo(BigDecimal.ZERO) > 0;
     }
 }

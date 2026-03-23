@@ -6,6 +6,10 @@ import com.affiliate.rentals.gydi.subscriptions.domain.model.*;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentGatewayPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.SubscriptionTransactionRepositoryPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.UserSubscriptionRepositoryPort;
+import com.affiliate.rentals.gydi.commissions.application.usecase.PayAffiliateCommissionUseCase;
+import com.affiliate.rentals.gydi.commissions.domain.model.HostCommissionStatus;
+import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus;
+import com.affiliate.rentals.gydi.commissions.domain.ports.ReferralCommissionRepositoryPort;
 import com.stripe.model.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -15,6 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.util.HashMap;
+import java.util.Map;
 
 /**
  * Service for processing Stripe webhook events.
@@ -48,6 +54,15 @@ public class StripeWebhookService {
 
     @Autowired(required = false)
     private com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort connectAccountRepository;
+
+    @Autowired(required = false)
+    private PayAffiliateCommissionUseCase payAffiliateCommissionUseCase;
+
+    @Autowired(required = false)
+    private ReferralCommissionRepositoryPort referralCommissionRepository;
+
+    @Autowired(required = false)
+    private com.affiliate.rentals.gydi.commissions.application.usecase.ApprovePendingCommissionsForAffiliateUseCase approvePendingCommissionsForAffiliateUseCase;
 
     public StripeWebhookService(
             UserSubscriptionRepositoryPort subscriptionRepository,
@@ -125,28 +140,63 @@ public class StripeWebhookService {
      * <p>This event indicates that a payment was successfully processed.</p>
      */
     private void handlePaymentIntentSucceeded(Event event) {
-        PaymentIntent paymentIntent = (PaymentIntent) event.getDataObjectDeserializer()
-            .getObject()
-            .orElse(null);
+        PaymentIntent pi = (PaymentIntent) event.getDataObjectDeserializer()
+                .getObject()
+                .orElse(null);
 
-        if (paymentIntent == null) {
+        if (pi == null) {
             log.warn("Payment intent data is null for event: {}", event.getId());
             return;
         }
 
-        log.info("Payment intent succeeded: {} for amount: {}",
-            paymentIntent.getId(),
-            paymentIntent.getAmount());
+        log.info("Payment intent succeeded: {} for amount: {}", pi.getId(), pi.getAmount());
 
-        // Extract metadata to find associated subscription
-        String subscriptionId = paymentIntent.getMetadata() != null
-            ? paymentIntent.getMetadata().get("subscription_id")
-            : null;
+        Map<String, String> meta = pi.getMetadata() != null ? pi.getMetadata() : new HashMap<>();
+        String type = meta.getOrDefault("type", "");
+        String commissionIdStr = meta.get("commission_id");
+        String bookingIdStr = meta.get("booking_id");
 
+        // Case: host commission payment confirmed
+        if ("host_commission".equals(type) && commissionIdStr != null) {
+            log.info("Host commission payment confirmed via webhook: PI={}, commissionId={}", pi.getId(), commissionIdStr);
+
+            // 1. Confirm HostCommission as CHARGED (idempotent)
+            if (hostCommissionRepository != null) {
+                try {
+                    Long hcId = Long.parseLong(commissionIdStr);
+                    hostCommissionRepository.findById(hcId).ifPresent(hc -> {
+                        if (hc.getStatus() == HostCommissionStatus.PROCESSING) {
+                            hc.markAsCharged(pi.getId(), pi.getLatestCharge(), LocalDateTime.now());
+                            hostCommissionRepository.save(hc);
+                            log.info("HostCommission {} marked as CHARGED via webhook", hcId);
+                        }
+                    });
+                } catch (NumberFormatException e) {
+                    log.error("Invalid commission_id in metadata: {}", commissionIdStr);
+                }
+            }
+
+            // 2. Trigger affiliate payout if booking is known
+            if (bookingIdStr != null && referralCommissionRepository != null
+                    && payAffiliateCommissionUseCase != null) {
+                try {
+                    referralCommissionRepository.findByBookingId(Long.parseLong(bookingIdStr))
+                            .ifPresent(rc -> {
+                                if (rc.getStatus() == ReferralCommissionStatus.APPROVED) {
+                                    payAffiliateCommissionUseCase.execute(rc.getId());
+                                }
+                            });
+                } catch (Exception e) {
+                    log.error("Error triggering affiliate payout for booking {}: {}", bookingIdStr, e.getMessage(), e);
+                }
+            }
+            return;
+        }
+
+        // Case: subscription payment
+        String subscriptionId = meta.get("subscription_id");
         if (subscriptionId != null) {
-            // Find and update subscription transaction
-            // This would typically be implemented with a method to find pending transaction
-            log.info("Marking transaction as completed for subscription: {}", subscriptionId);
+            log.info("Subscription payment confirmed: {}", subscriptionId);
             // TODO: Update transaction status to COMPLETED
         }
     }
@@ -660,6 +710,29 @@ public class StripeWebhookService {
                         connectAccount.getUserId(),
                         connectAccount.isOnboardingCompleted(),
                         connectAccount.isPayoutsEnabled());
+
+                    // If affiliate now has payouts enabled, promote any PENDING commissions
+                    // that were waiting for onboarding completion to APPROVED so the
+                    // biweekly scheduler can pay them on the next scheduled date.
+                    if (connectAccount.canReceivePayouts()
+                            && approvePendingCommissionsForAffiliateUseCase != null) {
+                        try {
+                            int approvedCount = approvePendingCommissionsForAffiliateUseCase
+                                    .execute(connectAccount.getUserId());
+                            if (approvedCount > 0) {
+                                log.info("account.updated: promoted {} PENDING commission(s) to APPROVED "
+                                        + "for affiliate {} after onboarding completion",
+                                        approvedCount, connectAccount.getUserId());
+                            }
+                        } catch (Exception e) {
+                            // Log but do not re-throw: the Connect account update was already
+                            // persisted — commission approval is a best-effort action here.
+                            // The hourly reconciliation scheduler will retry any missed ones.
+                            log.error("Error approving PENDING commissions for affiliate {} after "
+                                    + "account.updated webhook: {}",
+                                    connectAccount.getUserId(), e.getMessage(), e);
+                        }
+                    }
 
                     // TODO: If onboarding just completed, send welcome email
                     // TODO: Update user_onboarding_status table (affiliate_connect_completed=true)

@@ -143,4 +143,15 @@ public interface BookingRepositoryPort {
      * @return Optional containing the affiliate ID if link exists
      */
     Optional<Long> findAffiliateIdByReferralLinkId(Long referralLinkId);
+
+    /**
+     * Finds the user ID of the system organic user (system-organic@gydi.internal).
+     * <p>
+     * Used to detect organic bookings (no real affiliate) so that commission
+     * rates can be applied correctly: affiliate commission = 0%, host fee = 15%.
+     * </p>
+     *
+     * @return Optional containing the organic system user ID if found
+     */
+    Optional<Long> findOrganicSystemUserId();
 }

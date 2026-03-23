@@ -8,10 +8,10 @@ import com.affiliate.rentals.gydi.commissions.domain.ports.HostCommissionReposit
 import com.affiliate.rentals.gydi.commissions.domain.ports.PaymentGatewayPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethod;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethodType;
+import com.affiliate.rentals.gydi.commissions.domain.model.ConnectAccountType;
+import com.affiliate.rentals.gydi.commissions.domain.model.StripeConnectAccount;
+import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentMethodRepositoryPort;
-import com.affiliate.rentals.gydi.users.domain.model.Email;
-import com.affiliate.rentals.gydi.users.domain.model.User;
-import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.DisplayName;
@@ -33,21 +33,16 @@ import static org.mockito.Mockito.when;
 /**
  * Simplified E2E Integration Test: Host Commission Charge Flow
  * <p>
- * This test focuses ONLY on the commission charging logic,
- * without dependencies on bookings, properties, or users bounded contexts.
+ * Host commission charges use a direct PaymentIntent on the platform account
+ * (chargeHostCommission), NOT chargeHostViaConnect. This avoids requiring
+ * card_payments capability on the Express Connect account (which only has
+ * transfers capability for affiliate payouts).
  * </p>
- * <p>
- * Test Scenario:
- * 1. Create a PENDING host commission manually
- * 2. Mock successful Stripe payment
- * 3. Execute ChargeHostCommissionUseCase
- * 4. Verify commission status changed to CHARGED
- * 5. Verify Stripe Payment Intent ID was saved
- * </p>
+ * Charge: platform charges host's cus_xxx for the commission amount only (not the full booking).
  */
 @SpringBootTest
 @ActiveProfiles("test")
-@DisplayName("Simple E2E Test: Host Commission Charge")
+@DisplayName("Simple E2E Test: Host Commission Charge (Direct Platform Charge)")
 class HostCommissionChargeSimpleE2ETest {
 
     @Autowired
@@ -60,25 +55,26 @@ class HostCommissionChargeSimpleE2ETest {
     private PaymentGatewayPort paymentGateway;
 
     @MockBean
-    private UserRepositoryPort userRepository;
+    private StripeConnectAccountRepositoryPort connectAccountRepository;
 
     @MockBean
     private PaymentMethodRepositoryPort paymentMethodRepository;
 
     private HostCommission pendingCommission;
-    private User mockHost;
+    private StripeConnectAccount mockConnectAccount;
     private PaymentMethod mockPaymentMethod;
+
+    // Booking: $1000.00, commission rate: 20% → commission = $200.00
+    private static final BigDecimal BOOKING_AMOUNT   = new BigDecimal("1000.00");
+    private static final BigDecimal COMMISSION_RATE  = new BigDecimal("0.20");
+    // Platform charges host ONLY the commission amount (not the full booking)
+    private static final long COMMISSION_AMOUNT_CENTS = 20_000L; // $200.00
 
     @BeforeEach
     void setUp() {
-        // Create mock Host user
-        mockHost = User.builder()
-            .id(100L)
-            .name("Test Host")
-            .email(Email.of("host@test.com"))
-            .passwordHash("hashed_password_test")
-            .stripeCustomerId("cus_test_host_123")
-            .build();
+        // Create mock Connect account — only needs stripePlatformCustomerId (cus_xxx)
+        mockConnectAccount = StripeConnectAccount.create(100L, "acct_test_host", ConnectAccountType.STANDARD, "US");
+        mockConnectAccount.setPlatformCustomerId("cus_test_host_123");
 
         // Create mock PaymentMethod
         mockPaymentMethod = PaymentMethod.builder()
@@ -95,21 +91,16 @@ class HostCommissionChargeSimpleE2ETest {
             .build();
 
         // Configure mocks
-        when(userRepository.findById(100L)).thenReturn(Optional.of(mockHost));
-        when(paymentMethodRepository.findDefaultByUserId(100L))
-            .thenReturn(Optional.of(mockPaymentMethod));
+        when(connectAccountRepository.findByUserId(100L)).thenReturn(Optional.of(mockConnectAccount));
+        when(paymentMethodRepository.findDefaultByUserId(100L)).thenReturn(Optional.of(mockPaymentMethod));
 
-        // Create a PENDING host commission with test data
-        CommissionAmount amount = CommissionAmount.calculate(
-            new BigDecimal("1000.00"),  // Booking amount
-            new BigDecimal("0.20"),      // 20% commission rate (PRO plan)
-            "USD"
-        );
+        // Create a PENDING host commission
+        CommissionAmount amount = CommissionAmount.calculate(BOOKING_AMOUNT, COMMISSION_RATE, "USD");
 
         pendingCommission = HostCommission.create(
-            1L,         // bookingId
-            100L,       // hostId
-            "PRO",      // hostPlan (20% commission rate)
+            1L,     // bookingId
+            100L,   // hostId
+            "PRO",  // hostPlan (20% commission rate)
             amount
         );
 
@@ -124,46 +115,46 @@ class HostCommissionChargeSimpleE2ETest {
     }
 
     @Test
-    @DisplayName("Should charge commission successfully and update status to CHARGED")
+    @DisplayName("Should charge commission directly and update status to CHARGED")
     void shouldChargeCommissionSuccessfully() {
-        // GIVEN: Mock successful Stripe payment
+        // GIVEN: Mock successful direct charge
         PaymentGatewayPort.PaymentResult successResult = new PaymentGatewayPort.PaymentResult(
             true,
             "pi_test_success_123",
             "ch_test_charge_456",
-            null, // No failure reason on success
+            null,
             LocalDateTime.now()
         );
 
         when(paymentGateway.chargeHostCommission(
-            anyString(), // customer ID
-            anyString(), // payment method token
-            anyLong(),   // amount in cents
+            anyString(), // cus_xxx
+            anyString(), // pm_xxx
+            anyLong(),   // commissionAmountCents
             anyString(), // currency
-            anyString(), // booking ID
-            anyString()  // commission ID
+            anyString(), // bookingId
+            anyString()  // commissionId
         )).thenReturn(successResult);
 
         // WHEN: Execute charge
         chargeHostCommissionUseCase.execute(pendingCommission.getId());
 
-        // THEN: Verify commission was charged
-        HostCommission chargedCommission = hostCommissionRepository
+        // THEN: Commission is CHARGED with correct Stripe IDs
+        HostCommission charged = hostCommissionRepository
             .findById(pendingCommission.getId())
             .orElseThrow(() -> new AssertionError("Commission not found"));
 
-        assertThat(chargedCommission.getStatus()).isEqualTo(HostCommissionStatus.CHARGED);
-        assertThat(chargedCommission.getStripePaymentIntentId()).isEqualTo("pi_test_success_123");
-        assertThat(chargedCommission.getStripeChargeId()).isEqualTo("ch_test_charge_456");
-        assertThat(chargedCommission.getChargedAt()).isNotNull();
+        assertThat(charged.getStatus()).isEqualTo(HostCommissionStatus.CHARGED);
+        assertThat(charged.getStripePaymentIntentId()).isEqualTo("pi_test_success_123");
+        assertThat(charged.getStripeChargeId()).isEqualTo("ch_test_charge_456");
+        assertThat(charged.getChargedAt()).isNotNull();
 
-        // Verify Stripe was called with correct amount (20% of $1000 = $200 = 20000 cents)
+        // Verify Stripe was called with commission amount only (not full booking amount)
         verify(paymentGateway).chargeHostCommission(
-            anyString(),
-            anyString(),
-            eq(20000L), // $200.00 in cents
+            eq("cus_test_host_123"),    // host platform customer
+            eq("pm_test_card_visa"),    // payment method token
+            eq(COMMISSION_AMOUNT_CENTS), // 20000L ($200 commission only)
             eq("USD"),
-            eq("1"),    // booking ID
+            eq("1"),                    // bookingId
             eq(pendingCommission.getId().toString())
         );
     }
@@ -187,21 +178,21 @@ class HostCommissionChargeSimpleE2ETest {
         // WHEN: Execute charge
         chargeHostCommissionUseCase.execute(pendingCommission.getId());
 
-        // THEN: Verify commission was marked as FAILED
-        HostCommission failedCommission = hostCommissionRepository
+        // THEN: Commission is FAILED with the Stripe reason
+        HostCommission failed = hostCommissionRepository
             .findById(pendingCommission.getId())
             .orElseThrow(() -> new AssertionError("Commission not found"));
 
-        assertThat(failedCommission.getStatus()).isEqualTo(HostCommissionStatus.FAILED);
-        assertThat(failedCommission.getFailureReason()).contains("insufficient funds");
-        assertThat(failedCommission.getAttemptCount()).isEqualTo(1);
-        assertThat(failedCommission.getStripePaymentIntentId()).isNull();
+        assertThat(failed.getStatus()).isEqualTo(HostCommissionStatus.FAILED);
+        assertThat(failed.getFailureReason()).contains("insufficient funds");
+        assertThat(failed.getAttemptCount()).isEqualTo(1);
+        assertThat(failed.getStripePaymentIntentId()).isNull();
     }
 
     @Test
-    @DisplayName("Should calculate correct amount in cents for Stripe")
+    @DisplayName("Should charge only the commission amount in cents (not the full booking amount)")
     void shouldCalculateCorrectAmountInCents() {
-        // GIVEN: Commission with $200 amount
+        // GIVEN: Commission amount = $200 (20% of $1000 booking)
         assertThat(pendingCommission.getAmount().getCommissionAmount())
             .isEqualByComparingTo(new BigDecimal("200.00"));
 
@@ -217,11 +208,11 @@ class HostCommissionChargeSimpleE2ETest {
         // WHEN: Execute charge
         chargeHostCommissionUseCase.execute(pendingCommission.getId());
 
-        // THEN: Verify Stripe was called with 20000 cents ($200.00)
+        // THEN: Stripe was called with commission amount = 20000L ($200.00), NOT 100000L ($1000)
         verify(paymentGateway).chargeHostCommission(
             anyString(),
             anyString(),
-            eq(20000L), // $200.00 = 20000 cents
+            eq(COMMISSION_AMOUNT_CENTS), // 20000L = $200.00 commission only
             anyString(),
             anyString(),
             anyString()
@@ -229,7 +220,7 @@ class HostCommissionChargeSimpleE2ETest {
     }
 
     @Test
-    @DisplayName("Should update commission atomically")
+    @DisplayName("Should update commission atomically on charge success")
     void shouldUpdateCommissionAtomically() {
         // GIVEN: Initial PENDING state
         assertThat(pendingCommission.getStatus()).isEqualTo(HostCommissionStatus.PENDING);
@@ -247,7 +238,7 @@ class HostCommissionChargeSimpleE2ETest {
         // WHEN: Execute charge
         chargeHostCommissionUseCase.execute(pendingCommission.getId());
 
-        // THEN: Verify atomic update (all fields updated together)
+        // THEN: All fields updated atomically
         HostCommission updated = hostCommissionRepository
             .findById(pendingCommission.getId())
             .orElseThrow();

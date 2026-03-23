@@ -1,6 +1,5 @@
 package com.affiliate.rentals.gydi.users.application.usecase;
 
-import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 
@@ -20,6 +19,7 @@ import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.model.UserProfile;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.ports.UserProfileRepositoryPort;
+import com.affiliate.rentals.gydi.users.domain.ports.UserStripePort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
 
 import lombok.extern.slf4j.Slf4j;
@@ -53,18 +53,21 @@ public class CreateUserUseCase {
     private final PasswordEncoder passwordEncoder;
     private final UserDtoMapper mapper;
     private final UserInitializationService initializationService;
+    private final UserStripePort userStripePort;
 
     public CreateUserUseCase(
             UserRepositoryPort userRepository,
             UserProfileRepositoryPort userProfileRepository,
             PasswordEncoder passwordEncoder,
             UserDtoMapper mapper,
-            UserInitializationService initializationService) {
+            UserInitializationService initializationService,
+            UserStripePort userStripePort) {
         this.userRepository = userRepository;
         this.userProfileRepository = userProfileRepository;
         this.passwordEncoder = passwordEncoder;
         this.mapper = mapper;
         this.initializationService = initializationService;
+        this.userStripePort = userStripePort;
     }
 
     /**
@@ -114,25 +117,9 @@ public class CreateUserUseCase {
         // Returns the Stripe Customer ID if successful, null otherwise
         String stripeCustomerId = initializationService.createStripeCustomerIfAvailable(savedUser);
 
-        // Update user with Stripe Customer ID if it was created successfully
-        User userWithStripeCustomer = savedUser;
+        // Save platform customer ID to Connect account (no longer stored on User)
         if (stripeCustomerId != null) {
-            userWithStripeCustomer = User.builder()
-                    .id(savedUser.id())
-                    .name(savedUser.name())
-                    .email(savedUser.email())
-                    .passwordHash(savedUser.passwordHash())
-                    .phoneNumber(savedUser.phoneNumber())
-                    .roles(savedUser.roles())
-                    .activePlan(savedUser.activePlan())
-                    .capabilities(savedUser.capabilities())
-                    .accountVerified(savedUser.isAccountVerified())
-                    .stripeCustomerId(stripeCustomerId)
-                    .createdAt(savedUser.createdAt())
-                    .build();
-
-            // Save user with Stripe Customer ID in the main transaction
-            userWithStripeCustomer = userRepository.save(userWithStripeCustomer);
+            userStripePort.updatePlatformCustomerId(savedUser.id(), stripeCustomerId);
         }
 
         // Create FREE subscription only if:
@@ -144,14 +131,14 @@ public class CreateUserUseCase {
 
         if (shouldCreateFreeSubscription) {
             log.info("Creating FREE subscription for user {} (selectedPlanCode: {})",
-                    userWithStripeCustomer.email().address(), request.selectedPlanCode());
-            initializationService.createDefaultFreeSubscription(userWithStripeCustomer);
+                    savedUser.email().address(), request.selectedPlanCode());
+            initializationService.createDefaultFreeSubscription(savedUser);
         } else {
             log.info("Skipping FREE subscription for user {} - paid plan selected: {}",
-                    userWithStripeCustomer.email().address(), request.selectedPlanCode());
+                    savedUser.email().address(), request.selectedPlanCode());
         }
 
-        return mapper.toResponse(userWithStripeCustomer);
+        return mapper.toResponse(savedUser);
     }
 
     /**
