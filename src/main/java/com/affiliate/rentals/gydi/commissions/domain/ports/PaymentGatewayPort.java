@@ -47,6 +47,36 @@ public interface PaymentGatewayPort {
     );
 
     /**
+     * Charges host commission via Stripe Connect PaymentIntent.
+     * <p>
+     * Uses on_behalf_of and application_fee_amount for full Connect model:
+     * - The charge is made on the host's Connect account (acct_xxx)
+     * - The platform takes application_fee_amount (the commission)
+     * - The host receives the remainder directly in their Connect account
+     * </p>
+     *
+     * @param hostConnectAccountId Stripe Connect account ID of host (acct_xxx)
+     * @param customerId Stripe platform customer ID of host (cus_xxx) for off-session charge
+     * @param paymentMethodId Stripe payment method ID to charge
+     * @param totalAmountCents full booking amount in cents (charged to customer)
+     * @param applicationFeeCents platform commission in cents (kept by platform)
+     * @param currency currency code (USD, EUR, GBP, etc.)
+     * @param bookingId booking ID for metadata tracking
+     * @param commissionId commission ID for metadata tracking
+     * @return PaymentResult with success/failure and transaction IDs
+     */
+    PaymentResult chargeHostViaConnect(
+        String hostConnectAccountId,
+        String customerId,
+        String paymentMethodId,
+        Long totalAmountCents,
+        Long applicationFeeCents,
+        String currency,
+        String bookingId,
+        String commissionId
+    );
+
+    /**
      * Refunds a host commission charge.
      *
      * @param chargeId Stripe charge ID to refund
@@ -147,6 +177,18 @@ public interface PaymentGatewayPort {
      * @return ConnectAccountStatus with onboarding and payout status
      */
     ConnectAccountStatus getConnectAccountStatus(String accountId);
+
+    /**
+     * Creates a Stripe Express Dashboard login link for a connected account.
+     * <p>
+     * Allows users to access their Stripe Express Dashboard to manage bank accounts,
+     * view payouts, and review transaction history.
+     * </p>
+     *
+     * @param accountId Stripe Connect account ID (acct_xxx)
+     * @return URL to redirect the user to their Stripe Express Dashboard
+     */
+    String createLoginLink(String accountId);
 
     // ============================================================================
     // RESULT RECORDS

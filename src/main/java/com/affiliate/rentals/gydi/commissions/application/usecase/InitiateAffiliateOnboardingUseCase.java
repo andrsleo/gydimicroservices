@@ -73,8 +73,19 @@ public class InitiateAffiliateOnboardingUseCase {
                 );
             }
 
-            // Onboarding incomplete → generate new link
-            logger.info("User {} has incomplete onboarding, generating new link", userId);
+            // Stub account from migration (pending_N) — needs a real Stripe account first
+            if (account.getStripeAccountId().startsWith("pending_")) {
+                logger.info("User {} has stub account, creating real Stripe Connect account", userId);
+                String country = detectUserCountry(user);
+                String realAccountId = paymentGateway.createConnectAccount(user.email().address(), country);
+                connectAccountRepository.upgradeStubAccount(userId, realAccountId);
+                logger.info("Upgraded stub to real account: {} → {} for user {}", account.getStripeAccountId(), realAccountId, userId);
+                String onboardingUrl = generateOnboardingLink(realAccountId);
+                return OnboardingLinkDto.of(onboardingUrl, realAccountId);
+            }
+
+            // Onboarding incomplete but already has real account → generate new link
+            logger.info("User {} has incomplete onboarding, generating new link for {}", userId, account.getStripeAccountId());
             String onboardingUrl = generateOnboardingLink(account.getStripeAccountId());
             return OnboardingLinkDto.of(onboardingUrl, account.getStripeAccountId());
         }

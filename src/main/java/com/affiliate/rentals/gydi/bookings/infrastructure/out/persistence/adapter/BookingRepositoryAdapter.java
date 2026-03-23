@@ -111,4 +111,9 @@ public class BookingRepositoryAdapter implements BookingRepositoryPort {
     public Optional<Long> findAffiliateIdByReferralLinkId(Long referralLinkId) {
         return Optional.ofNullable(jpaRepository.findAffiliateIdByReferralLinkId(referralLinkId));
     }
+
+    @Override
+    public Optional<Long> findOrganicSystemUserId() {
+        return Optional.ofNullable(jpaRepository.findOrganicSystemUserId());
+    }
 }

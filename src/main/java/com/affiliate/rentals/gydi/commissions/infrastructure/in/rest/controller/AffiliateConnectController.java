@@ -5,6 +5,9 @@ import com.affiliate.rentals.gydi.commissions.application.dto.OnboardingLinkDto;
 import com.affiliate.rentals.gydi.commissions.application.usecase.GetConnectAccountStatusUseCase;
 import com.affiliate.rentals.gydi.commissions.application.usecase.InitiateAffiliateOnboardingUseCase;
 import com.affiliate.rentals.gydi.commissions.domain.exception.AlreadyOnboardedException;
+import com.affiliate.rentals.gydi.commissions.domain.model.StripeConnectAccount;
+import com.affiliate.rentals.gydi.commissions.domain.ports.PaymentGatewayPort;
+import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
 import com.affiliate.rentals.gydi.shared.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -35,6 +38,8 @@ public class AffiliateConnectController {
 
     private final InitiateAffiliateOnboardingUseCase initiateOnboardingUseCase;
     private final GetConnectAccountStatusUseCase getConnectAccountStatusUseCase;
+    private final StripeConnectAccountRepositoryPort connectAccountRepository;
+    private final PaymentGatewayPort paymentGateway;
 
     /**
      * Initiates Stripe Connect onboarding for current user.
@@ -117,7 +122,55 @@ public class AffiliateConnectController {
     }
 
     /**
+     * Generates a Stripe Express Dashboard login link for the current user.
+     * <p>
+     * The link is single-use and short-lived (~5 minutes). The user is redirected
+     * to their Stripe Express Dashboard where they can manage bank accounts,
+     * view payouts, and review transaction history.
+     * </p>
+     *
+     * @return DashboardLinkDto with the Stripe Express Dashboard URL
+     */
+    @PostMapping("/dashboard-link")
+    @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
+    @Operation(
+        summary = "Get Stripe Express Dashboard link",
+        description = "Generates a single-use login link to the user's Stripe Express Dashboard"
+    )
+    public ResponseEntity<?> getDashboardLink(
+        @AuthenticationPrincipal CustomUserDetails userDetails
+    ) {
+        Long userId = userDetails.getUserId();
+
+        try {
+            StripeConnectAccount account = connectAccountRepository.findByUserId(userId)
+                .orElse(null);
+
+            if (account == null || !account.isOnboardingCompleted()
+                    || account.getStripeAccountId().startsWith("pending_")) {
+                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
+                    .body(new ErrorResponse("NOT_ONBOARDED",
+                        "Complete Stripe Connect onboarding before accessing the dashboard"));
+            }
+
+            String url = paymentGateway.createLoginLink(account.getStripeAccountId());
+            return ResponseEntity.ok(new DashboardLinkDto(url));
+
+        } catch (Exception e) {
+            logger.error("Error generating dashboard link for user {}: {}", userId, e.getMessage(), e);
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(new ErrorResponse("DASHBOARD_LINK_ERROR",
+                    "Failed to generate dashboard link: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Error response record.
      */
     private record ErrorResponse(String code, String message) {}
+
+    /**
+     * Dashboard link response record.
+     */
+    private record DashboardLinkDto(String url) {}
 }

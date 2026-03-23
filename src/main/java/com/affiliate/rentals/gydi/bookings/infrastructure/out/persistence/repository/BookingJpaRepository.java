@@ -67,4 +67,7 @@ public interface BookingJpaRepository extends JpaRepository<BookingJpaEntity, Lo
 
     @Query(value = "SELECT affiliate_id FROM referrals.referral_links WHERE id = :referralLinkId", nativeQuery = true)
     Long findAffiliateIdByReferralLinkId(@Param("referralLinkId") Long referralLinkId);
+
+    @Query(value = "SELECT id FROM users.users WHERE email = 'system-organic@gydi.internal' LIMIT 1", nativeQuery = true)
+    Long findOrganicSystemUserId();
 }

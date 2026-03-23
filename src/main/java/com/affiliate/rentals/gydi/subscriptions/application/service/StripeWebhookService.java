@@ -61,6 +61,9 @@ public class StripeWebhookService {
     @Autowired(required = false)
     private ReferralCommissionRepositoryPort referralCommissionRepository;
 
+    @Autowired(required = false)
+    private com.affiliate.rentals.gydi.commissions.application.usecase.ApprovePendingCommissionsForAffiliateUseCase approvePendingCommissionsForAffiliateUseCase;
+
     public StripeWebhookService(
             UserSubscriptionRepositoryPort subscriptionRepository,
             SubscriptionTransactionRepositoryPort transactionRepository,
@@ -707,6 +710,29 @@ public class StripeWebhookService {
                         connectAccount.getUserId(),
                         connectAccount.isOnboardingCompleted(),
                         connectAccount.isPayoutsEnabled());
+
+                    // If affiliate now has payouts enabled, promote any PENDING commissions
+                    // that were waiting for onboarding completion to APPROVED so the
+                    // biweekly scheduler can pay them on the next scheduled date.
+                    if (connectAccount.canReceivePayouts()
+                            && approvePendingCommissionsForAffiliateUseCase != null) {
+                        try {
+                            int approvedCount = approvePendingCommissionsForAffiliateUseCase
+                                    .execute(connectAccount.getUserId());
+                            if (approvedCount > 0) {
+                                log.info("account.updated: promoted {} PENDING commission(s) to APPROVED "
+                                        + "for affiliate {} after onboarding completion",
+                                        approvedCount, connectAccount.getUserId());
+                            }
+                        } catch (Exception e) {
+                            // Log but do not re-throw: the Connect account update was already
+                            // persisted — commission approval is a best-effort action here.
+                            // The hourly reconciliation scheduler will retry any missed ones.
+                            log.error("Error approving PENDING commissions for affiliate {} after "
+                                    + "account.updated webhook: {}",
+                                    connectAccount.getUserId(), e.getMessage(), e);
+                        }
+                    }
 
                     // TODO: If onboarding just completed, send welcome email
                     // TODO: Update user_onboarding_status table (affiliate_connect_completed=true)

@@ -74,8 +74,8 @@ class StripeCustomerSyncRunnerTest {
 
         runner.run(applicationArguments);
 
-        verify(userStripePort, never()).findActiveUsersWithoutStripeCustomer();
-        verify(userStripePort, never()).updateStripeCustomerId(any(), any());
+        verify(userStripePort, never()).findActiveUsersWithoutPlatformCustomer();
+        verify(userStripePort, never()).updatePlatformCustomerId(any(), any());
     }
 
     @Test
@@ -85,8 +85,8 @@ class StripeCustomerSyncRunnerTest {
 
         runner.run(applicationArguments);
 
-        verify(userStripePort, never()).findActiveUsersWithoutStripeCustomer();
-        verify(userStripePort, never()).updateStripeCustomerId(any(), any());
+        verify(userStripePort, never()).findActiveUsersWithoutPlatformCustomer();
+        verify(userStripePort, never()).updatePlatformCustomerId(any(), any());
     }
 
     // ── Guard: no pending users ───────────────────────────────────────────────
@@ -95,7 +95,7 @@ class StripeCustomerSyncRunnerTest {
     @DisplayName("Should skip Stripe API calls when no users are pending")
     void shouldSkipStripeApiCalls_whenNoPendingUsers() throws Exception {
         Stripe.apiKey = "sk_test_dummy_key_for_unit_tests";
-        when(userStripePort.findActiveUsersWithoutStripeCustomer())
+        when(userStripePort.findActiveUsersWithoutPlatformCustomer())
                 .thenReturn(Collections.emptyList());
 
         try (MockedStatic<Customer> customerStatic = Mockito.mockStatic(Customer.class)) {
@@ -104,7 +104,7 @@ class StripeCustomerSyncRunnerTest {
             customerStatic.verify(() -> Customer.create(any(CustomerCreateParams.class)), never());
         }
 
-        verify(userStripePort, never()).updateStripeCustomerId(any(), any());
+        verify(userStripePort, never()).updatePlatformCustomerId(any(), any());
     }
 
     // ── Happy path ────────────────────────────────────────────────────────────
@@ -118,7 +118,7 @@ class StripeCustomerSyncRunnerTest {
                 new UserStripeInfo(1L, "alice@example.com", "US", "FREE"),
                 new UserStripeInfo(2L, "bob@example.com", null, "PRO")
         );
-        when(userStripePort.findActiveUsersWithoutStripeCustomer()).thenReturn(pendingUsers);
+        when(userStripePort.findActiveUsersWithoutPlatformCustomer()).thenReturn(pendingUsers);
 
         Customer mockCustomerAlice = mock(Customer.class);
         when(mockCustomerAlice.getId()).thenReturn("cus_alice123");
@@ -136,8 +136,8 @@ class StripeCustomerSyncRunnerTest {
             customerStatic.verify(() -> Customer.create(any(CustomerCreateParams.class)), times(2));
         }
 
-        verify(userStripePort).updateStripeCustomerId(1L, "cus_alice123");
-        verify(userStripePort).updateStripeCustomerId(2L, "cus_bob456");
+        verify(userStripePort).updatePlatformCustomerId(1L, "cus_alice123");
+        verify(userStripePort).updatePlatformCustomerId(2L, "cus_bob456");
     }
 
     // ── Fault tolerance ───────────────────────────────────────────────────────
@@ -151,7 +151,7 @@ class StripeCustomerSyncRunnerTest {
                 new UserStripeInfo(10L, "fail@example.com", "MX", "FREE"),
                 new UserStripeInfo(11L, "ok@example.com", "CO", "FREE")
         );
-        when(userStripePort.findActiveUsersWithoutStripeCustomer()).thenReturn(pendingUsers);
+        when(userStripePort.findActiveUsersWithoutPlatformCustomer()).thenReturn(pendingUsers);
 
         StripeException stripeException = mock(StripeException.class);
         when(stripeException.getMessage()).thenReturn("card_error");
@@ -170,9 +170,9 @@ class StripeCustomerSyncRunnerTest {
         }
 
         // First user failed — no update should have been called for them
-        verify(userStripePort, never()).updateStripeCustomerId(org.mockito.ArgumentMatchers.eq(10L), any());
+        verify(userStripePort, never()).updatePlatformCustomerId(org.mockito.ArgumentMatchers.eq(10L), any());
 
         // Second user succeeded
-        verify(userStripePort).updateStripeCustomerId(11L, "cus_ok789");
+        verify(userStripePort).updatePlatformCustomerId(11L, "cus_ok789");
     }
 }

@@ -64,6 +64,15 @@ public interface StripeConnectAccountRepositoryPort {
     void updatePlatformCustomerId(Long userId, String stripeCustomerId);
 
     /**
+     * Upgrades a stub stripe_account_id (pending_N) to a real acct_xxx obtained from Stripe.
+     * Called when a user with an existing stub initiates onboarding for the first time.
+     *
+     * @param userId             the user ID
+     * @param realStripeAccountId the real Stripe Connect account ID (acct_xxx)
+     */
+    void upgradeStubAccount(Long userId, String realStripeAccountId);
+
+    /**
      * Returns all Connect accounts that have a stub stripe_account_id (pending_N).
      * These users need to complete real Stripe Connect onboarding.
      */

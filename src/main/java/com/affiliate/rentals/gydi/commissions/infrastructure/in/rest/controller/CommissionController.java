@@ -6,6 +6,9 @@ import com.affiliate.rentals.gydi.commissions.application.dto.HostCommissionDto;
 import com.affiliate.rentals.gydi.commissions.application.mapper.HostCommissionMapper;
 import com.affiliate.rentals.gydi.commissions.application.usecase.ChargeHostCommissionUseCase;
 import com.affiliate.rentals.gydi.commissions.application.usecase.GetHostCommissionsByUserUseCase;
+import com.affiliate.rentals.gydi.commissions.application.usecase.PayAffiliateCommissionUseCase;
+import com.affiliate.rentals.gydi.commissions.domain.model.HostCommission;
+import com.affiliate.rentals.gydi.commissions.domain.ports.HostCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.ReferralCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.shared.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,17 +33,23 @@ public class CommissionController {
 
     private final GetHostCommissionsByUserUseCase getHostCommissionsUseCase;
     private final ReferralCommissionRepositoryPort affiliateCommissionRepository;
+    private final HostCommissionRepositoryPort hostCommissionRepository;
     private final ChargeHostCommissionUseCase chargeHostCommissionUseCase;
+    private final PayAffiliateCommissionUseCase payAffiliateCommissionUseCase;
     private final HostCommissionMapper hostCommissionMapper;
 
     public CommissionController(
             GetHostCommissionsByUserUseCase getHostCommissionsUseCase,
             ReferralCommissionRepositoryPort affiliateCommissionRepository,
+            HostCommissionRepositoryPort hostCommissionRepository,
             ChargeHostCommissionUseCase chargeHostCommissionUseCase,
+            PayAffiliateCommissionUseCase payAffiliateCommissionUseCase,
             HostCommissionMapper hostCommissionMapper) {
         this.getHostCommissionsUseCase = getHostCommissionsUseCase;
         this.affiliateCommissionRepository = affiliateCommissionRepository;
+        this.hostCommissionRepository = hostCommissionRepository;
         this.chargeHostCommissionUseCase = chargeHostCommissionUseCase;
+        this.payAffiliateCommissionUseCase = payAffiliateCommissionUseCase;
         this.hostCommissionMapper = hostCommissionMapper;
     }
 
@@ -63,12 +72,32 @@ public class CommissionController {
     })
     public ResponseEntity<List<ReferralCommissionDto>> getAffiliateCommissionsEarned(
             @AuthenticationPrincipal CustomUserDetails userDetails) {
-        // ✅ SECURITY FIX: Extract actual user ID from JWT authentication
         Long userId = userDetails.getUserId();
 
-        // TODO: Implement full mapping with AffiliateCommissionMapper
-        // For now, return empty list to prevent 404 errors
-        return ResponseEntity.ok(List.of());
+        List<ReferralCommissionDto> commissions = affiliateCommissionRepository.findByAffiliateId(userId)
+                .stream()
+                .map(commission -> new ReferralCommissionDto(
+                        commission.getId(),
+                        commission.getBookingId(),
+                        commission.getAffiliateId(),
+                        commission.getAffiliatePlan(),
+                        commission.getAmount().getBookingAmount(),
+                        commission.getAmount().getCommissionRate(),
+                        commission.getAmount().getCommissionAmount(),
+                        commission.getAmount().getCurrency(),
+                        commission.getPaymentSchedule().getScheduledPaymentDate(),
+                        commission.getDisputePeriod().getDisputePeriodEndsAt(),
+                        commission.getStatus().name(),
+                        commission.getStripeTransferId(),
+                        commission.getPaidAt(),
+                        commission.getFailureReason(),
+                        commission.getAttemptCount(),
+                        commission.getCreatedAt(),
+                        commission.getUpdatedAt()
+                ))
+                .toList();
+
+        return ResponseEntity.ok(commissions);
     }
 
     @GetMapping("/affiliate/stats")
@@ -87,12 +116,17 @@ public class CommissionController {
         var commissions = affiliateCommissionRepository.findByAffiliateId(userId);
 
         BigDecimal totalEarned = commissions.stream()
-                .filter(c -> c.getStatus().name().equals("PAID"))
+                .filter(c -> c.getStatus() == com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus.PAID)
                 .map(c -> c.getAmount().getCommissionAmount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
+        // Pending amount = all commissions not yet paid and not cancelled/withheld/disputed
+        // Includes: WAITING_HOST_CHARGE, PENDING, APPROVED — all represent money the affiliate
+        // is owed but has not yet received.
         BigDecimal pending = commissions.stream()
-                .filter(c -> c.getStatus().name().equals("PENDING"))
+                .filter(c -> c.getStatus() == com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus.WAITING_HOST_CHARGE
+                          || c.getStatus() == com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus.PENDING
+                          || c.getStatus() == com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus.APPROVED)
                 .map(c -> c.getAmount().getCommissionAmount())
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
 
@@ -171,4 +205,54 @@ public class CommissionController {
         chargeHostCommissionUseCase.execute(id);
         return ResponseEntity.noContent().build();
     }
+
+    @PostMapping("/admin/retry/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Reset FAILED host commission to PENDING and retry (ADMIN)",
+               description = "Resets a FAILED commission back to PENDING and immediately triggers a new charge attempt. " +
+                             "Useful when the failure reason has been resolved (e.g. host completed Connect onboarding).")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Reset and retry triggered"),
+            @ApiResponse(responseCode = "400", description = "Commission cannot be retried (not FAILED or max attempts)"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Admin only"),
+            @ApiResponse(responseCode = "404", description = "Commission not found")
+    })
+    public ResponseEntity<?> retryHostCommission(@PathVariable Long id) {
+        HostCommission commission = hostCommissionRepository.findById(id)
+                .orElse(null);
+
+        if (commission == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        if (!commission.canRetry()) {
+            return ResponseEntity.badRequest().body(
+                    new ErrorResponse("CANNOT_RETRY",
+                            "Commission cannot be retried. Status: " + commission.getStatus() +
+                            ", AttemptCount: " + commission.getAttemptCount()));
+        }
+
+        commission.retry(); // sets status → PENDING
+        hostCommissionRepository.save(commission);
+
+        // Immediately trigger new charge attempt
+        chargeHostCommissionUseCase.execute(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/admin/pay-affiliate/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Manually trigger affiliate commission payout (ADMIN)",
+               description = "Triggers a Stripe Transfer to the affiliate's Connect account for an APPROVED commission.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Payout triggered"),
+            @ApiResponse(responseCode = "403", description = "Forbidden - Admin only"),
+            @ApiResponse(responseCode = "404", description = "Commission not found")
+    })
+    public ResponseEntity<Void> payAffiliateCommission(@PathVariable Long id) {
+        payAffiliateCommissionUseCase.execute(id);
+        return ResponseEntity.noContent().build();
+    }
+
+    private record ErrorResponse(String code, String message) {}
 }

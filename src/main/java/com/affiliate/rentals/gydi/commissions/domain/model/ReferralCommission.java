@@ -169,6 +169,29 @@ public class ReferralCommission {
     // ========== BUSINESS LOGIC: STATE TRANSITIONS ==========
 
     /**
+     * Transitions commission to PENDING after host has been successfully charged,
+     * when the affiliate has NOT yet completed Stripe Connect onboarding.
+     * <p>
+     * Transitions from WAITING_HOST_CHARGE to PENDING.
+     * Called by ChargeHostCommissionUseCase when the host charge succeeds but the
+     * affiliate does not yet have a fully onboarded Stripe Connect account.
+     * The commission will stay PENDING until a scheduler or manual trigger moves it
+     * to APPROVED once the affiliate completes onboarding.
+     * </p>
+     */
+    public void pendingAfterHostCharge() {
+        if (status != ReferralCommissionStatus.WAITING_HOST_CHARGE) {
+            throw new InvalidCommissionStateException(
+                "Cannot transition to PENDING from status: " + status +
+                ". Expected WAITING_HOST_CHARGE."
+            );
+        }
+
+        this.status = ReferralCommissionStatus.PENDING;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
      * Approves commission after host has been successfully charged.
      * <p>
      * Transitions from WAITING_HOST_CHARGE to APPROVED.

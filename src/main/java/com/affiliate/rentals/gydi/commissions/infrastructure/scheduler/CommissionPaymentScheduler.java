@@ -1,13 +1,16 @@
 package com.affiliate.rentals.gydi.commissions.infrastructure.scheduler;
 
+import com.affiliate.rentals.gydi.commissions.application.usecase.ApprovePendingCommissionsForAffiliateUseCase;
 import com.affiliate.rentals.gydi.commissions.application.usecase.ChargeHostCommissionUseCase;
 import com.affiliate.rentals.gydi.commissions.application.usecase.PayAffiliateCommissionUseCase;
 import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommission;
 import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus;
+import com.affiliate.rentals.gydi.commissions.domain.model.StripeConnectAccount;
 import com.affiliate.rentals.gydi.commissions.domain.model.HostCommission;
 import com.affiliate.rentals.gydi.commissions.domain.model.HostCommissionStatus;
 import com.affiliate.rentals.gydi.commissions.domain.ports.ReferralCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.HostCommissionRepositoryPort;
+import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -21,7 +24,8 @@ import java.util.concurrent.atomic.AtomicInteger;
 /**
  * Scheduled job for retrying failed host commission charges.
  * <p>
- * Runs daily at 2 AM to retry failed commission charges with exponential backoff.
+ * Runs daily at 2 AM to retry failed commission charges with exponential
+ * backoff.
  * </p>
  * <p>
  * Retry Schedule:
@@ -46,8 +50,10 @@ public class CommissionPaymentScheduler {
 
     private final HostCommissionRepositoryPort commissionRepository;
     private final ReferralCommissionRepositoryPort affiliateCommissionRepository;
+    private final StripeConnectAccountRepositoryPort connectAccountRepository;
     private final ChargeHostCommissionUseCase chargeHostCommissionUseCase;
     private final PayAffiliateCommissionUseCase payAffiliateCommissionUseCase;
+    private final ApprovePendingCommissionsForAffiliateUseCase approvePendingCommissionsForAffiliateUseCase;
 
     /**
      * Retries failed host commission charges.
@@ -55,7 +61,7 @@ public class CommissionPaymentScheduler {
      * Runs daily at 2 AM server time.
      * </p>
      */
-    @Scheduled(cron = "0 0 2 * * ?") // Daily at 2 AM
+    @Scheduled(cron = "0 0 2 * * *") // Daily at 2 AM
     public void retryFailedHostCharges() {
         logger.info("========================================");
         logger.info("Starting commission payment retry job");
@@ -103,17 +109,16 @@ public class CommissionPaymentScheduler {
     /**
      * Processes a single failed commission.
      *
-     * @param commission the failed commission
-     * @param successCount counter for successful retries
-     * @param failedCount counter for failed retries
+     * @param commission      the failed commission
+     * @param successCount    counter for successful retries
+     * @param failedCount     counter for failed retries
      * @param maxRetriesCount counter for commissions that reached max retries
      */
     private void processFailedCommission(
             HostCommission commission,
             AtomicInteger successCount,
             AtomicInteger failedCount,
-            AtomicInteger maxRetriesCount
-    ) {
+            AtomicInteger maxRetriesCount) {
         Long commissionId = commission.getId();
         int attemptCount = commission.getAttemptCount();
 
@@ -130,8 +135,9 @@ public class CommissionPaymentScheduler {
             return;
         }
 
-        // Check if it's time to retry
-        if (commission.getNextRetryAt() == null || LocalDateTime.now().isBefore(commission.getNextRetryAt())) {
+        // Check if it's time to retry.
+        // null nextRetryAt means no backoff was set — retry immediately.
+        if (commission.getNextRetryAt() != null && LocalDateTime.now().isBefore(commission.getNextRetryAt())) {
             logger.debug("Commission {} not yet ready for retry (next retry: {})",
                     commissionId, commission.getNextRetryAt());
             return;
@@ -141,6 +147,10 @@ public class CommissionPaymentScheduler {
         try {
             logger.info("Retrying charge for commission {} (attempt {} of {})",
                     commissionId, attemptCount + 1, MAX_RETRY_ATTEMPTS);
+
+            // Reset FAILED → PENDING so ChargeHostCommissionUseCase accepts it
+            commission.retry();
+            commissionRepository.save(commission);
 
             chargeHostCommissionUseCase.execute(commissionId);
 
@@ -171,7 +181,8 @@ public class CommissionPaymentScheduler {
      * <p>
      * Actions:
      * 1. Mark host commission as WITHHELD (terminal state, no more retries)
-     * 2. Cascade: withhold the affiliate commission (platform never collected from host)
+     * 2. Cascade: withhold the affiliate commission (platform never collected from
+     * host)
      * 3. Suspend property (no new bookings accepted)
      * 4. Send urgent notification to host
      * </p>
@@ -191,7 +202,8 @@ public class CommissionPaymentScheduler {
         logger.error("Last failure reason: {}", commission.getFailureReason());
         logger.error("========================================");
 
-        // 1. Mark host commission as WITHHELD (terminal state, requires manual intervention)
+        // 1. Mark host commission as WITHHELD (terminal state, requires manual
+        // intervention)
         String withholdReason = "Max retry attempts (" + MAX_RETRY_ATTEMPTS + ") exceeded";
         commission.withhold(withholdReason);
         commissionRepository.save(commission);
@@ -201,34 +213,38 @@ public class CommissionPaymentScheduler {
         // 2. Business rule cascade: withhold affiliate commission since host never paid
         // The platform cannot pay the affiliate if it never collected from the host.
         String affiliateWithholdReason = "Host commission for booking " + bookingId +
-            " was not collected after " + MAX_RETRY_ATTEMPTS +
-            " attempts. Affiliate payment withheld.";
+                " was not collected after " + MAX_RETRY_ATTEMPTS +
+                " attempts. Affiliate payment withheld.";
         affiliateCommissionRepository.findByBookingId(bookingId)
-            .ifPresent(affiliateCommission -> {
-                if (affiliateCommission.getStatus() == ReferralCommissionStatus.WAITING_HOST_CHARGE) {
-                    affiliateCommission.withholdDueToHostChargeFailure(affiliateWithholdReason);
-                    affiliateCommissionRepository.save(affiliateCommission);
-                    logger.warn("Affiliate commission ID: {} withheld because host commission {} reached max retries for booking {}",
-                        affiliateCommission.getId(), commissionId, bookingId);
-                }
-            });
+                .ifPresent(affiliateCommission -> {
+                    if (affiliateCommission.getStatus() == ReferralCommissionStatus.WAITING_HOST_CHARGE) {
+                        affiliateCommission.withholdDueToHostChargeFailure(affiliateWithholdReason);
+                        affiliateCommissionRepository.save(affiliateCommission);
+                        logger.warn(
+                                "Affiliate commission ID: {} withheld because host commission {} reached max retries for booking {}",
+                                affiliateCommission.getId(), commissionId, bookingId);
+                    }
+                });
 
         // TODO: Suspend property (block new bookings)
-        //    propertyService.suspendProperty(commission.getPropertyId(), "Payment failure - max retries");
+        // propertyService.suspendProperty(commission.getPropertyId(), "Payment failure
+        // - max retries");
 
         // TODO: Send urgent notification to host
-        //    emailService.sendMaxRetriesAlert(commission.getHostId(), commission);
-        //    notificationService.sendInAppAlert(commission.getHostId(), "URGENT: Payment failed - Property suspended");
+        // emailService.sendMaxRetriesAlert(commission.getHostId(), commission);
+        // notificationService.sendInAppAlert(commission.getHostId(), "URGENT: Payment
+        // failed - Property suspended");
 
         // TODO: Alert ops team
-        //    alertingService.sendOpsAlert("Commission max retries", commission);
+        // alertingService.sendOpsAlert("Commission max retries", commission);
 
         logger.warn("Commission {} requires manual intervention. Host {} should be contacted to update payment method.",
                 commissionId, commission.getHostId());
     }
 
     /**
-     * Pays approved affiliate commissions on the 1st and 15th of each month at 6 AM.
+     * Pays approved affiliate commissions on the 1st and 15th of each month at 6
+     * AM.
      * <p>
      * Covers commissions that were APPROVED but whose affiliate had not completed
      * Stripe Connect onboarding when the webhook fired.
@@ -260,6 +276,77 @@ public class CommissionPaymentScheduler {
     }
 
     /**
+     * Safety-net reconciliation: promotes PENDING affiliate commissions to APPROVED
+     * for affiliates that have completed Stripe Connect onboarding.
+     * <p>
+     * Runs every hour. Designed to catch commissions that were missed because the
+     * {@code account.updated} webhook arrived before the affiliate's Connect
+     * account
+     * was persisted, arrived out of order, or was not delivered at all.
+     * </p>
+     * <p>
+     * Algorithm:
+     * <ol>
+     * <li>Load all commissions in PENDING status.</li>
+     * <li>For each unique affiliateId, check whether their Connect account has
+     * {@code canReceivePayouts() == true}.</li>
+     * <li>If yes, delegate to {@link ApprovePendingCommissionsForAffiliateUseCase}
+     * which promotes only commissions whose dispute period has already ended.</li>
+     * </ol>
+     * Commissions whose dispute period is still active are intentionally skipped
+     * here —
+     * they will be picked up by the next hourly run once the period expires.
+     * </p>
+     */
+    @Scheduled(cron = "0 0 * * * *") // Every hour, on the hour
+    public void reconcilePendingCommissions() {
+        logger.debug("Starting hourly PENDING commission reconciliation");
+
+        List<ReferralCommission> pendingCommissions = affiliateCommissionRepository
+                .findByStatus(ReferralCommissionStatus.PENDING);
+
+        if (pendingCommissions.isEmpty()) {
+            logger.debug("No PENDING commissions found during reconciliation run");
+            return;
+        }
+
+        // Collect unique affiliate IDs to avoid redundant Connect account lookups
+        List<Long> affiliateIds = pendingCommissions.stream()
+                .map(ReferralCommission::getAffiliateId)
+                .distinct()
+                .toList();
+
+        logger.info("Reconciliation: found {} PENDING commission(s) across {} affiliate(s)",
+                pendingCommissions.size(), affiliateIds.size());
+
+        int totalApproved = 0;
+
+        for (Long affiliateId : affiliateIds) {
+            try {
+                StripeConnectAccount connectAccount = connectAccountRepository.findByUserId(affiliateId).orElse(null);
+
+                if (connectAccount == null || !connectAccount.canReceivePayouts()) {
+                    logger.debug("Reconciliation: affiliate {} has no payout-capable Connect account, skipping",
+                            affiliateId);
+                    continue;
+                }
+
+                int approved = approvePendingCommissionsForAffiliateUseCase.execute(affiliateId);
+                totalApproved += approved;
+
+            } catch (Exception e) {
+                logger.error("Reconciliation error for affiliate {}: {}", affiliateId, e.getMessage(), e);
+            }
+        }
+
+        if (totalApproved > 0) {
+            logger.info("Reconciliation complete: promoted {} PENDING commission(s) to APPROVED", totalApproved);
+        } else {
+            logger.debug("Reconciliation complete: no commissions promoted (dispute periods may still be active)");
+        }
+    }
+
+    /**
      * Health check method for monitoring.
      * <p>
      * Can be called by external monitoring systems to verify scheduler is active.
@@ -277,8 +364,7 @@ public class CommissionPaymentScheduler {
                     true,
                     "Scheduler is healthy",
                     pending.size(),
-                    now
-            );
+                    now);
 
         } catch (Exception e) {
             logger.error("Health check failed: {}", e.getMessage(), e);
@@ -286,8 +372,7 @@ public class CommissionPaymentScheduler {
                     false,
                     "Error: " + e.getMessage(),
                     0,
-                    LocalDateTime.now()
-            );
+                    LocalDateTime.now());
         }
     }
 
@@ -298,6 +383,6 @@ public class CommissionPaymentScheduler {
             boolean healthy,
             String message,
             int pendingRetries,
-            LocalDateTime checkedAt
-    ) {}
+            LocalDateTime checkedAt) {
+    }
 }

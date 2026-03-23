@@ -88,7 +88,17 @@ public class CreateCommissionsFromBookingUseCase {
                     savedAffiliateCommission.getAmount().getCurrency(),
                     savedAffiliateCommission.getPaymentSchedule().getScheduledPaymentDate());
         } else {
-            logger.debug("Booking ID: {} has no affiliate, skipping affiliate commission", event.bookingId());
+            // Organic booking (affiliate commission rate is 0 or no real affiliate):
+            // no ReferralCommission record is created; 100% of host fee goes to platform.
+            boolean isOrganic = event.affiliateId() != null
+                    && (event.affiliateCommissionRate() == null
+                        || event.affiliateCommissionRate().compareTo(java.math.BigDecimal.ZERO) == 0);
+            if (isOrganic) {
+                logger.info("Booking ID: {} is an organic booking (affiliate commission rate = 0). "
+                        + "Skipping affiliate commission creation; host fee retained by platform.", event.bookingId());
+            } else {
+                logger.debug("Booking ID: {} has no affiliate, skipping affiliate commission", event.bookingId());
+            }
         }
     }
 }
