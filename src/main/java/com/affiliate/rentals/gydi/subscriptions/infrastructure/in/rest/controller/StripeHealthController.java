@@ -1,5 +1,6 @@
 package com.affiliate.rentals.gydi.subscriptions.infrastructure.in.rest.controller;
 
+import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.Plan;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentGatewayPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PlanRepositoryPort;
@@ -31,14 +32,17 @@ public class StripeHealthController {
     private final Optional<PaymentGatewayPort> paymentGateway;
     private final PlanRepositoryPort planRepository;
     private final UserRepositoryPort userRepository;
+    private final StripeConnectAccountRepositoryPort connectAccountRepository;
 
     public StripeHealthController(
             Optional<PaymentGatewayPort> paymentGateway,
             PlanRepositoryPort planRepository,
-            UserRepositoryPort userRepository) {
+            UserRepositoryPort userRepository,
+            StripeConnectAccountRepositoryPort connectAccountRepository) {
         this.paymentGateway = paymentGateway;
         this.planRepository = planRepository;
         this.userRepository = userRepository;
+        this.connectAccountRepository = connectAccountRepository;
     }
 
     @GetMapping
@@ -80,20 +84,22 @@ public class StripeHealthController {
             health.put("warning", plansWithoutStripePriceId + " paid plan(s) are missing stripePriceId");
         }
 
-        // 3. Check current user's Stripe customer ID
+        // 3. Check current user's Stripe Connect account / platform customer ID
         if (authentication != null && authentication.isAuthenticated()) {
             Email email = new Email(authentication.getName());
             userRepository.findByEmail(email).ifPresent(user -> {
+                String platformCustomerId = connectAccountRepository
+                        .findPlatformCustomerIdByUserId(user.id()).orElse(null);
                 Map<String, Object> userHealth = new LinkedHashMap<>();
                 userHealth.put("userId", user.id());
                 userHealth.put("email", user.email().address());
-                userHealth.put("hasStripeCustomerId", user.stripeCustomerId() != null);
-                userHealth.put("stripeCustomerId", user.stripeCustomerId());
+                userHealth.put("hasPlatformCustomerId", platformCustomerId != null);
+                userHealth.put("platformCustomerId", platformCustomerId);
                 health.put("currentUser", userHealth);
 
-                if (user.stripeCustomerId() == null) {
+                if (platformCustomerId == null) {
                     health.put("userWarning",
-                            "Current user does not have a Stripe Customer ID. Lazy creation will trigger on first payment method add.");
+                            "Current user does not have a platform customer ID. Lazy creation will trigger on first payment method add.");
                 }
             });
         }

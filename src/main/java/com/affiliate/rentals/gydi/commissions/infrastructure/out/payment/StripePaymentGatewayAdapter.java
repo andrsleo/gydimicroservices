@@ -98,6 +98,62 @@ public class StripePaymentGatewayAdapter implements PaymentGatewayPort {
     }
 
     @Override
+    public PaymentResult chargeHostViaConnect(
+            String hostConnectAccountId,
+            String customerId,
+            String paymentMethodId,
+            Long totalAmountCents,
+            Long applicationFeeCents,
+            String currency,
+            String bookingId,
+            String commissionId
+    ) {
+        logger.info("Charging host via Connect: totalAmount={} cents, appFee={} cents, hostAccount={}, booking={}, commission={}",
+                totalAmountCents, applicationFeeCents, hostConnectAccountId, bookingId, commissionId);
+
+        try {
+            com.stripe.Stripe.apiKey = stripeSecretKey;
+
+            Map<String, String> metadata = new HashMap<>();
+            metadata.put("booking_id", bookingId);
+            metadata.put("commission_id", commissionId);
+            metadata.put("type", "host_commission");
+            metadata.put("connect_model", "true");
+
+            PaymentIntentCreateParams params = PaymentIntentCreateParams.builder()
+                    .setAmount(totalAmountCents)
+                    .setCurrency(currency.toLowerCase())
+                    .setCustomer(customerId)
+                    .setPaymentMethod(paymentMethodId)
+                    .setOffSession(true)
+                    .setConfirm(true)
+                    .setApplicationFeeAmount(applicationFeeCents)
+                    .setOnBehalfOf(hostConnectAccountId)
+                    .setTransferData(
+                            PaymentIntentCreateParams.TransferData.builder()
+                                    .setDestination(hostConnectAccountId)
+                                    .build()
+                    )
+                    .putAllMetadata(metadata)
+                    .setDescription("Host booking commission for booking #" + bookingId)
+                    .build();
+
+            PaymentIntent intent = PaymentIntent.create(params);
+
+            logger.info("Host Connect charge successful. PaymentIntent: {}, Charge: {}, Status: {}",
+                    intent.getId(),
+                    intent.getLatestCharge(),
+                    intent.getStatus());
+
+            return PaymentResult.success(intent.getId(), intent.getLatestCharge());
+
+        } catch (StripeException e) {
+            logger.error("Failed to charge host via Connect: {}", e.getMessage(), e);
+            return PaymentResult.failure(formatStripeError(e));
+        }
+    }
+
+    @Override
     public PaymentResult refundHostCommission(String chargeId, Long amountCents, String reason) {
         logger.info("Refunding charge: {}, amount: {} cents, reason: {}", chargeId, amountCents, reason);
 
@@ -275,6 +331,28 @@ public class StripePaymentGatewayAdapter implements PaymentGatewayPort {
     // ============================================================================
 
     @Override
+    public String createLoginLink(String accountId) {
+        logger.info("Creating Express Dashboard login link for account: {}", accountId);
+
+        try {
+            com.stripe.Stripe.apiKey = stripeSecretKey;
+
+            com.stripe.model.LoginLink loginLink = com.stripe.model.LoginLink.createOnAccount(
+                    accountId,
+                    new java.util.HashMap<>(),
+                    null
+            );
+
+            logger.info("Login link created for account {}: expires soon", accountId);
+            return loginLink.getUrl();
+
+        } catch (StripeException e) {
+            logger.error("Failed to create login link for account {}: {}", accountId, e.getMessage(), e);
+            throw new RuntimeException("Failed to create Stripe dashboard link: " + formatStripeError(e), e);
+        }
+    }
+
+    @Override
     public ConnectAccountStatus getConnectAccountStatus(String accountId) {
         logger.info("Retrieving Connect account status for: {}", accountId);
 
@@ -315,63 +393,30 @@ public class StripePaymentGatewayAdapter implements PaymentGatewayPort {
     // ============================================================================
 
     /**
-     * Determines Stripe Connect account type based on country.
+     * All Connect accounts use EXPRESS type regardless of country.
      * <p>
-     * - US, CA, UK: Standard (full control, separate Stripe dashboard)
-     * - EU countries: Express (streamlined onboarding, shared dashboard)
-     * - Other: Custom (most flexible, requires more integration work)
+     * EXPRESS provides a Stripe-hosted onboarding UI with minimal friction:
+     * no SSN/Tax ID required upfront, simplified form for any country.
+     * Users only need to provide bank account details to receive payouts.
      * </p>
      */
     private AccountCreateParams.Type determineAccountType(String country) {
-        return switch (country.toUpperCase()) {
-            case "US", "CA", "GB" -> AccountCreateParams.Type.STANDARD;
-            case "AT", "BE", "BG", "HR", "CY", "CZ", "DK", "EE", "FI", "FR",
-                 "DE", "GR", "HU", "IE", "IT", "LV", "LT", "LU", "MT", "NL",
-                 "PL", "PT", "RO", "SK", "SI", "ES", "SE" -> AccountCreateParams.Type.EXPRESS;
-            default -> AccountCreateParams.Type.CUSTOM;
-        };
+        return AccountCreateParams.Type.EXPRESS;
     }
 
     /**
-     * Builds capabilities for Stripe Connect account based on country.
-     * <p>
-     * Capabilities determine what the Connect account can do (transfers, card payments, etc.)
-     * </p>
+     * Requests only the 'transfers' capability — sufficient for receiving payouts.
+     * Card payments capability is NOT requested since connected accounts only
+     * receive platform transfers, not direct charges from cardholders.
      */
     private AccountCreateParams.Capabilities buildCapabilities(String country) {
-        AccountCreateParams.Capabilities.Builder builder = AccountCreateParams.Capabilities.builder()
+        return AccountCreateParams.Capabilities.builder()
                 .setTransfers(
                         AccountCreateParams.Capabilities.Transfers.builder()
                                 .setRequested(true)
                                 .build()
-                );
-
-        // EU countries support card payments capability
-        if (isSepaCountry(country)) {
-            builder.setCardPayments(
-                    AccountCreateParams.Capabilities.CardPayments.builder()
-                            .setRequested(true)
-                            .build()
-            );
-        }
-
-        return builder.build();
-    }
-
-    /**
-     * Checks if country is in SEPA zone (Single Euro Payments Area).
-     */
-    private boolean isSepaCountry(String country) {
-        String upperCountry = country.toUpperCase();
-        return upperCountry.equals("AT") || upperCountry.equals("BE") || upperCountry.equals("BG") ||
-                upperCountry.equals("HR") || upperCountry.equals("CY") || upperCountry.equals("CZ") ||
-                upperCountry.equals("DK") || upperCountry.equals("EE") || upperCountry.equals("FI") ||
-                upperCountry.equals("FR") || upperCountry.equals("DE") || upperCountry.equals("GR") ||
-                upperCountry.equals("HU") || upperCountry.equals("IE") || upperCountry.equals("IT") ||
-                upperCountry.equals("LV") || upperCountry.equals("LT") || upperCountry.equals("LU") ||
-                upperCountry.equals("MT") || upperCountry.equals("NL") || upperCountry.equals("PL") ||
-                upperCountry.equals("PT") || upperCountry.equals("RO") || upperCountry.equals("SK") ||
-                upperCountry.equals("SI") || upperCountry.equals("ES") || upperCountry.equals("SE");
+                )
+                .build();
     }
 
     /**

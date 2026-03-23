@@ -16,36 +16,17 @@ import org.springframework.stereotype.Component;
 import java.util.List;
 
 /**
- * Application startup task that creates Stripe Customer records for all active
- * users that do not yet have one.
+ * Application startup task that creates Stripe Platform Customer records for
+ * active users that do not yet have one in their Connect account.
  *
- * <p>This runner replaces the Java-based Flyway migration {@code V93} that was
- * previously used for the same purpose.  Pure SQL cannot call the Stripe API,
- * so the actual {@link Customer#create} calls are made here instead.  The
- * companion SQL migration {@code V93__create_stripe_customers.sql} still runs
- * via Flyway to create the partial index and log the pending count; it does NOT
- * attempt to create customers itself.</p>
+ * <p>Post V95 migration: stripe_customer_id has been removed from users.users.
+ * Customer IDs (cus_xxx) are now stored in
+ * commissions.stripe_connect_accounts.stripe_platform_customer_id.</p>
  *
  * <h2>Idempotency</h2>
- * <p>The port query only returns users where {@code stripe_customer_id IS NULL
- * AND is_active = TRUE}.  The update is additionally guarded with
- * {@code AND stripe_customer_id IS NULL} in the SQL so that concurrent runs or
- * restarts cannot overwrite a value that was already persisted.</p>
- *
- * <h2>Fault tolerance</h2>
- * <ul>
- *   <li>If the Stripe API key is not configured the runner logs a warning and
- *       exits without error — the application starts normally.</li>
- *   <li>If Stripe throws an exception for a single user the error is logged and
- *       processing continues with the next user.  The app never fails to start
- *       because of this runner.</li>
- * </ul>
- *
- * <h2>Rate limiting</h2>
- * <p>Users are processed in batches of {@value #BATCH_SIZE}.  A
- * {@value #DELAY_BETWEEN_REQUESTS_MS} ms pause is inserted between individual
- * requests and a {@value #DELAY_BETWEEN_BATCHES_MS} ms pause between batches to
- * stay within Stripe's default rate limits.</p>
+ * <p>The query only returns users whose Connect account has NULL
+ * stripe_platform_customer_id. The update is additionally guarded so
+ * concurrent runs cannot overwrite a value already set.</p>
  *
  * @author GYDI Development Team
  * @see UserStripePort
@@ -62,14 +43,6 @@ public class StripeCustomerSyncRunner implements ApplicationRunner {
 
     private final UserStripePort userStripePort;
 
-    // ── ApplicationRunner ─────────────────────────────────────────────────────
-
-    /**
-     * Entry point called by Spring Boot once the application context is fully
-     * refreshed.
-     *
-     * @param args application arguments (unused)
-     */
     @Override
     public void run(ApplicationArguments args) {
         if (!isStripeConfigured()) {
@@ -79,14 +52,14 @@ public class StripeCustomerSyncRunner implements ApplicationRunner {
             return;
         }
 
-        List<UserStripeInfo> pending = userStripePort.findActiveUsersWithoutStripeCustomer();
+        List<UserStripeInfo> pending = userStripePort.findActiveUsersWithoutPlatformCustomer();
 
         if (pending.isEmpty()) {
-            log.info("StripeCustomerSyncRunner: All active users already have a Stripe customer ID — nothing to sync.");
+            log.info("StripeCustomerSyncRunner: All active users already have a Stripe Platform Customer ID — nothing to sync.");
             return;
         }
 
-        log.info("StripeCustomerSyncRunner: Found {} active user(s) without a Stripe customer ID. Starting sync...",
+        log.info("StripeCustomerSyncRunner: Found {} active user(s) without a Stripe Platform Customer ID. Starting sync...",
                 pending.size());
 
         int created = 0;
@@ -97,22 +70,20 @@ public class StripeCustomerSyncRunner implements ApplicationRunner {
             int batchEnd = Math.min(batchStart + BATCH_SIZE, total);
             List<UserStripeInfo> batch = pending.subList(batchStart, batchEnd);
 
-            log.debug("StripeCustomerSyncRunner: Processing batch [{}/{}]",
-                    batchEnd, total);
+            log.debug("StripeCustomerSyncRunner: Processing batch [{}/{}]", batchEnd, total);
 
             for (UserStripeInfo user : batch) {
                 if (Thread.currentThread().isInterrupted()) {
-                    log.warn("StripeCustomerSyncRunner: Interrupted during sync — "
-                            + "created={}, failed={}, remaining={}",
+                    log.warn("StripeCustomerSyncRunner: Interrupted during sync — created={}, failed={}, remaining={}",
                             created, failed, total - created - failed);
                     return;
                 }
 
                 try {
                     String customerId = createStripeCustomer(user);
-                    userStripePort.updateStripeCustomerId(user.userId(), customerId);
+                    userStripePort.updatePlatformCustomerId(user.userId(), customerId);
                     created++;
-                    log.info("StripeCustomerSyncRunner: Created Stripe customer {} for user id={} email={}",
+                    log.info("StripeCustomerSyncRunner: Created Stripe Platform Customer {} for user id={} email={}",
                             customerId, user.userId(), user.email());
                 } catch (StripeException e) {
                     failed++;
@@ -136,15 +107,6 @@ public class StripeCustomerSyncRunner implements ApplicationRunner {
                 created, failed, total);
     }
 
-    // ── Private helpers ───────────────────────────────────────────────────────
-
-    /**
-     * Calls the Stripe API to create a Customer and returns its ID.
-     *
-     * @param user the user to create a Stripe Customer for
-     * @return the newly created Stripe Customer ID (e.g. {@code cus_xxxxx})
-     * @throws StripeException if the Stripe API call fails
-     */
     private String createStripeCustomer(UserStripeInfo user) throws StripeException {
         CustomerCreateParams params = CustomerCreateParams.builder()
                 .setEmail(user.email())
@@ -157,25 +119,10 @@ public class StripeCustomerSyncRunner implements ApplicationRunner {
         return customer.getId();
     }
 
-    /**
-     * Returns {@code true} when the Stripe SDK has been initialised with a
-     * non-blank API key.
-     *
-     * <p>The key is set by {@link com.affiliate.rentals.gydi.shared.config.StripeConfig}
-     * via its {@code @PostConstruct} method.  Checking
-     * {@link Stripe#apiKey} directly avoids introducing an extra dependency on
-     * the config bean.</p>
-     */
     private boolean isStripeConfigured() {
         return Stripe.apiKey != null && !Stripe.apiKey.isBlank();
     }
 
-    /**
-     * Sleeps for the given number of milliseconds, logging and re-interrupting
-     * the thread if interrupted.
-     *
-     * @param millis the duration to sleep
-     */
     private void sleepQuietly(long millis) {
         try {
             Thread.sleep(millis);

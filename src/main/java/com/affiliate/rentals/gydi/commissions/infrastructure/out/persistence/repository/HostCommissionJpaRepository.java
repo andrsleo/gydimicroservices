@@ -15,6 +15,6 @@ public interface HostCommissionJpaRepository extends JpaRepository<HostCommissio
     List<HostCommissionJpaEntity> findByStatus(String status);
     boolean existsByBookingId(Long bookingId);
     
-    @Query("SELECT h FROM HostCommissionJpaEntity h WHERE h.status = 'FAILED' AND h.nextRetryAt <= :now")
+    @Query("SELECT h FROM HostCommissionJpaEntity h WHERE h.status = 'FAILED' AND (h.nextRetryAt IS NULL OR h.nextRetryAt <= :now)")
     List<HostCommissionJpaEntity> findCommissionsForRetry(@Param("now") LocalDateTime now);
 }

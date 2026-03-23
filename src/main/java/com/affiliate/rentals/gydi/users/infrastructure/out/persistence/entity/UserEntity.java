@@ -119,15 +119,6 @@ public class UserEntity {
     private Boolean accountVerified = false;
 
     /**
-     * The user's Stripe Customer ID (cus_xxxxx).
-     * Links this user to their Stripe Customer record.
-     * Created when user first interacts with payment features.
-     * NULL for users who have never used paid features.
-     */
-    @Column(name = "stripe_customer_id", unique = true, length = 255)
-    private String stripeCustomerId;
-
-    /**
      * The roles assigned to this user.
      * This is the owning side of the many-to-many relationship.
      */

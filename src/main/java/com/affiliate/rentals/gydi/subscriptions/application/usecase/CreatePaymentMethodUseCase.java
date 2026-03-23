@@ -7,6 +7,7 @@ import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethod;
 import com.affiliate.rentals.gydi.subscriptions.domain.exception.PaymentFailedException;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethodStatus;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethodType;
+import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentGatewayPort;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentMethodRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.model.User;
@@ -51,6 +52,7 @@ public class CreatePaymentMethodUseCase {
 
         private final PaymentMethodRepositoryPort paymentMethodRepository;
         private final UserRepositoryPort userRepository;
+        private final StripeConnectAccountRepositoryPort connectAccountRepository;
         private final SubscriptionDtoMapper mapper;
         private final Optional<PaymentGatewayPort> paymentGateway;
 
@@ -60,10 +62,12 @@ public class CreatePaymentMethodUseCase {
         public CreatePaymentMethodUseCase(
                         PaymentMethodRepositoryPort paymentMethodRepository,
                         UserRepositoryPort userRepository,
+                        StripeConnectAccountRepositoryPort connectAccountRepository,
                         SubscriptionDtoMapper mapper,
                         Optional<PaymentGatewayPort> paymentGateway) {
                 this.paymentMethodRepository = paymentMethodRepository;
                 this.userRepository = userRepository;
+                this.connectAccountRepository = connectAccountRepository;
                 this.mapper = mapper;
                 this.paymentGateway = paymentGateway;
         }
@@ -163,12 +167,13 @@ public class CreatePaymentMethodUseCase {
                         User user = userRepository.findById(userId)
                                         .orElseThrow(() -> new RuntimeException("User not found: " + userId));
 
-                        // Lazy create Stripe Customer if needed (with race condition protection)
-                        String stripeCustomerId = user.stripeCustomerId();
+                        // Get or lazily create platform customer ID from Connect account
+                        String stripeCustomerId = connectAccountRepository
+                                        .findPlatformCustomerIdByUserId(userId).orElse(null);
                         if (stripeCustomerId == null) {
-                                logger.info("User {} does not have Stripe Customer ID - creating one now (lazy creation)",
+                                logger.info("User {} does not have a platform customer ID - creating Stripe Customer now (lazy creation)",
                                                 userId);
-                                stripeCustomerId = createStripeCustomerForUserSafely(userId);
+                                stripeCustomerId = createStripeCustomerForUserSafely(userId, user);
 
                                 if (stripeCustomerId == null) {
                                         logger.error("Failed to create Stripe Customer for user {} - payment method will not be attached",
@@ -222,24 +227,24 @@ public class CreatePaymentMethodUseCase {
          * @param userId the ID of the user
          * @return the Stripe Customer ID if successful, null if failed
          */
-        private String createStripeCustomerForUserSafely(Long userId) {
+        private String createStripeCustomerForUserSafely(Long userId, User user) {
                 // Get or create a lock for this specific user
                 Lock userLock = userLocks.computeIfAbsent(userId, k -> new ReentrantLock());
 
                 userLock.lock();
                 try {
                         // Double-check: another thread might have created the customer while we waited
-                        User freshUser = userRepository.findById(userId)
-                                        .orElseThrow(() -> new RuntimeException("User not found: " + userId));
+                        String existingCustomerId = connectAccountRepository
+                                        .findPlatformCustomerIdByUserId(userId).orElse(null);
 
-                        if (freshUser.stripeCustomerId() != null) {
+                        if (existingCustomerId != null) {
                                 logger.info("Stripe Customer ID was created by another thread for user {}: {}",
-                                                userId, freshUser.stripeCustomerId());
-                                return freshUser.stripeCustomerId();
+                                                userId, existingCustomerId);
+                                return existingCustomerId;
                         }
 
                         // Still null after double-check, proceed with creation
-                        return createStripeCustomerForUser(freshUser);
+                        return createStripeCustomerForUser(user);
 
                 } finally {
                         userLock.unlock();
@@ -279,23 +284,8 @@ public class CreatePaymentMethodUseCase {
                         logger.info("Stripe Customer created successfully: {} for user {}",
                                         customerResult.id(), user.email().address());
 
-                        // Update user with Stripe Customer ID
-                        User userWithStripeId = User.builder()
-                                        .id(user.id())
-                                        .name(user.name())
-                                        .email(user.email())
-                                        .passwordHash(user.passwordHash())
-                                        .phoneNumber(user.phoneNumber())
-                                        .roles(user.roles())
-                                        .activePlan(user.activePlan())
-                                        .capabilities(user.capabilities())
-                                        .accountVerified(user.isAccountVerified())
-                                        .stripeCustomerId(customerResult.id())
-                                        .createdAt(user.createdAt())
-                                        .build();
-
-                        // Save updated user with Stripe Customer ID
-                        userRepository.save(userWithStripeId);
+                        // Save platform customer ID to Connect account
+                        connectAccountRepository.updatePlatformCustomerId(user.id(), customerResult.id());
 
                         return customerResult.id();
 
