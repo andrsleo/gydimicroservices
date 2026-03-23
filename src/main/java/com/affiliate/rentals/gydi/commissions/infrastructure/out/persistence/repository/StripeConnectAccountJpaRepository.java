@@ -47,6 +47,14 @@ public interface StripeConnectAccountJpaRepository extends JpaRepository<StripeC
     void updatePlatformCustomerIdIfNull(@Param("userId") Long userId, @Param("customerId") String customerId);
 
     /**
+     * Upgrades a stub stripe_account_id (pending_N) to a real acct_xxx.
+     */
+    @Modifying
+    @Query(value = "UPDATE commissions.stripe_connect_accounts SET stripe_account_id = :realId, updated_at = NOW() WHERE user_id = :userId",
+           nativeQuery = true)
+    void updateStripeAccountId(@Param("userId") Long userId, @Param("realId") String realId);
+
+    /**
      * Returns stub accounts created by migration (pending real Connect onboarding).
      */
     @Query(value = "SELECT * FROM commissions.stripe_connect_accounts WHERE stripe_account_id LIKE 'pending_%'",

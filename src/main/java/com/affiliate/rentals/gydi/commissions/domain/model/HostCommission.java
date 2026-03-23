@@ -211,14 +211,15 @@ public class HostCommission {
         this.failureReason = failureReason;
         this.updatedAt = LocalDateTime.now();
 
-        // Calculate next retry time (exponential backoff: 1h, 6h, 24h)
+        // Calculate next retry time (exponential backoff: 1min, 2min, 5min for testing)
+        // TODO: restore to hours for production (plusHours: 1, 6, 24)
         if (canRetry()) {
-            long hoursToWait = switch (attemptCount) {
+            long minutesToWait = switch (attemptCount) {
                 case 1 -> 1;
-                case 2 -> 6;
-                default -> 24;
+                case 2 -> 2;
+                default -> 5;
             };
-            this.nextRetryAt = LocalDateTime.now().plusHours(hoursToWait);
+            this.nextRetryAt = LocalDateTime.now().plusMinutes(minutesToWait);
         } else {
             this.nextRetryAt = null; // Max retries reached
         }

@@ -69,17 +69,30 @@ public class ChargeHostCommissionUseCase {
             return;
         }
 
-        // 3. Retrieve host's Connect account to get platform customer ID (cus_xxx)
+        // 3. Retrieve host's Connect account to get acct_xxx AND cus_xxx
         StripeConnectAccount connectAccount = connectAccountRepository
                 .findByUserId(commission.getHostId()).orElse(null);
 
-        if (connectAccount == null || connectAccount.getStripePlatformCustomerId() == null) {
-            String reason = "Host does not have a Stripe Connect account with billing customer";
+        if (connectAccount == null) {
+            String reason = "Host does not have a Stripe Connect account";
             logger.error("Cannot charge commission {}: {}", commissionId, reason);
             commission.markAsFailed(reason, 0, null, null);
             commissionRepository.save(commission);
             return;
         }
+
+        if (connectAccount.getStripePlatformCustomerId() == null) {
+            String reason = "Host Stripe Connect account has no billing customer (cus_xxx). Host must add a payment method.";
+            logger.error("Cannot charge commission {}: {}", commissionId, reason);
+            commission.markAsFailed(reason, 0, null, null);
+            commissionRepository.save(commission);
+            return;
+        }
+
+        // The host must have a cus_xxx to be charged on the platform.
+        // We do NOT require card_payments on the Connect account because we charge
+        // the host directly via the platform account (not on_behalf_of the Connect account).
+        // The Connect account (acct_xxx) is only needed to PAY the host as an affiliate.
 
         // 4. Retrieve host's default payment method
         PaymentMethod paymentMethod = paymentMethodRepository.findDefaultByUserId(commission.getHostId())
@@ -94,11 +107,12 @@ public class ChargeHostCommissionUseCase {
             return;
         }
 
-        logger.info("Charging host commission {} via Stripe: amount={} {}, hostId={}, paymentMethod={}",
+        logger.info("Charging host commission {}: commissionAmount={} {}, hostId={}, customer={}, paymentMethod={}",
                 commissionId,
                 commission.getAmount().getCommissionAmount(),
                 commission.getAmount().getCurrency(),
                 commission.getHostId(),
+                connectAccount.getStripePlatformCustomerId(),
                 paymentMethod.cardLastFour());
 
         // 7. Update status to PROCESSING
@@ -106,16 +120,20 @@ public class ChargeHostCommissionUseCase {
         commissionRepository.save(commission);
 
         try {
-            // 8. Charge via Stripe Payment Intent
-            // Convert BigDecimal amount to cents (Long) for Stripe
-            long amountCents = commission.getAmount().getCommissionAmount()
+            // 8. Charge commission to host directly on the platform account.
+            // GYDI does NOT process booking payments through Stripe — the host pays the
+            // platform a commission fee (15%/20%/25%) separately.
+            // We charge ONLY the commission amount, NOT the full booking amount.
+            // on_behalf_of / chargeHostViaConnect is NOT used here because it requires
+            // card_payments capability; Express accounts only have transfers capability.
+            long commissionAmountCents = commission.getAmount().getCommissionAmount()
                     .multiply(new java.math.BigDecimal("100"))
                     .longValue();
 
             PaymentGatewayPort.PaymentResult result = paymentGateway.chargeHostCommission(
                     connectAccount.getStripePlatformCustomerId(),
                     paymentMethod.gatewayToken(),
-                    amountCents,
+                    commissionAmountCents,
                     commission.getAmount().getCurrency(),
                     commission.getBookingId().toString(),
                     commissionId.toString()
@@ -160,25 +178,52 @@ public class ChargeHostCommissionUseCase {
     }
 
     /**
-     * Approves the affiliate commission waiting for host charge confirmation.
+     * Transitions the affiliate commission after the host charge succeeds.
      * <p>
-     * Implements the business rule: affiliate commission is only eligible for payout
-     * after the host commission has been successfully charged.
+     * Business rule: the platform never pays out what it has not collected.
+     * Once the host charge succeeds, the affiliate commission advances —
+     * but the next state depends on whether the affiliate has a fully onboarded
+     * Stripe Connect account:
      * </p>
+     * <ul>
+     *   <li>Affiliate HAS a complete Connect account (canReceivePayouts == true):
+     *       WAITING_HOST_CHARGE → APPROVED — ready to be paid on the next scheduled date.</li>
+     *   <li>Affiliate does NOT have a Connect account or onboarding is incomplete:
+     *       WAITING_HOST_CHARGE → PENDING — waits until the affiliate completes onboarding.
+     *       A scheduler or manual admin action will move PENDING → APPROVED once the
+     *       affiliate finishes Stripe Connect onboarding.</li>
+     * </ul>
      *
      * @param bookingId the booking ID to find the associated affiliate commission
      */
     private void approveAffiliateCommissionIfWaiting(Long bookingId) {
         affiliateCommissionRepository.findByBookingId(bookingId)
             .ifPresent(affiliateCommission -> {
-                if (affiliateCommission.getStatus() == ReferralCommissionStatus.WAITING_HOST_CHARGE) {
+                if (affiliateCommission.getStatus() != ReferralCommissionStatus.WAITING_HOST_CHARGE) {
+                    logger.debug("Affiliate commission for booking {} is in status {}, no transition needed",
+                        bookingId, affiliateCommission.getStatus());
+                    return;
+                }
+
+                StripeConnectAccount connectAccount = connectAccountRepository
+                    .findByUserId(affiliateCommission.getAffiliateId()).orElse(null);
+
+                boolean canReceivePayouts = connectAccount != null && connectAccount.canReceivePayouts();
+
+                if (canReceivePayouts) {
                     affiliateCommission.approveAfterHostCharged();
                     affiliateCommissionRepository.save(affiliateCommission);
-                    logger.info("Affiliate commission ID: {} approved after host charge success for booking ID: {}",
-                        affiliateCommission.getId(), bookingId);
+                    logger.info(
+                        "Affiliate commission ID: {} APPROVED after host charge success for booking ID: {}. " +
+                        "Affiliate {} has a fully onboarded Stripe Connect account.",
+                        affiliateCommission.getId(), bookingId, affiliateCommission.getAffiliateId());
                 } else {
-                    logger.debug("Affiliate commission for booking {} is in status {}, no approval needed",
-                        bookingId, affiliateCommission.getStatus());
+                    affiliateCommission.pendingAfterHostCharge();
+                    affiliateCommissionRepository.save(affiliateCommission);
+                    logger.info(
+                        "Affiliate commission ID: {} set to PENDING after host charge for booking ID: {}. " +
+                        "Affiliate {} has no complete Stripe Connect account — commission will be paid once onboarding is done.",
+                        affiliateCommission.getId(), bookingId, affiliateCommission.getAffiliateId());
                 }
             });
     }

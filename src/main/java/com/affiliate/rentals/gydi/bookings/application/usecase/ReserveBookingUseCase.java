@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.util.Objects;
+import java.util.Optional;
 
 /**
  * Use Case: Reserve a booking (REQUEST → RESERVED).
@@ -87,9 +88,22 @@ public class ReserveBookingUseCase {
                     .orElse(null);
 
             if (affiliateId != null) {
-                affiliateCommissionRate = userSubscriptionPort.getAffiliateCommissionRate(affiliateId);
-                log.info("Snapshotted affiliate commission rate: {} for affiliate: {}", affiliateCommissionRate,
-                        affiliateId);
+                // Detect organic booking: affiliate is the system organic user
+                Optional<Long> organicUserId = bookingRepository.findOrganicSystemUserId();
+                boolean isOrganic = organicUserId.isPresent() && organicUserId.get().equals(affiliateId);
+
+                if (isOrganic) {
+                    // Organic booking: no affiliate commission, flat 15% host fee goes to platform
+                    log.info("Organic booking detected (affiliate is system-organic user ID: {}). "
+                            + "Setting affiliate commission rate to 0.00 and host commission rate to 0.15.",
+                            affiliateId);
+                    affiliateCommissionRate = BigDecimal.ZERO;
+                    hostCommissionRate = new BigDecimal("0.15");
+                } else {
+                    affiliateCommissionRate = userSubscriptionPort.getAffiliateCommissionRate(affiliateId);
+                    log.info("Snapshotted affiliate commission rate: {} for affiliate: {}",
+                            affiliateCommissionRate, affiliateId);
+                }
             }
         }
 

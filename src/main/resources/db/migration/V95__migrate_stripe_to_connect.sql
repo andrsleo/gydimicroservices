@@ -24,15 +24,14 @@ WHERE sca.user_id = u.id
 INSERT INTO commissions.stripe_connect_accounts (
     user_id, stripe_account_id, account_type, country,
     onboarding_completed, payouts_enabled, charges_enabled,
-    details_submitted, verification_status,
     stripe_platform_customer_id, created_at, updated_at
 )
 SELECT
     u.id,
     'pending_' || u.id,
     'express',
-    COALESCE(up.country, 'US'),
-    false, false, false, false, 'unverified',
+    UPPER(COALESCE(NULLIF(TRIM(up.country), ''), 'US')),
+    false, false, false,
     u.stripe_customer_id,
     NOW(), NOW()
 FROM users.users u

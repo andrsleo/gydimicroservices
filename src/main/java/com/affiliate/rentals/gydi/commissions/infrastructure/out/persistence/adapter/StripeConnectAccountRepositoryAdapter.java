@@ -84,6 +84,12 @@ public class StripeConnectAccountRepositoryAdapter implements StripeConnectAccou
     }
 
     @Override
+    @Transactional
+    public void upgradeStubAccount(Long userId, String realStripeAccountId) {
+        jpaRepository.updateStripeAccountId(userId, realStripeAccountId);
+    }
+
+    @Override
     @Transactional(readOnly = true)
     public List<StripeConnectAccount> findPendingConnectAccounts() {
         return jpaRepository.findPendingAccounts().stream()

@@ -29,10 +29,24 @@ public final class CannotDeletePaymentMethodException extends SubscriptionDomain
     }
 
     /**
-     * Creates an exception for attempting to delete the only payment method on a paid subscription.
+     * Creates an exception for attempting to delete the only active payment method.
      *
      * @return exception with descriptive message
      */
+    public static CannotDeletePaymentMethodException onlyActiveMethod() {
+        return new CannotDeletePaymentMethodException(
+            "Cannot delete your only active payment method. Please add another card before removing this one."
+        );
+    }
+
+    /**
+     * Creates an exception for attempting to delete the only payment method on a paid subscription.
+     *
+     * @return exception with descriptive message
+     * @deprecated Use {@link #onlyActiveMethod()} instead — deletion of the only method is now
+     *             blocked regardless of subscription plan.
+     */
+    @Deprecated
     public static CannotDeletePaymentMethodException onlyMethodOnPaidSubscription() {
         return new CannotDeletePaymentMethodException(
             "Cannot delete the only payment method while you have an active paid subscription. " +
