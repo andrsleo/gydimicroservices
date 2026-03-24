@@ -206,27 +206,7 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- Brevo (ex-Sendinblue) SDK for transactional email -->
-        <!-- Exclude OkHttp (brings Kotlin stdlib which breaks Lombok annotation processing) -->
-        <dependency>
-            <groupId>com.sendinblue</groupId>
-            <artifactId>sib-api-v3-sdk</artifactId>
-            <version>7.0.0</version>
-            <exclusions>
-                <exclusion>
-                    <groupId>com.squareup.okhttp3</groupId>
-                    <artifactId>okhttp</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.squareup.okhttp3</groupId>
-                    <artifactId>logging-interceptor</artifactId>
-                </exclusion>
-                <exclusion>
-                    <groupId>com.squareup.okio</groupId>
-                    <artifactId>okio</artifactId>
-                </exclusion>
-            </exclusions>
-        </dependency>
+        <!-- Brevo email: llamada REST directa via Spring RestClient (sin SDK externo) -->
 
         <!-- Spring Cloud AWS SQS for message queues -->
         <dependency>
