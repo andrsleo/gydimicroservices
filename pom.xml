@@ -206,25 +206,26 @@
             <scope>provided</scope>
         </dependency>
 
-        <!-- AWS SDK v2 for SES v2 (Email Service) - uses REST/JSON protocol, avoids query-protocol issues -->
+        <!-- Brevo (ex-Sendinblue) SDK for transactional email -->
+        <!-- Exclude OkHttp (brings Kotlin stdlib which breaks Lombok annotation processing) -->
         <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>sesv2</artifactId>
-            <version>2.20.0</version>
-            <!-- Exclude Apache HTTP client to avoid NoClassDefFoundError in Railway -->
+            <groupId>com.sendinblue</groupId>
+            <artifactId>sib-api-v3-sdk</artifactId>
+            <version>7.0.0</version>
             <exclusions>
                 <exclusion>
-                    <groupId>software.amazon.awssdk</groupId>
-                    <artifactId>apache-client</artifactId>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>okhttp</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okhttp3</groupId>
+                    <artifactId>logging-interceptor</artifactId>
+                </exclusion>
+                <exclusion>
+                    <groupId>com.squareup.okio</groupId>
+                    <artifactId>okio</artifactId>
                 </exclusion>
             </exclusions>
-        </dependency>
-
-        <!-- AWS SDK URL Connection HTTP Client (no Apache dependencies needed) -->
-        <dependency>
-            <groupId>software.amazon.awssdk</groupId>
-            <artifactId>url-connection-client</artifactId>
-            <version>2.20.0</version>
         </dependency>
 
         <!-- Spring Cloud AWS SQS for message queues -->

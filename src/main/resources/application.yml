@@ -201,7 +201,11 @@ cloudinary:
   url: ${CLOUDINARY_URL:} # Empty default for local development
 
 # Email Configuration
-# Uses LocalEmailService if provider is local, or other providers like aws-ses if configured.
+# Uses LocalEmailService if provider is local, or Brevo in production.
+brevo:
+  api-key: ""
+  from-email: "no-reply@gydi.app"
+
 
 # Storage provider selection
 # Options:
