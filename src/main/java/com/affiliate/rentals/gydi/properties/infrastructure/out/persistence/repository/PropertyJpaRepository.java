@@ -17,6 +17,8 @@ public interface PropertyJpaRepository extends JpaRepository<PropertyJpaEntity, 
 
     Optional<PropertyJpaEntity> findBySlug(String slug);
 
+    List<PropertyJpaEntity> findByStatus(String status);
+
     /**
      * Finds all properties that have an Airbnb iCal URL configured.
      *

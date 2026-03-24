@@ -67,6 +67,13 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
     }
 
     @Override
+    public List<Property> findByStatus(PropertyStatus status) {
+        return jpaRepository.findByStatus(status.name()).stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+    }
+
+    @Override
     public PropertySearchResult findAll(PropertySearchSpec spec) {
         Specification<PropertyJpaEntity> specification = buildSpecification(spec);
 

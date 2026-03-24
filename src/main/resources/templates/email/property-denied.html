@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/base-layout :: layout(~{::title}, ~{::email-header}, ~{::email-body})}">
+<head><title>Actualización sobre tu propiedad - GYDI</title></head>
+<body>
+
+<th:block th:fragment="email-header">
+    <div style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); padding: 36px 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">GYDI</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Plataforma de alquileres vacacionales</p>
+    </div>
+</th:block>
+
+<th:block th:fragment="email-body">
+    <h2>Actualización sobre tu propiedad</h2>
+
+    <p>Hola <strong th:text="${hostName}">Anfitrión</strong>,</p>
+    <p>Hemos revisado tu propiedad <strong th:text="${propertyTitle}">"Nombre"</strong> y
+       en este momento no pudimos aprobarla.</p>
+
+    <div class="notice notice-warning">
+        <strong>Motivo:</strong>
+        <p th:text="${reason}" style="margin: 8px 0 0;">Motivo del rechazo.</p>
+    </div>
+
+    <p>Por favor realiza los ajustes indicados y vuelve a enviar tu propiedad para revisión.
+       Estamos aquí para ayudarte en el proceso.</p>
+
+    <div style="text-align: center;">
+        <a th:href="|https://gydi.app/dashboard/properties|" class="btn"
+           style="background: linear-gradient(135deg, #6c757d 0%, #495057 100%); color: #ffffff;">
+            Editar mi propiedad
+        </a>
+    </div>
+
+    <p>Si tienes preguntas, contáctanos en
+        <a href="https://gydi.app/support" style="color: #667eea;">soporte</a>.</p>
+    <p>El equipo de GYDI</p>
+</th:block>
+
+</body>
+</html>

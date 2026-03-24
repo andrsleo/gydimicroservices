@@ -8,6 +8,12 @@ import com.affiliate.rentals.gydi.bookings.domain.exception.InvalidBookingStatus
 import com.affiliate.rentals.gydi.bookings.domain.model.Booking;
 import com.affiliate.rentals.gydi.bookings.domain.model.vo.Money;
 import com.affiliate.rentals.gydi.bookings.domain.ports.BookingRepositoryPort;
+import com.affiliate.rentals.gydi.properties.domain.model.PropertyId;
+import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
+import com.affiliate.rentals.gydi.shared.domain.model.EmailMessage;
+import com.affiliate.rentals.gydi.shared.domain.port.EmailServicePort;
+import com.affiliate.rentals.gydi.shared.infrastructure.out.email.EmailTemplateService;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
@@ -35,14 +41,26 @@ public class ReserveBookingUseCase {
     private final BookingRepositoryPort bookingRepository;
     private final BookingMapper bookingMapper;
     private final com.affiliate.rentals.gydi.commissions.domain.ports.UserSubscriptionPort userSubscriptionPort;
+    private final UserRepositoryPort userRepository;
+    private final PropertyRepositoryPort propertyRepository;
+    private final EmailServicePort emailService;
+    private final EmailTemplateService emailTemplateService;
 
     public ReserveBookingUseCase(
             BookingRepositoryPort bookingRepository,
             BookingMapper bookingMapper,
-            com.affiliate.rentals.gydi.commissions.domain.ports.UserSubscriptionPort userSubscriptionPort) {
+            com.affiliate.rentals.gydi.commissions.domain.ports.UserSubscriptionPort userSubscriptionPort,
+            UserRepositoryPort userRepository,
+            PropertyRepositoryPort propertyRepository,
+            EmailServicePort emailService,
+            EmailTemplateService emailTemplateService) {
         this.bookingRepository = Objects.requireNonNull(bookingRepository);
         this.bookingMapper = Objects.requireNonNull(bookingMapper);
         this.userSubscriptionPort = Objects.requireNonNull(userSubscriptionPort);
+        this.userRepository = Objects.requireNonNull(userRepository);
+        this.propertyRepository = Objects.requireNonNull(propertyRepository);
+        this.emailService = Objects.requireNonNull(emailService);
+        this.emailTemplateService = Objects.requireNonNull(emailTemplateService);
     }
 
     /**
@@ -117,7 +135,40 @@ public class ReserveBookingUseCase {
         log.info("Booking {} reserved successfully with Airbnb code: {}",
                 bookingId, request.airbnbConfirmationCode());
 
+        // Fire-and-forget: send booking reserved email to host
+        sendBookingReservedEmail(updated, hostId);
+
         // Map to DTO
         return bookingMapper.toDto(updated);
+    }
+
+    /**
+     * Sends a booking-reserved email to the host. Fire-and-forget: never throws.
+     */
+    private void sendBookingReservedEmail(Booking booking, Long hostId) {
+        try {
+            userRepository.findById(hostId).ifPresent(host -> {
+                String propertyTitle = propertyRepository.findById(PropertyId.of(booking.getPropertyId()))
+                        .map(p -> p.getTitle())
+                        .orElse("tu propiedad");
+
+                EmailMessage email = emailTemplateService.buildBookingReservedEmail(
+                        host.email().address(),
+                        new EmailTemplateService.BookingReservedEmailData(
+                                host.name(),
+                                booking.getGuestInfo().getName(),
+                                propertyTitle,
+                                booking.getBookingDates().getCheckInDate(),
+                                booking.getBookingDates().getCheckOutDate(),
+                                booking.getTotalAmount() != null ? booking.getTotalAmount().getAmount() : java.math.BigDecimal.ZERO
+                        )
+                );
+                emailService.sendEmail(email);
+                log.info("Booking reserved email sent to host {} for booking {}", hostId, booking.getId());
+            });
+        } catch (Exception e) {
+            log.error("Failed to send booking reserved email for booking {} to host {}: {}",
+                    booking.getId(), hostId, e.getMessage());
+        }
     }
 }
