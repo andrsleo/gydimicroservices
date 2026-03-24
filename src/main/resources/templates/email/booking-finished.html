@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/base-layout :: layout(~{::title}, ~{::email-header}, ~{::email-body})}">
+<head><title>Reserva finalizada - GYDI</title></head>
+<body>
+
+<th:block th:fragment="email-header">
+    <div style="background: linear-gradient(135deg, #17a2b8 0%, #138496 100%); padding: 36px 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">GYDI</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Plataforma de alquileres vacacionales</p>
+    </div>
+</th:block>
+
+<th:block th:fragment="email-body">
+    <h2>Reserva finalizada</h2>
+
+    <p>Hola <strong th:text="${hostName}">Anfitrión</strong>,</p>
+    <p>La reserva de <strong th:text="${guestName}">Huésped</strong> en tu propiedad
+       <strong th:text="${propertyTitle}">"Nombre"</strong> ha finalizado exitosamente.</p>
+
+    <table class="data-table">
+        <tr>
+            <td>Huésped</td>
+            <td th:text="${guestName}">Nombre huésped</td>
+        </tr>
+        <tr>
+            <td>Check-in</td>
+            <td th:text="${#temporals.format(checkIn, 'dd MMM yyyy')}">01 Ene 2025</td>
+        </tr>
+        <tr>
+            <td>Check-out</td>
+            <td th:text="${#temporals.format(checkOut, 'dd MMM yyyy')}">07 Ene 2025</td>
+        </tr>
+    </table>
+
+    <div class="notice notice-success">
+        Gracias por ser parte de la comunidad GYDI. ¡El cobro de comisión se procesará en los próximos días!
+    </div>
+
+    <p>El equipo de GYDI</p>
+</th:block>
+
+</body>
+</html>

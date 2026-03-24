@@ -13,7 +13,7 @@ import com.affiliate.rentals.gydi.users.domain.model.PasswordResetToken;
 import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.ports.PasswordResetTokenRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
-import com.affiliate.rentals.gydi.users.domain.service.UserEmailTemplateFactory;
+import com.affiliate.rentals.gydi.shared.infrastructure.out.email.EmailTemplateService;
 
 import lombok.extern.slf4j.Slf4j;
 
@@ -50,7 +50,7 @@ public class RequestPasswordResetUseCase {
     private final UserRepositoryPort userRepository;
     private final PasswordResetTokenRepositoryPort tokenRepository;
     private final EmailServicePort emailService;
-    private final UserEmailTemplateFactory templateFactory;
+    private final EmailTemplateService emailTemplateService;
 
     @Value("${app.password-reset.token-expiration-minutes:60}")
     private int tokenExpirationMinutes;
@@ -62,11 +62,11 @@ public class RequestPasswordResetUseCase {
             UserRepositoryPort userRepository,
             PasswordResetTokenRepositoryPort tokenRepository,
             EmailServicePort emailService,
-            UserEmailTemplateFactory templateFactory) {
+            EmailTemplateService emailTemplateService) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.emailService = emailService;
-        this.templateFactory = templateFactory;
+        this.emailTemplateService = emailTemplateService;
     }
 
     /**
@@ -125,17 +125,12 @@ public class RequestPasswordResetUseCase {
                     frontendUrl,
                     savedToken.token());
 
-            // 1. Build the HTML string using the Factory
-            String htmlTemplate = templateFactory.buildPasswordResetHtml(user.name(), resetLink);
+            // 1. Build the EmailMessage using EmailTemplateService (Thymeleaf)
+            EmailMessage emailMessage = emailTemplateService.buildPasswordResetEmail(
+                    email.toString(),
+                    new EmailTemplateService.PasswordResetEmailData(user.name(), resetLink));
 
-            // 2. Wrap it inside the generic EmailMessage
-            EmailMessage emailMessage = new EmailMessage(
-                    email.toString(), // Real recipient
-                    "Password Reset - GYDI", // Subject
-                    htmlTemplate, // HTML built by factory
-                    null, null, null);
-
-            // 3. Send using transversal port
+            // 2. Send using transversal port
             emailService.sendEmail(emailMessage);
 
             log.info("Password reset email sent successfully to user {}", user.id());

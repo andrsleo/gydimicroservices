@@ -54,6 +54,14 @@ public interface PropertyRepositoryPort {
     List<Property> findAllWithIcalUrl();
 
     /**
+     * Finds all properties with a specific status.
+     *
+     * @param status the property status to filter by
+     * @return list of properties with the given status
+     */
+    List<Property> findByStatus(PropertyStatus status);
+
+    /**
      * Finds properties with filters and pagination.
      *
      * @param spec the search specification

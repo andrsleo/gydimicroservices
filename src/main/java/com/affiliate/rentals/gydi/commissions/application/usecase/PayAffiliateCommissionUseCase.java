@@ -1,5 +1,6 @@
 package com.affiliate.rentals.gydi.commissions.application.usecase;
 
+import com.affiliate.rentals.gydi.bookings.domain.ports.BookingRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.exception.CommissionNotFoundException;
 import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommission;
 import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus;
@@ -7,6 +8,12 @@ import com.affiliate.rentals.gydi.commissions.domain.model.StripeConnectAccount;
 import com.affiliate.rentals.gydi.commissions.domain.ports.PaymentGatewayPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.ReferralCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
+import com.affiliate.rentals.gydi.properties.domain.model.PropertyId;
+import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
+import com.affiliate.rentals.gydi.shared.domain.model.EmailMessage;
+import com.affiliate.rentals.gydi.shared.domain.port.EmailServicePort;
+import com.affiliate.rentals.gydi.shared.infrastructure.out.email.EmailTemplateService;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -41,6 +48,11 @@ public class PayAffiliateCommissionUseCase {
     private final ReferralCommissionRepositoryPort commissionRepository;
     private final StripeConnectAccountRepositoryPort connectAccountRepository;
     private final PaymentGatewayPort paymentGateway;
+    private final UserRepositoryPort userRepository;
+    private final BookingRepositoryPort bookingRepository;
+    private final PropertyRepositoryPort propertyRepository;
+    private final EmailServicePort emailService;
+    private final EmailTemplateService emailTemplateService;
 
     /**
      * Executes the affiliate commission payout.
@@ -86,6 +98,10 @@ public class PayAffiliateCommissionUseCase {
                 commissionRepository.save(commission);
                 logger.info("Affiliate commission {} paid via Stripe Transfer {}",
                         affiliateCommissionId, result.transactionId());
+
+                // Fire-and-forget: send commission earned email to affiliate
+                sendAffiliateCommissionEarnedEmail(commission);
+
             } else {
                 commission.recordPaymentFailure(result.failureReason());
                 commissionRepository.save(commission);
@@ -96,6 +112,38 @@ public class PayAffiliateCommissionUseCase {
             logger.error("Exception while paying affiliate commission {}", affiliateCommissionId, e);
             commission.recordPaymentFailure("System error: " + e.getMessage());
             commissionRepository.save(commission);
+        }
+    }
+
+    /**
+     * Sends an affiliate-commission-earned email. Fire-and-forget: never throws.
+     */
+    private void sendAffiliateCommissionEarnedEmail(ReferralCommission commission) {
+        try {
+            userRepository.findById(commission.getAffiliateId()).ifPresent(affiliate -> {
+                // Resolve property title via booking → property chain
+                String propertyTitle = bookingRepository.findById(commission.getBookingId())
+                        .flatMap(booking -> propertyRepository.findById(PropertyId.of(booking.getPropertyId())))
+                        .map(property -> property.getTitle())
+                        .orElse("una propiedad");
+
+                EmailMessage email = emailTemplateService.buildAffiliateCommissionEarnedEmail(
+                        affiliate.email().address(),
+                        new EmailTemplateService.AffiliateCommissionEarnedEmailData(
+                                affiliate.name(),
+                                commission.getAmount().getCommissionAmount(),
+                                commission.getAmount().getCurrency(),
+                                "un huésped referido",
+                                propertyTitle
+                        )
+                );
+                emailService.sendEmail(email);
+                logger.info("Affiliate commission earned email sent to affiliate {} for commission {}",
+                        commission.getAffiliateId(), commission.getId());
+            });
+        } catch (Exception e) {
+            logger.error("Failed to send affiliate commission earned email for commission {}: {}",
+                    commission.getId(), e.getMessage());
         }
     }
 }

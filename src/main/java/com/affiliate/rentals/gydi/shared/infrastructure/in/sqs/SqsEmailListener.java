@@ -1,17 +1,16 @@
 package com.affiliate.rentals.gydi.shared.infrastructure.in.sqs;
 
 import com.affiliate.rentals.gydi.shared.domain.model.EmailMessage;
+import com.fasterxml.jackson.annotation.JsonInclude;
 import io.awspring.cloud.sqs.annotation.SqsListener;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Profile;
+import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 
-import java.util.ArrayList;
-import java.util.HashMap;
 import java.util.List;
-import java.util.Map;
 
 @Slf4j
 @Component
@@ -30,7 +29,6 @@ public class SqsEmailListener {
         this.brevoClient = RestClient.builder()
                 .baseUrl("https://api.brevo.com")
                 .defaultHeader("api-key", apiKey)
-                .defaultHeader("Content-Type", "application/json")
                 .build();
     }
 
@@ -39,23 +37,26 @@ public class SqsEmailListener {
         log.info("Processing email from SQS queue to {}", message.toEmail());
 
         try {
-            Map<String, Object> body = new HashMap<>();
-            body.put("sender", Map.of("name", "GYDI", "email", fromEmail));
-            body.put("to", List.of(Map.of("email", message.toEmail())));
-            body.put("bcc", List.of(Map.of("email", bccEmail)));
-            body.put("subject", message.subject());
-            body.put("htmlContent", message.htmlBody());
-            if (message.plainTextBody() != null) {
-                body.put("textContent", message.plainTextBody());
-            }
+            String html = message.htmlBody() != null ? message.htmlBody() : "<p>" + message.subject() + "</p>";
+            String text = message.plainTextBody();
+
+            BrevoRequest request = new BrevoRequest(
+                    new BrevoSender("GYDI", fromEmail),
+                    List.of(new BrevoRecipient(message.toEmail())),
+                    List.of(new BrevoRecipient(bccEmail)),
+                    message.subject(),
+                    html,
+                    text
+            );
 
             var response = brevoClient.post()
                     .uri("/v3/smtp/email")
-                    .body(body)
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(request)
                     .retrieve()
-                    .toEntity(Map.class);
+                    .toEntity(BrevoResponse.class);
 
-            Object messageId = response.getBody() != null ? response.getBody().get("messageId") : "unknown";
+            String messageId = response.getBody() != null ? response.getBody().messageId() : "unknown";
             log.info("Email successfully sent via Brevo! MessageId: {}", messageId);
 
         } catch (Exception e) {
@@ -65,4 +66,22 @@ public class SqsEmailListener {
             throw new RuntimeException("Brevo service error while sending email", e);
         }
     }
+
+    // ── Brevo API DTOs ──────────────────────────────────────────────────────
+
+    @JsonInclude(JsonInclude.Include.NON_NULL)
+    record BrevoRequest(
+            BrevoSender sender,
+            List<BrevoRecipient> to,
+            List<BrevoRecipient> bcc,
+            String subject,
+            String htmlContent,
+            String textContent   // null → omitted from JSON (Brevo doesn't require it)
+    ) {}
+
+    record BrevoSender(String name, String email) {}
+
+    record BrevoRecipient(String email) {}
+
+    record BrevoResponse(String messageId) {}
 }

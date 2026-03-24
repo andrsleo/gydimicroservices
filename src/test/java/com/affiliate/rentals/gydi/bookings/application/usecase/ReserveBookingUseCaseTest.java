@@ -7,6 +7,10 @@ import com.affiliate.rentals.gydi.bookings.domain.model.Booking;
 import com.affiliate.rentals.gydi.bookings.domain.model.BookingStatus;
 import com.affiliate.rentals.gydi.bookings.domain.ports.BookingRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.UserSubscriptionPort;
+import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
+import com.affiliate.rentals.gydi.shared.domain.port.EmailServicePort;
+import com.affiliate.rentals.gydi.shared.infrastructure.out.email.EmailTemplateService;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -31,12 +35,22 @@ class ReserveBookingUseCaseTest {
     private BookingMapper bookingMapper;
     @Mock
     private UserSubscriptionPort userSubscriptionPort;
+    @Mock
+    private UserRepositoryPort userRepository;
+    @Mock
+    private PropertyRepositoryPort propertyRepository;
+    @Mock
+    private EmailServicePort emailService;
+    @Mock
+    private EmailTemplateService emailTemplateService;
 
     private ReserveBookingUseCase useCase;
 
     @BeforeEach
     void setUp() {
-        useCase = new ReserveBookingUseCase(bookingRepository, bookingMapper, userSubscriptionPort);
+        useCase = new ReserveBookingUseCase(
+                bookingRepository, bookingMapper, userSubscriptionPort,
+                userRepository, propertyRepository, emailService, emailTemplateService);
     }
 
     @Test

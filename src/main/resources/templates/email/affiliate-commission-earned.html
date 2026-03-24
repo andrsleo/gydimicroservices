@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/base-layout :: layout(~{::title}, ~{::email-header}, ~{::email-body})}">
+<head><title>¡Ganaste una comisión! - GYDI</title></head>
+<body>
+
+<th:block th:fragment="email-header">
+    <div style="background: linear-gradient(135deg, #28a745 0%, #fd7e14 100%); padding: 36px 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">GYDI</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Plataforma de alquileres vacacionales</p>
+    </div>
+</th:block>
+
+<th:block th:fragment="email-body">
+    <h2>¡Ganaste una comisión!</h2>
+
+    <p>Hola <strong th:text="${affiliateName}">Afiliado</strong>,</p>
+    <p>Tu referido <strong th:text="${referredGuestName}">Huésped</strong> realizó una reserva
+       exitosa en <strong th:text="${propertyTitle}">"Nombre"</strong> gracias a tu enlace de referido.</p>
+
+    <div style="background: linear-gradient(135deg, #28a745 0%, #20c997 100%);
+                border-radius: 8px; padding: 24px; text-align: center; margin: 24px 0;">
+        <p style="color: rgba(255,255,255,0.85); margin: 0 0 8px; font-size: 14px;">Tu comisión ganada</p>
+        <p style="color: #ffffff; font-size: 36px; font-weight: 700; margin: 0;"
+           th:text="|$${#numbers.formatDecimal(commissionAmount, 1, 2)}|">$0.00</p>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;"
+           th:text="${currency}">USD</p>
+    </div>
+
+    <div class="notice notice-info">
+        El pago será procesado y transferido a tu cuenta de Stripe Connect en los próximos días.
+    </div>
+
+    <p>¡Sigue compartiendo tu enlace y sigue ganando!</p>
+    <p>El equipo de GYDI</p>
+</th:block>
+
+</body>
+</html>

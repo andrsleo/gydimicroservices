@@ -1,5 +1,6 @@
 package com.affiliate.rentals.gydi.commissions.application.usecase;
 
+import com.affiliate.rentals.gydi.bookings.domain.ports.BookingRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.exception.CommissionNotFoundException;
 import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus;
 import com.affiliate.rentals.gydi.commissions.domain.model.HostCommission;
@@ -9,8 +10,14 @@ import com.affiliate.rentals.gydi.commissions.domain.ports.ReferralCommissionRep
 import com.affiliate.rentals.gydi.commissions.domain.ports.HostCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.PaymentGatewayPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
+import com.affiliate.rentals.gydi.properties.domain.model.PropertyId;
+import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
+import com.affiliate.rentals.gydi.shared.domain.model.EmailMessage;
+import com.affiliate.rentals.gydi.shared.domain.port.EmailServicePort;
+import com.affiliate.rentals.gydi.shared.infrastructure.out.email.EmailTemplateService;
 import com.affiliate.rentals.gydi.subscriptions.domain.model.PaymentMethod;
 import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentMethodRepositoryPort;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -46,6 +53,11 @@ public class ChargeHostCommissionUseCase {
     private final PaymentGatewayPort paymentGateway;
     private final PaymentMethodRepositoryPort paymentMethodRepository;
     private final StripeConnectAccountRepositoryPort connectAccountRepository;
+    private final UserRepositoryPort userRepository;
+    private final BookingRepositoryPort bookingRepository;
+    private final PropertyRepositoryPort propertyRepository;
+    private final EmailServicePort emailService;
+    private final EmailTemplateService emailTemplateService;
 
     /**
      * Executes the host commission charge.
@@ -103,7 +115,6 @@ public class ChargeHostCommissionUseCase {
             logger.error("Cannot charge commission {}: {}", commissionId, reason);
             commission.markAsFailed(reason, 0, null, null);
             commissionRepository.save(commission);
-            // TODO: Send email notification to host to add payment method
             return;
         }
 
@@ -154,7 +165,8 @@ public class ChargeHostCommissionUseCase {
                 // Business rule: affiliate commission can only be approved after host charge succeeds
                 approveAffiliateCommissionIfWaiting(commission.getBookingId());
 
-                // TODO: Send email confirmation to host
+                // Fire-and-forget: send commission charged email to host
+                sendHostCommissionChargedEmail(commission);
 
             } else {
                 // Use single-param markAsFailed: domain tracks attemptCount internally
@@ -165,8 +177,6 @@ public class ChargeHostCommissionUseCase {
                 logger.warn("Failed to charge host commission {}: reason={}, attemptCount={}, nextRetryAt={}",
                         commissionId, result.failureReason(),
                         commission.getAttemptCount(), commission.getNextRetryAt());
-
-                // TODO: Send email notification to host about payment failure
             }
 
         } catch (Exception e) {
@@ -174,6 +184,38 @@ public class ChargeHostCommissionUseCase {
 
             commission.markAsFailed("System error: " + e.getMessage());
             commissionRepository.save(commission);
+        }
+    }
+
+    /**
+     * Sends a host-commission-charged email. Fire-and-forget: never throws.
+     */
+    private void sendHostCommissionChargedEmail(HostCommission commission) {
+        try {
+            userRepository.findById(commission.getHostId()).ifPresent(host -> {
+                // Resolve property title via booking → property chain
+                String propertyTitle = bookingRepository.findById(commission.getBookingId())
+                        .flatMap(booking -> propertyRepository.findById(PropertyId.of(booking.getPropertyId())))
+                        .map(property -> property.getTitle())
+                        .orElse("tu propiedad");
+
+                EmailMessage email = emailTemplateService.buildHostCommissionChargedEmail(
+                        host.email().address(),
+                        new EmailTemplateService.HostCommissionChargedEmailData(
+                                host.name(),
+                                propertyTitle,
+                                commission.getAmount().getCommissionAmount(),
+                                commission.getAmount().getBookingAmount(),
+                                commission.getAmount().getCurrency()
+                        )
+                );
+                emailService.sendEmail(email);
+                logger.info("Host commission charged email sent to host {} for commission {}",
+                        commission.getHostId(), commission.getId());
+            });
+        } catch (Exception e) {
+            logger.error("Failed to send host commission charged email for commission {}: {}",
+                    commission.getId(), e.getMessage());
         }
     }
 

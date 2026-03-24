@@ -11,7 +11,7 @@ import com.affiliate.rentals.gydi.users.domain.model.User;
 import com.affiliate.rentals.gydi.users.domain.ports.PasswordResetTokenRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import com.affiliate.rentals.gydi.users.domain.service.PasswordEncoder;
-import com.affiliate.rentals.gydi.users.domain.service.UserEmailTemplateFactory;
+import com.affiliate.rentals.gydi.shared.infrastructure.out.email.EmailTemplateService;
 import com.affiliate.rentals.gydi.shared.domain.model.EmailMessage;
 
 import lombok.extern.slf4j.Slf4j;
@@ -52,19 +52,19 @@ public class ResetPasswordUseCase {
     private final PasswordResetTokenRepositoryPort tokenRepository;
     private final PasswordEncoder passwordEncoder;
     private final EmailServicePort emailService;
-    private final UserEmailTemplateFactory templateFactory;
+    private final EmailTemplateService emailTemplateService;
 
     public ResetPasswordUseCase(
             UserRepositoryPort userRepository,
             PasswordResetTokenRepositoryPort tokenRepository,
             PasswordEncoder passwordEncoder,
             EmailServicePort emailService,
-            UserEmailTemplateFactory templateFactory) {
+            EmailTemplateService emailTemplateService) {
         this.userRepository = userRepository;
         this.tokenRepository = tokenRepository;
         this.passwordEncoder = passwordEncoder;
         this.emailService = emailService;
-        this.templateFactory = templateFactory;
+        this.emailTemplateService = emailTemplateService;
     }
 
     /**
@@ -130,14 +130,11 @@ public class ResetPasswordUseCase {
             int invalidatedCount = tokenRepository.invalidateAllTokensForUser(user.id());
             log.debug("Invalidated {} other token(s) for user {} after password reset", invalidatedCount, user.id());
 
-            // Send confirmation email
+            // Send confirmation email (fire-and-forget: email failure must not roll back the password change)
             try {
-                String htmlTemplate = templateFactory.buildPasswordResetConfirmationHtml(user.name());
-                EmailMessage emailMessage = new EmailMessage(
+                EmailMessage emailMessage = emailTemplateService.buildPasswordResetConfirmationEmail(
                         user.email().address(),
-                        "Password Reset Confirmation - GYDI",
-                        htmlTemplate,
-                        null, null, null);
+                        new EmailTemplateService.PasswordResetConfirmationEmailData(user.name()));
                 emailService.sendEmail(emailMessage);
             } catch (Exception e) {
                 // Log but don't fail the operation if email fails

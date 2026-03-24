@@ -6,6 +6,12 @@ import com.affiliate.rentals.gydi.bookings.domain.exception.BookingNotFoundExcep
 import com.affiliate.rentals.gydi.bookings.domain.model.Booking;
 import com.affiliate.rentals.gydi.bookings.domain.ports.BookingRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.events.BookingFinishedEvent;
+import com.affiliate.rentals.gydi.properties.domain.model.PropertyId;
+import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
+import com.affiliate.rentals.gydi.shared.domain.model.EmailMessage;
+import com.affiliate.rentals.gydi.shared.domain.port.EmailServicePort;
+import com.affiliate.rentals.gydi.shared.infrastructure.out.email.EmailTemplateService;
+import com.affiliate.rentals.gydi.users.domain.ports.UserRepositoryPort;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.context.ApplicationEventPublisher;
@@ -40,14 +46,26 @@ public class FinishBookingUseCase {
     private final BookingRepositoryPort bookingRepository;
     private final BookingMapper bookingMapper;
     private final ApplicationEventPublisher eventPublisher;
+    private final UserRepositoryPort userRepository;
+    private final PropertyRepositoryPort propertyRepository;
+    private final EmailServicePort emailService;
+    private final EmailTemplateService emailTemplateService;
 
     public FinishBookingUseCase(
             BookingRepositoryPort bookingRepository,
             BookingMapper bookingMapper,
-            ApplicationEventPublisher eventPublisher) {
+            ApplicationEventPublisher eventPublisher,
+            UserRepositoryPort userRepository,
+            PropertyRepositoryPort propertyRepository,
+            EmailServicePort emailService,
+            EmailTemplateService emailTemplateService) {
         this.bookingRepository = bookingRepository;
         this.bookingMapper = bookingMapper;
         this.eventPublisher = eventPublisher;
+        this.userRepository = userRepository;
+        this.propertyRepository = propertyRepository;
+        this.emailService = emailService;
+        this.emailTemplateService = emailTemplateService;
     }
 
     /**
@@ -104,6 +122,38 @@ public class FinishBookingUseCase {
         log.info("Booking {} finished successfully. BookingFinishedEvent published for commission processing.",
                 bookingId);
 
+        // Fire-and-forget: send booking finished email to host
+        sendBookingFinishedEmail(updated, hostId);
+
         return bookingMapper.toDto(updated);
+    }
+
+    /**
+     * Sends a booking-finished email to the host. Fire-and-forget: never throws.
+     */
+    private void sendBookingFinishedEmail(Booking booking, Long hostId) {
+        try {
+            userRepository.findById(hostId).ifPresent(host -> {
+                String propertyTitle = propertyRepository.findById(PropertyId.of(booking.getPropertyId()))
+                        .map(p -> p.getTitle())
+                        .orElse("tu propiedad");
+
+                EmailMessage email = emailTemplateService.buildBookingFinishedEmail(
+                        host.email().address(),
+                        new EmailTemplateService.BookingFinishedEmailData(
+                                host.name(),
+                                booking.getGuestInfo().getName(),
+                                propertyTitle,
+                                booking.getBookingDates().getCheckInDate(),
+                                booking.getBookingDates().getCheckOutDate()
+                        )
+                );
+                emailService.sendEmail(email);
+                log.info("Booking finished email sent to host {} for booking {}", hostId, booking.getId());
+            });
+        } catch (Exception e) {
+            log.error("Failed to send booking finished email for booking {} to host {}: {}",
+                    booking.getId(), hostId, e.getMessage());
+        }
     }
 }

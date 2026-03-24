@@ -1,0 +1,45 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/base-layout :: layout(~{::title}, ~{::email-header}, ~{::email-body})}">
+<head><title>Comisión de plataforma aplicada - GYDI</title></head>
+<body>
+
+<th:block th:fragment="email-header">
+    <div style="background: linear-gradient(135deg, #6f42c1 0%, #e83e8c 100%); padding: 36px 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">GYDI</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Plataforma de alquileres vacacionales</p>
+    </div>
+</th:block>
+
+<th:block th:fragment="email-body">
+    <h2>Comisión de plataforma aplicada</h2>
+
+    <p>Hola <strong th:text="${hostName}">Anfitrión</strong>,</p>
+    <p>Se ha procesado la comisión de plataforma correspondiente a la reserva de tu propiedad
+       <strong th:text="${propertyTitle}">"Nombre"</strong>.</p>
+
+    <table class="data-table">
+        <tr>
+            <td>Total de la reserva</td>
+            <td th:text="|$${#numbers.formatDecimal(bookingAmount, 1, 2)} ${currency}|">$0.00 USD</td>
+        </tr>
+        <tr>
+            <td>Comisión GYDI</td>
+            <td><strong th:text="|$${#numbers.formatDecimal(commissionAmount, 1, 2)} ${currency}|" style="color: #dc3545;">-$0.00 USD</strong></td>
+        </tr>
+        <tr>
+            <td>Tu ganancia neta</td>
+            <td><strong th:text="|$${#numbers.formatDecimal(bookingAmount - commissionAmount, 1, 2)} ${currency}|" style="color: #28a745;">$0.00 USD</strong></td>
+        </tr>
+    </table>
+
+    <div class="notice notice-info">
+        La comisión es parte de nuestro modelo de plataforma que permite a GYDI seguir creciendo
+        y conectarte con más huéspedes.
+    </div>
+
+    <p>El equipo de GYDI</p>
+</th:block>
+
+</body>
+</html>
