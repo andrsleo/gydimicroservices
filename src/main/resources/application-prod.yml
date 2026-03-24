@@ -19,8 +19,8 @@
 #
 # Cloud Services:
 # - CLOUDINARY_URL        # Cloudinary connection string (production folder)
-# - RESEND_API_KEY        # Resend API key (PRODUCTION API key)
-# - RESEND_FROM_EMAIL     # From email (e.g., noreply@gydi.app, verified domain)
+# - BREVO_API_KEY         # Brevo transactional email API key (PRODUCTION)
+# - BREVO_FROM_EMAIL      # From email (e.g., no-reply@gydi.app, must be verified in Brevo)
 #
 # Payment:
 # - STRIPE_API_KEY        # Stripe LIVE secret key (sk_live_...)
@@ -168,22 +168,19 @@ security:
 cloudinary:
   url: ${CLOUDINARY_URL}
 
-# Resend for email service (production API key, verified domain)
-resend:
-  api-key: ${RESEND_API_KEY}
-  from-email: ${RESEND_FROM_EMAIL:noreply@gydi.com}
-
 # Storage provider
 storage:
   provider: ${STORAGE_PROVIDER}
 
-# Email provider
-# Configure SES and SQS for production email sending
+# Email provider — Brevo for transactional email, delivered via SQS
 email:
-  provider: aws-ses
-  sqs-queue-name: ${SQS_EMAIL_QUEUE_NAME:gydi-email-queue-prod}
-  sender: ${AWS_SES_SENDER:no-reply@gydi.app}
-  copy-recipient: ${AWS_SES_BCC:gydiproperties@gmail.com}
+  provider: brevo
+  sqs-queue-name: ${SQS_EMAIL_QUEUE_NAME}
+  copy-recipient: ${EMAIL_BCC}
+
+brevo:
+  api-key: ${BREVO_API_KEY}
+  from-email: ${BREVO_FROM_EMAIL}
 
 # ============================================
 # Stripe Payment Configuration (LIVE MODE - Real money!)
