@@ -41,7 +41,7 @@ public class InitiateAffiliateOnboardingUseCase {
     private final PaymentGatewayPort paymentGateway;
     private final UserRepositoryPort userRepository;
 
-    @Value("${app.base-url:http://localhost:3000}")
+    @Value("${app.frontend-url:http://localhost:3000}")
     private String baseUrl;
 
     /**
