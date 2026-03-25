@@ -183,6 +183,16 @@ brevo:
   from-email: ${BREVO_FROM_EMAIL}
 
 # ============================================
+# PayPal Payouts Configuration (LIVE MODE - Real money!)
+# ============================================
+# Get credentials from: https://developer.paypal.com/dashboard/applications/live
+# Required Railway secrets: PAYPAL_CLIENT_ID, PAYPAL_CLIENT_SECRET
+paypal:
+  client-id: ${PAYPAL_CLIENT_ID}
+  client-secret: ${PAYPAL_CLIENT_SECRET}
+  base-url: https://api-m.paypal.com
+
+# ============================================
 # Stripe Payment Configuration (LIVE MODE - Real money!)
 # ============================================
 stripe:

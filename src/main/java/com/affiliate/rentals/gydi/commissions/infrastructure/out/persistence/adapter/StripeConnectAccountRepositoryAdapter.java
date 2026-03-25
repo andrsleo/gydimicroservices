@@ -96,4 +96,29 @@ public class StripeConnectAccountRepositoryAdapter implements StripeConnectAccou
             .map(mapper::toDomain)
             .toList();
     }
+
+    @Override
+    @Transactional
+    public void savePayPalEmail(Long userId, String paypalEmail) {
+        if (jpaRepository.existsByUserId(userId)) {
+            jpaRepository.updatePayPalEmail(userId, paypalEmail);
+        } else {
+            // Create a stub account record so the PayPal email is not lost
+            StripeConnectAccountEntity stub = StripeConnectAccountEntity.builder()
+                .userId(userId)
+                .stripeAccountId("pending_" + userId)
+                .accountType(ConnectAccountType.EXPRESS)
+                .onboardingCompleted(false)
+                .detailsSubmitted(false)
+                .payoutsEnabled(false)
+                .chargesEnabled(false)
+                .country("US")
+                .verificationStatus("unverified")
+                .paypalEmail(paypalEmail)
+                .createdAt(java.time.LocalDateTime.now())
+                .updatedAt(java.time.LocalDateTime.now())
+                .build();
+            jpaRepository.save(stub);
+        }
+    }
 }

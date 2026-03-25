@@ -206,7 +206,6 @@ brevo:
   api-key: ""
   from-email: "no-reply@gydi.app"
 
-
 # Storage provider selection
 # Options:
 #   - local: Store files in ./uploads (ephemeral in Railway/Docker)
@@ -283,6 +282,16 @@ encryption:
   pii:
     secret: ${PII_ENCRYPTION_KEY:#{null}} # Optional: Will warn if not set
 
+# ============================================
+# PayPal Payouts Configuration
+# ============================================
+# Used for paying affiliate commissions via PayPal Payouts API.
+# No SDK — uses Spring RestClient directly.
+# Sandbox URL used as default for local/dev. Override in application-prod.yml.
+paypal:
+  client-id: ${PAYPAL_CLIENT_ID}
+  client-secret: ${PAYPAL_CLIENT_SECRET}
+  base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}
 
 # ============================================
 # CORS Configuration

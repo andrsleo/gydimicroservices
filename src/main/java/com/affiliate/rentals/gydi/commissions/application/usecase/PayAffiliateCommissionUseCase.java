@@ -5,7 +5,7 @@ import com.affiliate.rentals.gydi.commissions.domain.exception.CommissionNotFoun
 import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommission;
 import com.affiliate.rentals.gydi.commissions.domain.model.ReferralCommissionStatus;
 import com.affiliate.rentals.gydi.commissions.domain.model.StripeConnectAccount;
-import com.affiliate.rentals.gydi.commissions.domain.ports.PaymentGatewayPort;
+import com.affiliate.rentals.gydi.commissions.domain.ports.PayoutGatewayPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.ReferralCommissionRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
 import com.affiliate.rentals.gydi.properties.domain.model.PropertyId;
@@ -22,21 +22,26 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
-import java.time.LocalDateTime;
 
 /**
- * Use Case: Transfers affiliate commission via Stripe Connect.
+ * Use Case: Transfers affiliate commission via PayPal Payouts API.
  * <p>
  * Business Flow:
  * 1. Retrieve ReferralCommission (must be APPROVED)
- * 2. Validate affiliate has a fully onboarded Stripe Connect account
- * 3. Transfer commission amount to affiliate's acct_xxx
- * 4. Mark commission as PAID
+ * 2. Validate affiliate has a PayPal email configured
+ * 3. Send payout via PayoutGatewayPort (PayPal Payouts API in prod, mock in dev)
+ * 4. Mark commission as PAID with PayPal batch/item IDs
  * </p>
  * <p>
- * If the affiliate has not completed Stripe Connect onboarding, the payment
- * is skipped. It will be retried by the scheduler on the 1st and 15th of
- * each month once onboarding is complete.
+ * If the affiliate has not configured their PayPal email, the payout
+ * is skipped and logged. The commission remains APPROVED and will be
+ * retried by the scheduler on the 1st and 15th of each month once
+ * the affiliate configures their PayPal email.
+ * </p>
+ * <p>
+ * If the payout fails: the commission stays APPROVED (not moved to FAILED)
+ * so the scheduler will retry. After 3 consecutive failures it transitions
+ * to WITHHELD for manual review.
  * </p>
  */
 @Service
@@ -47,7 +52,7 @@ public class PayAffiliateCommissionUseCase {
 
     private final ReferralCommissionRepositoryPort commissionRepository;
     private final StripeConnectAccountRepositoryPort connectAccountRepository;
-    private final PaymentGatewayPort paymentGateway;
+    private final PayoutGatewayPort payoutGateway;
     private final UserRepositoryPort userRepository;
     private final BookingRepositoryPort bookingRepository;
     private final PropertyRepositoryPort propertyRepository;
@@ -71,33 +76,36 @@ public class PayAffiliateCommissionUseCase {
             return;
         }
 
-        StripeConnectAccount connectAccount = connectAccountRepository
+        // Resolve affiliate's PayPal email from their account record
+        StripeConnectAccount account = connectAccountRepository
                 .findByUserId(commission.getAffiliateId()).orElse(null);
 
-        if (connectAccount == null || !connectAccount.canReceivePayouts()) {
-            logger.warn("Affiliate {} cannot receive payouts — onboarding incomplete or not started",
-                    commission.getAffiliateId());
-            // Will be retried by scheduler once onboarding is complete
+        if (account == null || !account.hasPayPalEmail()) {
+            logger.warn("Affiliate {} has no PayPal email configured — skipping payout for commission {}. " +
+                    "Commission will be retried once affiliate registers their PayPal email.",
+                    commission.getAffiliateId(), affiliateCommissionId);
+            // Leave commission in APPROVED — scheduler will retry
             return;
         }
 
-        long amountCents = commission.getAmount().getCommissionAmount()
-                .multiply(new BigDecimal("100"))
-                .longValue();
+        BigDecimal amount = commission.getAmount().getCommissionAmount();
+        String currency = commission.getAmount().getCurrency();
+        String note = buildPayoutNote(commission);
 
         try {
-            PaymentGatewayPort.PaymentResult result = paymentGateway.transferToAffiliate(
-                    connectAccount.getStripeAccountId(),  // acct_xxx
-                    amountCents,
-                    commission.getAmount().getCurrency(),
-                    affiliateCommissionId.toString()
+            PayoutGatewayPort.PayoutResult result = payoutGateway.sendPayout(
+                    account.getPaypalEmail(),
+                    amount,
+                    currency,
+                    affiliateCommissionId.toString(),
+                    note
             );
 
             if (result.success()) {
-                commission.markAsPaid(result.transactionId(), null);
+                commission.markAsPaid(result.payoutBatchId(), result.payoutItemId());
                 commissionRepository.save(commission);
-                logger.info("Affiliate commission {} paid via Stripe Transfer {}",
-                        affiliateCommissionId, result.transactionId());
+                logger.info("Affiliate commission {} paid via PayPal: batchId={}, itemId={}",
+                        affiliateCommissionId, result.payoutBatchId(), result.payoutItemId());
 
                 // Fire-and-forget: send commission earned email to affiliate
                 sendAffiliateCommissionEarnedEmail(commission);
@@ -105,14 +113,34 @@ public class PayAffiliateCommissionUseCase {
             } else {
                 commission.recordPaymentFailure(result.failureReason());
                 commissionRepository.save(commission);
-                logger.warn("Affiliate payout failed for commission {}: {}",
+                logger.warn("PayPal payout failed for commission {}: {}",
                         affiliateCommissionId, result.failureReason());
             }
+
         } catch (Exception e) {
             logger.error("Exception while paying affiliate commission {}", affiliateCommissionId, e);
-            commission.recordPaymentFailure("System error: " + e.getMessage());
-            commissionRepository.save(commission);
+            // Leave commission in APPROVED on unexpected errors so scheduler can retry
+            // Only persist the failure if the domain allows it (status is still APPROVED)
+            try {
+                commission.recordPaymentFailure("System error: " + e.getMessage());
+                commissionRepository.save(commission);
+            } catch (Exception inner) {
+                logger.error("Could not persist failure for commission {}: {}",
+                        affiliateCommissionId, inner.getMessage());
+            }
         }
+    }
+
+    // ============================================================================
+    // PRIVATE HELPERS
+    // ============================================================================
+
+    private String buildPayoutNote(ReferralCommission commission) {
+        return String.format("Comision GYDI - reserva #%d - %s %.2f %s",
+                commission.getBookingId(),
+                commission.getAffiliatePlan(),
+                commission.getAmount().getCommissionAmount(),
+                commission.getAmount().getCurrency());
     }
 
     /**
@@ -121,7 +149,7 @@ public class PayAffiliateCommissionUseCase {
     private void sendAffiliateCommissionEarnedEmail(ReferralCommission commission) {
         try {
             userRepository.findById(commission.getAffiliateId()).ifPresent(affiliate -> {
-                // Resolve property title via booking → property chain
+                // Resolve property title via booking -> property chain
                 String propertyTitle = bookingRepository.findById(commission.getBookingId())
                         .flatMap(booking -> propertyRepository.findById(PropertyId.of(booking.getPropertyId())))
                         .map(property -> property.getTitle())
@@ -133,7 +161,7 @@ public class PayAffiliateCommissionUseCase {
                                 affiliate.name(),
                                 commission.getAmount().getCommissionAmount(),
                                 commission.getAmount().getCurrency(),
-                                "un huésped referido",
+                                "un huesped referido",
                                 propertyTitle
                         )
                 );

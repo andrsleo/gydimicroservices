@@ -236,13 +236,15 @@ class ReferralCommissionWaitingHostChargeTest {
             amount,
             paymentSchedule,
             disputePeriod,
-            null,
-            null,
+            null,  // paypalPayoutBatchId
+            null,  // paypalPayoutItemId
+            null,  // stripeTransferId
+            null,  // stripePayoutId
             status,
-            null,
-            null,
+            null,  // paidAt
+            null,  // failureReason
             0,
-            null,
+            null,  // lastAttemptAt
             LocalDateTime.now().minusDays(1),
             LocalDateTime.now()
         );

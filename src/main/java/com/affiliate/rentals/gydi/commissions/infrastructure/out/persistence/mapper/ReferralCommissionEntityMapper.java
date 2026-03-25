@@ -32,6 +32,8 @@ public class ReferralCommissionEntityMapper {
             amount,
             paymentSchedule,
             disputePeriod,
+            entity.getPaypalPayoutBatchId(),
+            entity.getPaypalPayoutItemId(),
             entity.getStripeTransferId(),
             entity.getStripePayoutId(),
             ReferralCommissionStatus.valueOf(entity.getStatus()),
@@ -58,6 +60,8 @@ public class ReferralCommissionEntityMapper {
         entity.setCurrency(domain.getAmount().getCurrency());
         entity.setScheduledPaymentDate(domain.getPaymentSchedule().getScheduledPaymentDate());
         entity.setDisputePeriodEndsAt(domain.getDisputePeriod().getDisputePeriodEndsAt());
+        entity.setPaypalPayoutBatchId(domain.getPaypalPayoutBatchId());
+        entity.setPaypalPayoutItemId(domain.getPaypalPayoutItemId());
         entity.setStripeTransferId(domain.getStripeTransferId());
         entity.setStripePayoutId(domain.getStripePayoutId());
         entity.setStatus(domain.getStatus().name());

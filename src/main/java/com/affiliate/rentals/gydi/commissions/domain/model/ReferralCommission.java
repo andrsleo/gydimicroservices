@@ -39,7 +39,11 @@ public class ReferralCommission {
     private final PaymentSchedule paymentSchedule;
     private final DisputePeriod disputePeriod;
 
-    // Stripe payout processing
+    // Payout processing fields (PayPal Payouts API)
+    private String paypalPayoutBatchId;
+    private String paypalPayoutItemId;
+
+    // Legacy Stripe fields kept for historical data (no longer written for new commissions)
     private String stripeTransferId;
     private String stripePayoutId;
 
@@ -67,6 +71,8 @@ public class ReferralCommission {
         CommissionAmount amount,
         PaymentSchedule paymentSchedule,
         DisputePeriod disputePeriod,
+        String paypalPayoutBatchId,
+        String paypalPayoutItemId,
         String stripeTransferId,
         String stripePayoutId,
         ReferralCommissionStatus status,
@@ -84,6 +90,8 @@ public class ReferralCommission {
         this.amount = Objects.requireNonNull(amount, "Commission amount cannot be null");
         this.paymentSchedule = Objects.requireNonNull(paymentSchedule, "Payment schedule cannot be null");
         this.disputePeriod = Objects.requireNonNull(disputePeriod, "Dispute period cannot be null");
+        this.paypalPayoutBatchId = paypalPayoutBatchId;
+        this.paypalPayoutItemId = paypalPayoutItemId;
         this.stripeTransferId = stripeTransferId;
         this.stripePayoutId = stripePayoutId;
         this.status = Objects.requireNonNull(status, "Status cannot be null");
@@ -124,8 +132,10 @@ public class ReferralCommission {
             amount,
             paymentSchedule,
             disputePeriod,
-            null, // No Stripe IDs yet
-            null,
+            null, // No PayPal payout batch ID yet
+            null, // No PayPal payout item ID yet
+            null, // No legacy Stripe transfer ID
+            null, // No legacy Stripe payout ID
             ReferralCommissionStatus.WAITING_HOST_CHARGE,
             null, // Not paid yet
             null, // No failure
@@ -147,6 +157,8 @@ public class ReferralCommission {
         CommissionAmount amount,
         PaymentSchedule paymentSchedule,
         DisputePeriod disputePeriod,
+        String paypalPayoutBatchId,
+        String paypalPayoutItemId,
         String stripeTransferId,
         String stripePayoutId,
         ReferralCommissionStatus status,
@@ -160,6 +172,7 @@ public class ReferralCommission {
         return new ReferralCommission(
             id, bookingId, affiliateId, affiliatePlan, amount,
             paymentSchedule, disputePeriod,
+            paypalPayoutBatchId, paypalPayoutItemId,
             stripeTransferId, stripePayoutId, status, paidAt,
             failureReason, attemptCount, lastAttemptAt,
             createdAt, updatedAt
@@ -253,9 +266,12 @@ public class ReferralCommission {
     }
 
     /**
-     * Marks commission as successfully PAID.
+     * Marks commission as successfully PAID via PayPal Payouts.
+     *
+     * @param paypalPayoutBatchId PayPal Batch Payout ID returned by PayPal API
+     * @param paypalPayoutItemId  PayPal individual payout item ID within the batch
      */
-    public void markAsPaid(String stripeTransferId, String stripePayoutId) {
+    public void markAsPaid(String paypalPayoutBatchId, String paypalPayoutItemId) {
         if (!status.canPay()) {
             throw new InvalidCommissionStateException(
                 "Cannot mark as paid from status: " + status
@@ -263,8 +279,8 @@ public class ReferralCommission {
         }
 
         this.status = ReferralCommissionStatus.PAID;
-        this.stripeTransferId = stripeTransferId;
-        this.stripePayoutId = stripePayoutId;
+        this.paypalPayoutBatchId = paypalPayoutBatchId;
+        this.paypalPayoutItemId = paypalPayoutItemId;
         this.paidAt = LocalDateTime.now();
         this.failureReason = null;
         this.updatedAt = LocalDateTime.now();
@@ -404,6 +420,14 @@ public class ReferralCommission {
 
     public DisputePeriod getDisputePeriod() {
         return disputePeriod;
+    }
+
+    public String getPaypalPayoutBatchId() {
+        return paypalPayoutBatchId;
+    }
+
+    public String getPaypalPayoutItemId() {
+        return paypalPayoutItemId;
     }
 
     public String getStripeTransferId() {

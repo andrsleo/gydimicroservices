@@ -4,16 +4,23 @@ import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
- * Port interface for payment gateway integration (Stripe).
+ * Port interface for Stripe payment gateway integration.
  * <p>
- * Provides methods for:
- * - HOST commission charges (Payment Intents with off_session=true)
- * - AFFILIATE payouts (Stripe Connect Transfers)
- * - Stripe Connect account onboarding
- * - Payment method verification
+ * Handles HOST commission charges only. Affiliate payouts are handled by
+ * {@link PayoutGatewayPort} (PayPal Payouts API).
  * </p>
  * <p>
- * Implemented by infrastructure layer Stripe adapter.
+ * Provides methods for:
+ * <ul>
+ *   <li>HOST commission charges (Payment Intents with off_session=true)</li>
+ *   <li>Payment method verification</li>
+ * </ul>
+ * </p>
+ * <p>
+ * Note: Stripe Connect affiliate payout methods (createConnectAccount,
+ * generateConnectOnboardingLink, transferToAffiliate, createLoginLink,
+ * getConnectAccountStatus) have been removed. GYDI now uses PayPal Payouts
+ * for affiliate commission payments.
  * </p>
  */
 public interface PaymentGatewayPort {
@@ -29,12 +36,12 @@ public interface PaymentGatewayPort {
      * Payment is confirmed immediately without user interaction.
      * </p>
      *
-     * @param customerId Stripe customer ID of the host
+     * @param customerId      Stripe customer ID of the host
      * @param paymentMethodId Stripe payment method ID to charge
-     * @param amountCents amount to charge in cents (e.g., 2000 = $20.00)
-     * @param currency currency code (USD, EUR, GBP, etc.)
-     * @param bookingId booking ID for metadata tracking
-     * @param commissionId commission ID for metadata tracking
+     * @param amountCents     amount to charge in cents (e.g., 2000 = $20.00)
+     * @param currency        currency code (USD, EUR, GBP, etc.)
+     * @param bookingId       booking ID for metadata tracking
+     * @param commissionId    commission ID for metadata tracking
      * @return PaymentResult with success/failure and transaction IDs
      */
     PaymentResult chargeHostCommission(
@@ -55,14 +62,14 @@ public interface PaymentGatewayPort {
      * - The host receives the remainder directly in their Connect account
      * </p>
      *
-     * @param hostConnectAccountId Stripe Connect account ID of host (acct_xxx)
-     * @param customerId Stripe platform customer ID of host (cus_xxx) for off-session charge
-     * @param paymentMethodId Stripe payment method ID to charge
-     * @param totalAmountCents full booking amount in cents (charged to customer)
-     * @param applicationFeeCents platform commission in cents (kept by platform)
-     * @param currency currency code (USD, EUR, GBP, etc.)
-     * @param bookingId booking ID for metadata tracking
-     * @param commissionId commission ID for metadata tracking
+     * @param hostConnectAccountId  Stripe Connect account ID of host (acct_xxx)
+     * @param customerId            Stripe platform customer ID of host (cus_xxx) for off-session charge
+     * @param paymentMethodId       Stripe payment method ID to charge
+     * @param totalAmountCents      full booking amount in cents (charged to customer)
+     * @param applicationFeeCents   platform commission in cents (kept by platform)
+     * @param currency              currency code (USD, EUR, GBP, etc.)
+     * @param bookingId             booking ID for metadata tracking
+     * @param commissionId          commission ID for metadata tracking
      * @return PaymentResult with success/failure and transaction IDs
      */
     PaymentResult chargeHostViaConnect(
@@ -79,71 +86,15 @@ public interface PaymentGatewayPort {
     /**
      * Refunds a host commission charge.
      *
-     * @param chargeId Stripe charge ID to refund
+     * @param chargeId    Stripe charge ID to refund
      * @param amountCents refund amount in cents
-     * @param reason refund reason
+     * @param reason      refund reason
      * @return PaymentResult with refund status
      */
     PaymentResult refundHostCommission(
         String chargeId,
         Long amountCents,
         String reason
-    );
-
-    // ============================================================================
-    // AFFILIATE PAYOUTS (Stripe Connect)
-    // ============================================================================
-
-    /**
-     * Creates a Stripe Connect account for an affiliate.
-     * <p>
-     * Account type varies by country:
-     * - US, CA, UK: Standard
-     * - EU countries: Express
-     * - Other: Custom
-     * </p>
-     *
-     * @param email affiliate's email
-     * @param country ISO 3166-1 alpha-2 country code (e.g., "US", "MX")
-     * @return Stripe Connect account ID (e.g., "acct_xxxxx")
-     */
-    String createConnectAccount(String email, String country);
-
-    /**
-     * Generates onboarding link for Stripe Connect account.
-     * <p>
-     * Affiliate is redirected to Stripe to complete KYC, bank account setup, etc.
-     * </p>
-     *
-     * @param accountId Stripe Connect account ID
-     * @param refreshUrl URL to redirect if onboarding is incomplete
-     * @param returnUrl URL to redirect after successful onboarding
-     * @return Onboarding link URL (expires after ~30 minutes)
-     */
-    String generateConnectOnboardingLink(
-        String accountId,
-        String refreshUrl,
-        String returnUrl
-    );
-
-    /**
-     * Transfers affiliate commission via Stripe Connect.
-     * <p>
-     * Creates a Transfer to the affiliate's Connect account.
-     * Actual payout to affiliate's bank account happens per their payout schedule (default: 7 days).
-     * </p>
-     *
-     * @param connectAccountId Stripe Connect account ID of affiliate
-     * @param amountCents amount to transfer in cents
-     * @param currency currency code
-     * @param commissionIds comma-separated commission IDs (for metadata)
-     * @return PaymentResult with success/failure and transfer ID
-     */
-    PaymentResult transferToAffiliate(
-        String connectAccountId,
-        Long amountCents,
-        String currency,
-        String commissionIds
     );
 
     // ============================================================================
@@ -157,50 +108,23 @@ public interface PaymentGatewayPort {
      * The $1 authorization is released automatically.
      * </p>
      *
-     * @param customerId Stripe customer ID
+     * @param customerId      Stripe customer ID
      * @param paymentMethodId Stripe payment method ID to verify
      * @return true if verification succeeds, false otherwise
      */
     boolean verifyPaymentMethod(String customerId, String paymentMethodId);
 
     // ============================================================================
-    // CONNECT ACCOUNT QUERIES
-    // ============================================================================
-
-    /**
-     * Retrieves the current status of a Stripe Connect account.
-     * <p>
-     * Used to check if onboarding is complete and payouts are enabled.
-     * </p>
-     *
-     * @param accountId Stripe Connect account ID
-     * @return ConnectAccountStatus with onboarding and payout status
-     */
-    ConnectAccountStatus getConnectAccountStatus(String accountId);
-
-    /**
-     * Creates a Stripe Express Dashboard login link for a connected account.
-     * <p>
-     * Allows users to access their Stripe Express Dashboard to manage bank accounts,
-     * view payouts, and review transaction history.
-     * </p>
-     *
-     * @param accountId Stripe Connect account ID (acct_xxx)
-     * @return URL to redirect the user to their Stripe Express Dashboard
-     */
-    String createLoginLink(String accountId);
-
-    // ============================================================================
     // RESULT RECORDS
     // ============================================================================
 
     /**
-     * Payment result record for host charges and affiliate transfers.
+     * Payment result record for host charges.
      */
     record PaymentResult(
         boolean success,
-        String transactionId, // Payment Intent ID or Transfer ID
-        String chargeId, // Stripe Charge ID (for host commissions, null for transfers)
+        String transactionId, // Payment Intent ID
+        String chargeId,      // Stripe Charge ID (for host commissions)
         String failureReason,
         LocalDateTime processedAt
     ) {
@@ -210,21 +134,6 @@ public interface PaymentGatewayPort {
 
         public static PaymentResult failure(String reason) {
             return new PaymentResult(false, null, null, reason, LocalDateTime.now());
-        }
-    }
-
-    /**
-     * Stripe Connect account status record.
-     */
-    record ConnectAccountStatus(
-        String accountId,
-        boolean onboardingCompleted,
-        boolean payoutsEnabled,
-        boolean chargesEnabled,
-        String disabledReason
-    ) {
-        public boolean canReceivePayouts() {
-            return onboardingCompleted && payoutsEnabled;
         }
     }
 }

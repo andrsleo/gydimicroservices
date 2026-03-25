@@ -1,18 +1,16 @@
 package com.affiliate.rentals.gydi.commissions.infrastructure.in.rest.controller;
 
 import com.affiliate.rentals.gydi.commissions.application.dto.ConnectAccountStatusDto;
-import com.affiliate.rentals.gydi.commissions.application.dto.OnboardingLinkDto;
 import com.affiliate.rentals.gydi.commissions.application.usecase.GetConnectAccountStatusUseCase;
-import com.affiliate.rentals.gydi.commissions.application.usecase.InitiateAffiliateOnboardingUseCase;
-import com.affiliate.rentals.gydi.commissions.domain.exception.AlreadyOnboardedException;
-import com.affiliate.rentals.gydi.commissions.domain.model.StripeConnectAccount;
-import com.affiliate.rentals.gydi.commissions.domain.ports.PaymentGatewayPort;
-import com.affiliate.rentals.gydi.commissions.domain.ports.StripeConnectAccountRepositoryPort;
+import com.affiliate.rentals.gydi.commissions.application.usecase.SavePayPalEmailUseCase;
 import com.affiliate.rentals.gydi.shared.security.CustomUserDetails;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotBlank;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -23,154 +21,105 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 /**
- * REST Controller for Stripe Connect affiliate onboarding.
+ * REST Controller for affiliate payout configuration.
  * <p>
- * FASE 3: Allows affiliates to connect their bank accounts for payouts.
+ * Replaces the former Stripe Connect onboarding endpoints.
+ * Affiliates now register their PayPal email to receive commission payouts.
  * </p>
  */
 @RestController
-@RequestMapping("/api/v1/affiliates/connect")
-@Tag(name = "Affiliate Connect", description = "Stripe Connect onboarding for affiliates")
+@RequestMapping("/api/v1/affiliates")
+@Tag(name = "Affiliate Payouts", description = "Affiliate commission payout configuration (PayPal)")
 @RequiredArgsConstructor
 public class AffiliateConnectController {
 
     private static final Logger logger = LoggerFactory.getLogger(AffiliateConnectController.class);
 
-    private final InitiateAffiliateOnboardingUseCase initiateOnboardingUseCase;
+    private final SavePayPalEmailUseCase savePayPalEmailUseCase;
     private final GetConnectAccountStatusUseCase getConnectAccountStatusUseCase;
-    private final StripeConnectAccountRepositoryPort connectAccountRepository;
-    private final PaymentGatewayPort paymentGateway;
 
     /**
-     * Initiates Stripe Connect onboarding for current user.
+     * Registers or updates the affiliate's PayPal email for commission payouts.
      * <p>
-     * Returns an onboarding URL that frontend should redirect user to.
-     * User completes form on Stripe-hosted page, then returns via return_url.
+     * Replaces the former Stripe Connect /initiate and /dashboard-link endpoints.
+     * Once the email is saved, GYDI will send commission payouts to this address
+     * via the PayPal Payouts API on the 1st and 15th of each month.
      * </p>
-     *
-     * @return OnboardingLinkDto with URL to redirect to
      */
-    @PostMapping("/initiate")
+    @PutMapping("/payout/paypal-email")
     @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
     @Operation(
-        summary = "Initiate affiliate onboarding",
-        description = "Creates Stripe Connect Account and returns onboarding link. User should be redirected to this URL."
+        summary = "Register PayPal email for commission payouts",
+        description = "Saves the affiliate's PayPal email. Commission payouts will be sent to this address via PayPal Payouts API."
     )
     @ApiResponses({
-        @ApiResponse(responseCode = "200", description = "Onboarding link generated successfully"),
-        @ApiResponse(responseCode = "400", description = "Already onboarded"),
+        @ApiResponse(responseCode = "200", description = "PayPal email saved successfully"),
+        @ApiResponse(responseCode = "400", description = "Invalid email format"),
         @ApiResponse(responseCode = "401", description = "Unauthorized"),
         @ApiResponse(responseCode = "500", description = "Internal server error")
     })
-    public ResponseEntity<?> initiateOnboarding(
-        @AuthenticationPrincipal CustomUserDetails userDetails
+    public ResponseEntity<?> savePayPalEmail(
+        @AuthenticationPrincipal CustomUserDetails userDetails,
+        @Valid @RequestBody PayPalEmailRequest request
     ) {
         Long userId = userDetails.getUserId();
-
-        logger.info("Initiating Stripe Connect onboarding for user ID: {}", userId);
+        logger.info("Saving PayPal email for user ID: {}", userId);
 
         try {
-            OnboardingLinkDto onboardingLink = initiateOnboardingUseCase.execute(userId);
+            savePayPalEmailUseCase.execute(userId, request.paypalEmail());
+            return ResponseEntity.ok(new SuccessResponse("PayPal email registered successfully"));
 
-            logger.info("Onboarding link generated for user {}: {}", userId, onboardingLink.stripeAccountId());
-
-            return ResponseEntity.ok(onboardingLink);
-
-        } catch (AlreadyOnboardedException e) {
-            logger.warn("User {} already completed onboarding", userId);
+        } catch (IllegalArgumentException e) {
+            logger.warn("Invalid PayPal email for user {}: {}", userId, e.getMessage());
             return ResponseEntity
                 .status(HttpStatus.BAD_REQUEST)
-                .body(new ErrorResponse("ALREADY_ONBOARDED", e.getMessage()));
+                .body(new ErrorResponse("INVALID_EMAIL", e.getMessage()));
 
         } catch (Exception e) {
-            logger.error("Error initiating onboarding for user {}: {}", userId, e.getMessage(), e);
+            logger.error("Error saving PayPal email for user {}: {}", userId, e.getMessage(), e);
             return ResponseEntity
                 .status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("ONBOARDING_ERROR", "Failed to initiate onboarding: " + e.getMessage()));
+                .body(new ErrorResponse("SAVE_ERROR", "Failed to save PayPal email: " + e.getMessage()));
         }
     }
 
     /**
-     * Gets Stripe Connect Account status for current user.
-     * <p>
-     * Returns whether user has account, onboarding status, and payout capabilities.
-     * Frontend uses this to show banners and onboarding CTAs.
-     * </p>
-     *
-     * @return ConnectAccountStatusDto with account status
+     * Returns the affiliate's payout account status including PayPal email configuration.
      */
-    @GetMapping("/status")
+    @GetMapping("/payout/status")
     @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
     @Operation(
-        summary = "Get Connect Account status",
-        description = "Returns whether user has Stripe Connect Account and its onboarding/payout status"
+        summary = "Get payout account status",
+        description = "Returns the affiliate's payout configuration status including whether a PayPal email is registered."
     )
     @ApiResponses({
         @ApiResponse(responseCode = "200", description = "Status retrieved successfully"),
         @ApiResponse(responseCode = "401", description = "Unauthorized")
     })
-    public ResponseEntity<ConnectAccountStatusDto> getAccountStatus(
+    public ResponseEntity<ConnectAccountStatusDto> getPayoutStatus(
         @AuthenticationPrincipal CustomUserDetails userDetails
     ) {
         Long userId = userDetails.getUserId();
-
-        logger.debug("Getting Connect Account status for user ID: {}", userId);
+        logger.debug("Getting payout status for user ID: {}", userId);
 
         ConnectAccountStatusDto status = getConnectAccountStatusUseCase.execute(userId);
-
         return ResponseEntity.ok(status);
     }
 
-    /**
-     * Generates a Stripe Express Dashboard login link for the current user.
-     * <p>
-     * The link is single-use and short-lived (~5 minutes). The user is redirected
-     * to their Stripe Express Dashboard where they can manage bank accounts,
-     * view payouts, and review transaction history.
-     * </p>
-     *
-     * @return DashboardLinkDto with the Stripe Express Dashboard URL
-     */
-    @PostMapping("/dashboard-link")
-    @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
-    @Operation(
-        summary = "Get Stripe Express Dashboard link",
-        description = "Generates a single-use login link to the user's Stripe Express Dashboard"
-    )
-    public ResponseEntity<?> getDashboardLink(
-        @AuthenticationPrincipal CustomUserDetails userDetails
-    ) {
-        Long userId = userDetails.getUserId();
-
-        try {
-            StripeConnectAccount account = connectAccountRepository.findByUserId(userId)
-                .orElse(null);
-
-            if (account == null || !account.isOnboardingCompleted()
-                    || account.getStripeAccountId().startsWith("pending_")) {
-                return ResponseEntity.status(HttpStatus.BAD_REQUEST)
-                    .body(new ErrorResponse("NOT_ONBOARDED",
-                        "Complete Stripe Connect onboarding before accessing the dashboard"));
-            }
-
-            String url = paymentGateway.createLoginLink(account.getStripeAccountId());
-            return ResponseEntity.ok(new DashboardLinkDto(url));
-
-        } catch (Exception e) {
-            logger.error("Error generating dashboard link for user {}: {}", userId, e.getMessage(), e);
-            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
-                .body(new ErrorResponse("DASHBOARD_LINK_ERROR",
-                    "Failed to generate dashboard link: " + e.getMessage()));
-        }
-    }
+    // ============================================================================
+    // REQUEST / RESPONSE RECORDS
+    // ============================================================================
 
     /**
-     * Error response record.
+     * Request body for saving PayPal email.
      */
+    public record PayPalEmailRequest(
+        @NotBlank(message = "PayPal email is required")
+        @Email(message = "Invalid PayPal email format")
+        String paypalEmail
+    ) {}
+
+    private record SuccessResponse(String message) {}
+
     private record ErrorResponse(String code, String message) {}
-
-    /**
-     * Dashboard link response record.
-     */
-    private record DashboardLinkDto(String url) {}
 }
