@@ -36,7 +36,7 @@ import java.util.stream.Collectors;
  *
  * Endpoints:
  * - POST /api/v1/referrals/links - Generar enlace de referido
- * - GET /api/v1/referrals/links - Listar enlaces del afiliado
+ * - GET /api/v1/referrals/links - Listar enlaces del referido
  * - GET /api/v1/referrals/links/{id} - Obtener enlace por ID
  * - POST /api/v1/referrals/clicks - Registrar click (público)
  * - GET /api/v1/referrals/stats - Obtener estadísticas
@@ -90,12 +90,12 @@ public class ReferralController {
          */
         @PostMapping("/links")
         @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-        @Operation(summary = "Generar enlace de referido", description = "Crea un nuevo enlace de referido para una propiedad específica. El afiliado puede compartir este enlace para ganar comisiones.", security = @SecurityRequirement(name = "bearerAuth"))
+        @Operation(summary = "Generar enlace de referido", description = "Crea un nuevo enlace de referido para una propiedad específica. El referido puede compartir este enlace para ganar comisiones.", security = @SecurityRequirement(name = "bearerAuth"))
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "201", description = "Enlace creado exitosamente", content = @Content(schema = @Schema(implementation = GenerateReferralLinkResponse.class))),
                         @ApiResponse(responseCode = "400", description = "Datos inválidos o enlace ya existe"),
                         @ApiResponse(responseCode = "401", description = "No autenticado"),
-                        @ApiResponse(responseCode = "403", description = "No tiene permisos de afiliado")
+                        @ApiResponse(responseCode = "403", description = "No tiene permisos de referido")
         })
         public ResponseEntity<GenerateReferralLinkResponse> generateReferralLink(
                         @Valid @RequestBody GenerateReferralLinkRequest request,
@@ -117,12 +117,12 @@ public class ReferralController {
         }
 
         /**
-         * Listar enlaces de referido del afiliado
+         * Listar enlaces de referido del referido
          */
         @GetMapping("/links")
         @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
         @Transactional(readOnly = true) // Fix LazyInitializationException when loading Property images
-        @Operation(summary = "Listar mis enlaces de referido", description = "Obtiene todos los enlaces de referido creados por el afiliado autenticado", security = @SecurityRequirement(name = "bearerAuth"))
+        @Operation(summary = "Listar mis enlaces de referido", description = "Obtiene todos los enlaces de referido creados por el referido autenticado", security = @SecurityRequirement(name = "bearerAuth"))
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Lista de enlaces obtenida exitosamente"),
                         @ApiResponse(responseCode = "401", description = "No autenticado")
@@ -283,7 +283,7 @@ public class ReferralController {
         }
 
         /**
-         * Obtener estadísticas de referidos del afiliado
+         * Obtener estadísticas de referidos del referido
          */
         @GetMapping("/stats")
         @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
@@ -312,11 +312,11 @@ public class ReferralController {
         }
 
         /**
-         * Obtener ganancias del afiliado
+         * Obtener ganancias del referido
          */
         @GetMapping("/earnings")
         @PreAuthorize("hasAnyRole('USER', 'ADMIN')")
-        @Operation(summary = "Obtener ganancias del afiliado", description = "Obtiene el resumen de ganancias: total, pendiente, aprobado, pagado, y próximo pago", security = @SecurityRequirement(name = "bearerAuth"))
+        @Operation(summary = "Obtener ganancias del referido", description = "Obtiene el resumen de ganancias: total, pendiente, aprobado, pagado, y próximo pago", security = @SecurityRequirement(name = "bearerAuth"))
         @ApiResponses(value = {
                         @ApiResponse(responseCode = "200", description = "Ganancias obtenidas exitosamente", content = @Content(schema = @Schema(implementation = EarningsDto.class))),
                         @ApiResponse(responseCode = "401", description = "No autenticado")

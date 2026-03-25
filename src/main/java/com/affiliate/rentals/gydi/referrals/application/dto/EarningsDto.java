@@ -5,29 +5,28 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * DTO para ganancias del afiliado
+ * DTO para ganancias del referido
  */
 public record EarningsDto(
-    Long affiliateId,
-    String currentPlan,          // FREE, PRO, ELITE
-    BigDecimal currentCommissionRate,
+        Long affiliateId,
+        String currentPlan, // FREE, PRO, ELITE
+        BigDecimal currentCommissionRate,
 
-    // Totales
-    BigDecimal totalEarnings,
-    BigDecimal pendingAmount,
-    BigDecimal approvedAmount,
-    BigDecimal paidAmount,
+        // Totales
+        BigDecimal totalEarnings,
+        BigDecimal pendingAmount,
+        BigDecimal approvedAmount,
+        BigDecimal paidAmount,
 
-    // Contadores
-    int pendingCount,
-    int approvedCount,
-    int paidCount,
+        // Contadores
+        int pendingCount,
+        int approvedCount,
+        int paidCount,
 
-    // Próximo pago
-    BigDecimal nextPayoutAmount,
-    LocalDateTime nextPayoutDate,
+        // Próximo pago
+        BigDecimal nextPayoutAmount,
+        LocalDateTime nextPayoutDate,
 
-    // Historial reciente
-    List<CommissionDto> recentCommissions
-) {
+        // Historial reciente
+        List<CommissionDto> recentCommissions) {
 }

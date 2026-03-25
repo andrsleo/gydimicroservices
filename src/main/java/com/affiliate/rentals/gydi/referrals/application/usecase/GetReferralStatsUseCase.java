@@ -26,7 +26,7 @@ import lombok.extern.slf4j.Slf4j;
 
 /**
  * Caso de uso para obtener estadísticas del sistema de referidos de un
- * afiliado.
+ * referido.
  * 
  * Actualizado para usar los nuevos repositorios:
  * - bookings.booking (via BookingRepositoryPort) para conversiones.
@@ -53,12 +53,12 @@ public class GetReferralStatsUseCase {
         }
 
         /**
-         * Obtiene estadísticas completas para un afiliado
+         * Obtiene estadísticas completas para un referido
          */
         public ReferralStatsDto execute(Long affiliateId) {
                 log.debug("Getting referral stats for affiliate: {}", affiliateId);
 
-                // 1. Obtener todos los enlaces del afiliado
+                // 1. Obtener todos los enlaces del referido
                 List<ReferralLink> allLinks = referralLinkRepository.findByAffiliateId(affiliateId);
 
                 // Estadísticas de enlaces

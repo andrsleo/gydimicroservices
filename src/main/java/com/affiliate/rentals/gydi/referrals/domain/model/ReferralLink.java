@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 /**
  * Modelo de dominio para enlace de referido
  *
- * Representa un enlace único generado por un afiliado para promocionar
+ * Representa un enlace único generado por un referido para promocionar
  * una propiedad y ganar comisiones por conversiones.
  *
  * Este es un modelo rico de dominio con lógica de negocio y sin
@@ -166,9 +166,9 @@ public class ReferralLink {
      * - NO crea nuevo registro, actualiza el existente
      *
      * @param newEncryptedToken nuevo token JWE con expiración actualizada
-     * @param newExpiresAt nueva fecha de expiración
+     * @param newExpiresAt      nueva fecha de expiración
      * @throws IllegalArgumentException si la nueva fecha no es futura
-     * @throws IllegalStateException si el enlace está deshabilitado
+     * @throws IllegalStateException    si el enlace está deshabilitado
      */
     public void renew(String newEncryptedToken, LocalDateTime newExpiresAt) {
         if (newEncryptedToken == null || newEncryptedToken.isBlank()) {
