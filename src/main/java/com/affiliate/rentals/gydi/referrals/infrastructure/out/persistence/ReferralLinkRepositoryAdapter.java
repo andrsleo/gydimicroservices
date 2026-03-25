@@ -127,18 +127,17 @@ public class ReferralLinkRepositoryAdapter implements ReferralLinkRepository {
     }
 
     private ReferralLink toDomain(ReferralLinkJpaEntity entity) {
-        ReferralLink domain = ReferralLink.create(
+        return ReferralLink.reconstitute(
+                entity.getId(),
                 entity.getAffiliateId(),
                 entity.getPropertyId(),
                 entity.getEncryptedToken(),
                 entity.getShortCode(),
-                entity.getExpiresAt());
-        domain.setId(entity.getId());
-        domain.setClicksCount(entity.getClicksCount());
-        domain.setStatus(entity.getStatus());
-        domain.setDeletedAt(entity.getDeletedAt());
-        domain.setCreatedAt(entity.getCreatedAt());
-        domain.setUpdatedAt(entity.getUpdatedAt());
-        return domain;
+                entity.getClicksCount(),
+                entity.getStatus(),
+                entity.getExpiresAt(),
+                entity.getDeletedAt(),
+                entity.getCreatedAt(),
+                entity.getUpdatedAt());
     }
 }
