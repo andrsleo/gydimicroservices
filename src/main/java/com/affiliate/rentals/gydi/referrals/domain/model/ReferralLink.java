@@ -64,6 +64,39 @@ public class ReferralLink {
     }
 
     /**
+     * Método de fábrica para reconstituir un enlace desde persistencia.
+     * No valida expiresAt en el futuro — los links ya expirados son válidos en BD.
+     */
+    public static ReferralLink reconstitute(Long id, Long affiliateId, Long propertyId,
+            String encryptedToken, String shortCode, Integer clicksCount,
+            ReferralLinkStatus status, LocalDateTime expiresAt,
+            LocalDateTime deletedAt, LocalDateTime createdAt, LocalDateTime updatedAt) {
+        if (affiliateId == null || affiliateId <= 0) {
+            throw new IllegalArgumentException("AffiliateId must be positive");
+        }
+        if (propertyId == null) {
+            throw new IllegalArgumentException("PropertyId cannot be null");
+        }
+        if (encryptedToken == null || encryptedToken.isBlank()) {
+            throw new IllegalArgumentException("EncryptedToken cannot be empty");
+        }
+
+        ReferralLink link = new ReferralLink();
+        link.id = id;
+        link.affiliateId = affiliateId;
+        link.propertyId = propertyId;
+        link.encryptedToken = encryptedToken;
+        link.shortCode = shortCode;
+        link.clicksCount = clicksCount != null ? clicksCount : 0;
+        link.status = status != null ? status : ReferralLinkStatus.ACTIVE;
+        link.expiresAt = expiresAt;
+        link.deletedAt = deletedAt;
+        link.createdAt = createdAt != null ? createdAt : LocalDateTime.now();
+        link.updatedAt = updatedAt != null ? updatedAt : LocalDateTime.now();
+        return link;
+    }
+
+    /**
      * Verifica si el enlace está activo y puede ser usado
      */
     public boolean isActive() {
