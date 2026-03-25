@@ -186,6 +186,14 @@ encryption:
     secret: ${PII_ENCRYPTION_KEY:0123456789abcdef0123456789abcdef0123456789abcdef0123456789abcdef}
 
 # ============================================
+# PayPal Payouts Configuration
+# ============================================
+# Sandbox URL used as default for local/dev. Override in application-prod.yml.
+paypal:
+  client-id: ${PAYPAL_CLIENT_ID:AaiFjfowyhPVGH1N4B-tTZEfSmqh-9ITwPcb8doURItMsrBLFl07vlGCmAjGOlvSxmNscrBHY9sgBCMq}
+  client-secret: ${PAYPAL_CLIENT_SECRET:EMxy5txLLpgGQazxoqpm7fQmFYRoQFp4_wagUZT4YIB7iVyUXYONLaWFtKidcUHmNhmJ4BbC5Kr7w21b}
+
+# ============================================
 # Feature Flags (Local Development - All enabled for testing)
 # ============================================
 features:

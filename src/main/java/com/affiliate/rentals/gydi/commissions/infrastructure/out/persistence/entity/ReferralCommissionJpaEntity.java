@@ -39,6 +39,12 @@ public class ReferralCommissionJpaEntity {
     @Column(name = "dispute_period_ends_at", nullable = false)
     private LocalDateTime disputePeriodEndsAt;
 
+    @Column(name = "paypal_payout_batch_id", length = 255)
+    private String paypalPayoutBatchId;
+
+    @Column(name = "paypal_payout_item_id", length = 255)
+    private String paypalPayoutItemId;
+
     @Column(name = "stripe_transfer_id", length = 255)
     private String stripeTransferId;
 
@@ -98,6 +104,10 @@ public class ReferralCommissionJpaEntity {
     public void setScheduledPaymentDate(LocalDate scheduledPaymentDate) { this.scheduledPaymentDate = scheduledPaymentDate; }
     public LocalDateTime getDisputePeriodEndsAt() { return disputePeriodEndsAt; }
     public void setDisputePeriodEndsAt(LocalDateTime disputePeriodEndsAt) { this.disputePeriodEndsAt = disputePeriodEndsAt; }
+    public String getPaypalPayoutBatchId() { return paypalPayoutBatchId; }
+    public void setPaypalPayoutBatchId(String paypalPayoutBatchId) { this.paypalPayoutBatchId = paypalPayoutBatchId; }
+    public String getPaypalPayoutItemId() { return paypalPayoutItemId; }
+    public void setPaypalPayoutItemId(String paypalPayoutItemId) { this.paypalPayoutItemId = paypalPayoutItemId; }
     public String getStripeTransferId() { return stripeTransferId; }
     public void setStripeTransferId(String stripeTransferId) { this.stripeTransferId = stripeTransferId; }
     public String getStripePayoutId() { return stripePayoutId; }

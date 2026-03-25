@@ -58,6 +58,9 @@ public class StripeConnectAccountEntity {
     @Column(name = "stripe_platform_customer_id", unique = true, length = 255)
     private String stripePlatformCustomerId;
 
+    @Column(name = "paypal_email", length = 255)
+    private String paypalEmail;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

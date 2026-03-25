@@ -220,21 +220,18 @@ public class ChargeHostCommissionUseCase {
     }
 
     /**
-     * Transitions the affiliate commission after the host charge succeeds.
+     * Transitions the affiliate commission to APPROVED after the host charge succeeds.
      * <p>
      * Business rule: the platform never pays out what it has not collected.
-     * Once the host charge succeeds, the affiliate commission advances —
-     * but the next state depends on whether the affiliate has a fully onboarded
-     * Stripe Connect account:
+     * Once the host charge succeeds, the affiliate commission always transitions
+     * WAITING_HOST_CHARGE → APPROVED.
      * </p>
-     * <ul>
-     *   <li>Affiliate HAS a complete Connect account (canReceivePayouts == true):
-     *       WAITING_HOST_CHARGE → APPROVED — ready to be paid on the next scheduled date.</li>
-     *   <li>Affiliate does NOT have a Connect account or onboarding is incomplete:
-     *       WAITING_HOST_CHARGE → PENDING — waits until the affiliate completes onboarding.
-     *       A scheduler or manual admin action will move PENDING → APPROVED once the
-     *       affiliate finishes Stripe Connect onboarding.</li>
-     * </ul>
+     * <p>
+     * The actual payout to the affiliate's PayPal account happens later via
+     * {@link PayAffiliateCommissionUseCase}, which checks whether the affiliate has
+     * configured their PayPal email. If not configured, the commission stays APPROVED
+     * and the scheduler retries on the 1st and 15th of each month.
+     * </p>
      *
      * @param bookingId the booking ID to find the associated affiliate commission
      */
@@ -247,26 +244,12 @@ public class ChargeHostCommissionUseCase {
                     return;
                 }
 
-                StripeConnectAccount connectAccount = connectAccountRepository
-                    .findByUserId(affiliateCommission.getAffiliateId()).orElse(null);
-
-                boolean canReceivePayouts = connectAccount != null && connectAccount.canReceivePayouts();
-
-                if (canReceivePayouts) {
-                    affiliateCommission.approveAfterHostCharged();
-                    affiliateCommissionRepository.save(affiliateCommission);
-                    logger.info(
-                        "Affiliate commission ID: {} APPROVED after host charge success for booking ID: {}. " +
-                        "Affiliate {} has a fully onboarded Stripe Connect account.",
-                        affiliateCommission.getId(), bookingId, affiliateCommission.getAffiliateId());
-                } else {
-                    affiliateCommission.pendingAfterHostCharge();
-                    affiliateCommissionRepository.save(affiliateCommission);
-                    logger.info(
-                        "Affiliate commission ID: {} set to PENDING after host charge for booking ID: {}. " +
-                        "Affiliate {} has no complete Stripe Connect account — commission will be paid once onboarding is done.",
-                        affiliateCommission.getId(), bookingId, affiliateCommission.getAffiliateId());
-                }
+                affiliateCommission.approveAfterHostCharged();
+                affiliateCommissionRepository.save(affiliateCommission);
+                logger.info(
+                    "Affiliate commission ID: {} APPROVED after host charge success for booking ID: {}. " +
+                    "Payout will be sent to affiliate {} once their PayPal email is configured.",
+                    affiliateCommission.getId(), bookingId, affiliateCommission.getAffiliateId());
             });
     }
 

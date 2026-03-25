@@ -77,4 +77,13 @@ public interface StripeConnectAccountRepositoryPort {
      * These users need to complete real Stripe Connect onboarding.
      */
     List<StripeConnectAccount> findPendingConnectAccounts();
+
+    /**
+     * Persists the affiliate's PayPal email for commission payouts.
+     * Creates a stub account record if the user does not have one yet.
+     *
+     * @param userId       the user ID
+     * @param paypalEmail  the affiliate's PayPal email address
+     */
+    void savePayPalEmail(Long userId, String paypalEmail);
 }

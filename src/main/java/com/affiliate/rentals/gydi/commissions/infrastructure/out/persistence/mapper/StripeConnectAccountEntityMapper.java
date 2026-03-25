@@ -30,6 +30,7 @@ public class StripeConnectAccountEntityMapper {
             .country(domain.getCountry())
             .verificationStatus(domain.getVerificationStatus())
             .stripePlatformCustomerId(domain.getStripePlatformCustomerId())
+            .paypalEmail(domain.getPaypalEmail())
             .createdAt(domain.getCreatedAt())
             .updatedAt(domain.getUpdatedAt())
             .build();
@@ -55,6 +56,7 @@ public class StripeConnectAccountEntityMapper {
             entity.getCountry(),
             entity.getVerificationStatus(),
             entity.getStripePlatformCustomerId(),
+            entity.getPaypalEmail(),
             entity.getCreatedAt(),
             entity.getUpdatedAt()
         );

@@ -60,4 +60,12 @@ public interface StripeConnectAccountJpaRepository extends JpaRepository<StripeC
     @Query(value = "SELECT * FROM commissions.stripe_connect_accounts WHERE stripe_account_id LIKE 'pending_%'",
            nativeQuery = true)
     List<StripeConnectAccountEntity> findPendingAccounts();
+
+    /**
+     * Updates the paypal_email for a user's Connect account.
+     */
+    @Modifying
+    @Query(value = "UPDATE commissions.stripe_connect_accounts SET paypal_email = :paypalEmail, updated_at = NOW() WHERE user_id = :userId",
+           nativeQuery = true)
+    void updatePayPalEmail(@Param("userId") Long userId, @Param("paypalEmail") String paypalEmail);
 }

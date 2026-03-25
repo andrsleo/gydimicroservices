@@ -45,6 +45,9 @@ public class StripeConnectAccount {
     // Stripe Platform Customer ID (cus_xxx) for charging host commissions
     private String stripePlatformCustomerId;
 
+    // PayPal email for receiving affiliate commission payouts
+    private String paypalEmail;
+
     // Audit
     private final LocalDateTime createdAt;
     private LocalDateTime updatedAt;
@@ -64,6 +67,7 @@ public class StripeConnectAccount {
         String country,
         String verificationStatus,
         String stripePlatformCustomerId,
+        String paypalEmail,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
     ) {
@@ -78,6 +82,7 @@ public class StripeConnectAccount {
         this.country = country;
         this.verificationStatus = verificationStatus;
         this.stripePlatformCustomerId = stripePlatformCustomerId;
+        this.paypalEmail = paypalEmail;
         this.createdAt = Objects.requireNonNullElse(createdAt, LocalDateTime.now());
         this.updatedAt = Objects.requireNonNullElse(updatedAt, LocalDateTime.now());
     }
@@ -104,6 +109,7 @@ public class StripeConnectAccount {
             country,
             "unverified",
             null,  // No platform customer ID yet
+            null,  // No PayPal email yet
             now,
             now
         );
@@ -124,13 +130,15 @@ public class StripeConnectAccount {
         String country,
         String verificationStatus,
         String stripePlatformCustomerId,
+        String paypalEmail,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
     ) {
         return new StripeConnectAccount(
             id, userId, stripeAccountId, accountType,
             onboardingCompleted, detailsSubmitted, payoutsEnabled, chargesEnabled,
-            country, verificationStatus, stripePlatformCustomerId, createdAt, updatedAt
+            country, verificationStatus, stripePlatformCustomerId, paypalEmail,
+            createdAt, updatedAt
         );
     }
 
@@ -264,6 +272,30 @@ public class StripeConnectAccount {
     public void setPlatformCustomerId(String customerId) {
         this.stripePlatformCustomerId = customerId;
         this.updatedAt = LocalDateTime.now();
+    }
+
+    public String getPaypalEmail() {
+        return paypalEmail;
+    }
+
+    /**
+     * Saves the affiliate's PayPal email address for receiving commission payouts.
+     *
+     * @param email a valid PayPal email address
+     */
+    public void savePayPalEmail(String email) {
+        if (email == null || email.isBlank()) {
+            throw new IllegalArgumentException("PayPal email cannot be null or blank");
+        }
+        this.paypalEmail = email.trim().toLowerCase();
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    /**
+     * Returns true if this account has a configured PayPal email for payouts.
+     */
+    public boolean hasPayPalEmail() {
+        return paypalEmail != null && !paypalEmail.isBlank();
     }
 
     public LocalDateTime getCreatedAt() {
