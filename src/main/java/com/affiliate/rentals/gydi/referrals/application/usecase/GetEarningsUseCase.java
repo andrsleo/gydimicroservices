@@ -17,7 +17,7 @@ import com.affiliate.rentals.gydi.referrals.application.dto.EarningsDto;
 import lombok.extern.slf4j.Slf4j;
 
 /**
- * Caso de uso para obtener ganancias de un afiliado.
+ * Caso de uso para obtener ganancias de un referido.
  * 
  * Implementación actualizada para usar el nuevo módulo de comisiones
  * (commissions schema).
@@ -34,11 +34,11 @@ public class GetEarningsUseCase {
     }
 
     /**
-     * Obtiene el resumen de ganancias para un afiliado usando el nuevo módulo de
+     * Obtiene el resumen de ganancias para un referido usando el nuevo módulo de
      * comisiones.
      *
-     * @param affiliateId ID del afiliado
-     * @param currentPlan Plan actual del afiliado
+     * @param affiliateId ID del referido
+     * @param currentPlan Plan actual del referido
      * @return EarningsDto con datos reales del nuevo sistema
      */
     public EarningsDto execute(Long affiliateId, String currentPlan) {
@@ -124,9 +124,9 @@ public class GetEarningsUseCase {
                 daysRemaining,
                 c.isReadyForApproval(),
                 c.getStatus() == ReferralCommissionStatus.APPROVED && !c.getDisputePeriod().isActive(), // Simplification
-                                                                                                         // for
-                                                                                                         // isPayable
-                                                                                                         // logic
+                                                                                                        // for
+                                                                                                        // isPayable
+                                                                                                        // logic
                 c.getCreatedAt());
     }
 

@@ -41,12 +41,12 @@ public interface ReferralLinkRepository {
     Optional<ReferralLink> findByShortCode(String shortCode);
 
     /**
-     * Busca todos los enlaces de un afiliado
+     * Busca todos los enlaces de un referido
      */
     List<ReferralLink> findByAffiliateId(Long affiliateId);
 
     /**
-     * Busca enlaces de un afiliado por estado
+     * Busca enlaces de un referido por estado
      */
     List<ReferralLink> findByAffiliateIdAndStatus(Long affiliateId, ReferralLinkStatus status);
 
@@ -73,17 +73,17 @@ public interface ReferralLinkRepository {
     List<ReferralLink> findActiveExpired();
 
     /**
-     * Verifica si existe un enlace activo para una combinación afiliado-propiedad
+     * Verifica si existe un enlace activo para una combinación referido-propiedad
      */
     boolean existsActiveLink(Long affiliateId, Long propertyId);
 
     /**
-     * Busca un enlace activo para una combinación afiliado-propiedad
+     * Busca un enlace activo para una combinación referido-propiedad
      */
     Optional<ReferralLink> findActiveLink(Long affiliateId, Long propertyId);
 
     /**
-     * Cuenta el total de enlaces de un afiliado
+     * Cuenta el total de enlaces de un referido
      */
     long countByAffiliateId(Long affiliateId);
 

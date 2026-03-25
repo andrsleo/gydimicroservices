@@ -23,7 +23,7 @@ import lombok.extern.slf4j.Slf4j;
  * Flujo:
  * 1. Obtener usuario para determinar su plan de suscripción
  * 2. Calcular días de expiración según el plan (FREE: 30, PRO: 90, ELITE: 365)
- * 3. Validar que el afiliado no tenga ya un enlace activo para esa propiedad
+ * 3. Validar que el referido no tenga ya un enlace activo para esa propiedad
  * 4. Generar token JWE (Encrypted JWT)
  * 5. Generar código corto único (para uso interno/DB)
  * 6. Crear enlace de referido
@@ -60,8 +60,10 @@ public class GenerateReferralLinkUseCase {
     /**
      * Ejecuta el caso de uso
      *
-     * @param affiliateId extracted from JWT token by controller (server-side, trusted)
-     * @param request     contains only propertyId (expirationDays now calculated from plan)
+     * @param affiliateId extracted from JWT token by controller (server-side,
+     *                    trusted)
+     * @param request     contains only propertyId (expirationDays now calculated
+     *                    from plan)
      */
     public GenerateReferralLinkResponse execute(Long affiliateId, GenerateReferralLinkRequest request) {
         log.info("Generating referral link for affiliate: {} and property: {}",
@@ -97,7 +99,8 @@ public class GenerateReferralLinkUseCase {
                     link.getCreatedAt());
         }
 
-        // 4. Calcular fecha de expiración en milisegundos (debe coincidir con expiración del JWT)
+        // 4. Calcular fecha de expiración en milisegundos (debe coincidir con
+        // expiración del JWT)
         long expirationMs = expirationDays * 24L * 60 * 60 * 1000;
         LocalDateTime expiresAt = LocalDateTime.now().plusDays(expirationDays);
 
