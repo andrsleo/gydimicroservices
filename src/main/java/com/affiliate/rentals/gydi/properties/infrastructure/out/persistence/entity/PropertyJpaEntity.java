@@ -67,8 +67,11 @@ public class PropertyJpaEntity {
     @Column(name = "price_currency", nullable = false, length = 3)
     private String priceCurrency;
 
-    @Column(name = "sale_price", precision = 15, scale = 2)
-    private BigDecimal salePrice;
+    @Column(name = "sale_price_amount", precision = 15, scale = 2)
+    private BigDecimal salePriceAmount;
+
+    @Column(name = "sale_price_currency", length = 10)
+    private String salePriceCurrency;
 
     @Column(nullable = false, length = 100)
     private String country;
