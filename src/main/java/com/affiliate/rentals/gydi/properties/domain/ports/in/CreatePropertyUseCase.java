@@ -17,7 +17,13 @@ public interface CreatePropertyUseCase {
     Property createProperty(CreatePropertyCommand command);
 
     /**
-     * Command for creating a property
+     * Command for creating a property.
+     *
+     * <p><strong>Currency invariant:</strong> {@code priceCurrency} is the single currency
+     * for the entire property — it applies to BOTH {@code priceAmount} (pricePerNight)
+     * and {@code salePrice}. A property may never have mixed currencies across its prices.
+     * If independent sale-price currency is ever needed, add a separate field and validate
+     * equality in {@link com.affiliate.rentals.gydi.properties.application.usecase.CreatePropertyUseCaseImpl}.
      */
     record CreatePropertyCommand(
             Long hostId,
