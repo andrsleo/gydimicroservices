@@ -71,8 +71,11 @@ public class PropertyJpaMapper {
                 .deniedAt(entity.getDeniedAt());
 
         // Set sale price if available
-        if (entity.getSalePrice() != null) {
-            builder.salePrice(Money.of(entity.getSalePrice(), entity.getPriceCurrency()));
+        if (entity.getSalePriceAmount() != null) {
+            String saleCurrency = entity.getSalePriceCurrency() != null
+                    ? entity.getSalePriceCurrency()
+                    : entity.getPriceCurrency(); // backward compat for rows before V100 backfill
+            builder.salePrice(Money.of(entity.getSalePriceAmount(), saleCurrency));
         }
 
         return builder.build();
@@ -100,9 +103,11 @@ public class PropertyJpaMapper {
 
         // Set sale price (or null if not available)
         if (domain.getSalePrice() != null) {
-            entity.setSalePrice(domain.getSalePrice().amount());
+            entity.setSalePriceAmount(domain.getSalePrice().amount());
+            entity.setSalePriceCurrency(domain.getSalePrice().currency().getCurrencyCode());
         } else {
-            entity.setSalePrice(null);
+            entity.setSalePriceAmount(null);
+            entity.setSalePriceCurrency(null);
         }
 
         entity.setCountry(domain.getLocation().country());
