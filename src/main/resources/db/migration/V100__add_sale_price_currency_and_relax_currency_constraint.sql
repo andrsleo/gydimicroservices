@@ -5,7 +5,11 @@
 ALTER TABLE properties.properties
     RENAME COLUMN sale_price TO sale_price_amount;
 
--- 2. Increase precision of sale_price_amount to DECIMAL(15, 2)
+-- 1a. Widen price_currency column from VARCHAR(3) to VARCHAR(10) to match new regex constraint
+ALTER TABLE properties.properties
+    ALTER COLUMN price_currency TYPE VARCHAR(10);
+
+-- 2. Confirm precision — already NUMERIC(15,2) per V25; this is a no-op kept for auditability
 ALTER TABLE properties.properties
     ALTER COLUMN sale_price_amount TYPE DECIMAL(15, 2);
 
@@ -19,6 +23,17 @@ SET sale_price_currency = price_currency
 WHERE sale_price_amount IS NOT NULL
   AND sale_price_currency IS NULL;
 
+-- 4a. Verify backfill completeness before adding NOT-NULL-paired constraints
+DO $$
+BEGIN
+    IF EXISTS (
+        SELECT 1 FROM properties.properties
+        WHERE sale_price_amount IS NOT NULL AND sale_price_currency IS NULL
+    ) THEN
+        RAISE EXCEPTION 'V100 backfill incomplete — sale_price_currency is NULL on rows with sale_price_amount';
+    END IF;
+END $$;
+
 -- 5. Drop old hard-coded 6-currency CHECK constraint
 ALTER TABLE properties.properties
     DROP CONSTRAINT IF EXISTS chk_currency;
@@ -27,6 +42,7 @@ ALTER TABLE properties.properties
 ALTER TABLE properties.properties
     ADD CONSTRAINT chk_price_currency_format
     CHECK (price_currency ~ '^[A-Z]{3,4}$');
+-- Note: regex allows 3-4 chars (not strictly ISO 4217's 3) to accommodate future extended codes
 
 -- 7. Add constraint for sale_price_currency when present
 ALTER TABLE properties.properties
@@ -40,6 +56,13 @@ ALTER TABLE properties.properties
         (sale_price_amount IS NULL AND sale_price_currency IS NULL) OR
         (sale_price_amount IS NOT NULL AND sale_price_currency IS NOT NULL)
     );
+
+-- 8a. Drop legacy positive-value constraint from V24 (references renamed column) and re-add with correct name
+ALTER TABLE properties.properties
+    DROP CONSTRAINT IF EXISTS chk_sale_price_positive;
+ALTER TABLE properties.properties
+    ADD CONSTRAINT chk_sale_price_amount_positive
+    CHECK (sale_price_amount IS NULL OR sale_price_amount > 0);
 
 -- 9. Drop old index (references renamed column by name internally, must recreate)
 DROP INDEX IF EXISTS properties.idx_properties_sale_price;
