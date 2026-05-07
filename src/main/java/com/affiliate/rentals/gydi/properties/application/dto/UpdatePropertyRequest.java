@@ -16,7 +16,7 @@ public record UpdatePropertyRequest(
 
                 @DecimalMin(value = "0.01", message = "Price must be greater than zero") BigDecimal pricePerNight,
 
-                @Pattern(regexp = "USD|EUR|MXN|COP|CAD|GBP", message = "Invalid currency") String currency,
+                @Size(min = 3, max = 10, message = "Currency code must be 3-10 characters") String currency,
 
                 @DecimalMin(value = "0.01", message = "Sale price must be greater than zero") BigDecimal salePrice,
 
