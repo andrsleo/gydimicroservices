@@ -76,6 +76,16 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
                 ? PropertyListingType.valueOf(command.listingType())
                 : PropertyListingType.SHORT_TERM_RENTAL;
 
+        // Validate conditional price requirements (belt-and-suspenders; frontend schema also enforces this)
+        if ((listingType == PropertyListingType.SHORT_TERM_RENTAL || listingType == PropertyListingType.BOTH)
+                && command.priceAmount() == null) {
+            throw new IllegalArgumentException("pricePerNight is required for listing type: " + listingType);
+        }
+        if ((listingType == PropertyListingType.SALE || listingType == PropertyListingType.BOTH)
+                && command.salePrice() == null) {
+            throw new IllegalArgumentException("salePrice is required for listing type: " + listingType);
+        }
+
         // 4. SECURITY: XSS Prevention - Sanitize user-provided text fields
         String sanitizedTitle = htmlSanitizer.sanitizeToPlainText(command.title());
         String sanitizedDescription = htmlSanitizer.sanitizeBasicFormatting(command.description());

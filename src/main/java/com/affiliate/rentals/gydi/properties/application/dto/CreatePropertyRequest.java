@@ -14,7 +14,7 @@ public record CreatePropertyRequest(
 
         @NotBlank(message = "Description is required") @Size(min = 20, max = 2000, message = "Description must be between 20 and 2000 characters") String description,
 
-        @NotNull(message = "Price is required") @DecimalMin(value = "0.01", message = "Price must be greater than zero") BigDecimal pricePerNight,
+        @DecimalMin(value = "0.01", message = "Price must be greater than zero") BigDecimal pricePerNight,
 
         @NotBlank(message = "Currency is required") @Size(min = 3, max = 10, message = "Currency code must be 3-10 characters") String currency,
 
