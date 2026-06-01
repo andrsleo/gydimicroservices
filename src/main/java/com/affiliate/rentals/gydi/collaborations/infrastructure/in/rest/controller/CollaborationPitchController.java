@@ -104,7 +104,7 @@ public class CollaborationPitchController {
     @PreAuthorize("isAuthenticated()")
     public ResponseEntity<DeclinePitchResult> declinePitch(
             @PathVariable Long pitchId,
-            @RequestBody(required = false) DeclinePitchRequest request) {
+            @Valid @RequestBody(required = false) DeclinePitchRequest request) {
         Long userId = ownershipValidator.getAuthenticatedUserId();
         String reason = request != null ? request.reason() : null;
         DeclinePitchResult result = declinePitchUseCase.execute(
@@ -169,7 +169,7 @@ public class CollaborationPitchController {
 
         Page<CreatorPitch> result = getHostInboxUseCase.execute(
                 hostId, status, propertyId,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+                PageRequest.of(page, Math.min(size, 50), Sort.by(Sort.Direction.DESC, "createdAt")));
 
         return ResponseEntity.ok(toPageResponse(result));
     }
@@ -188,7 +188,7 @@ public class CollaborationPitchController {
 
         Page<CreatorPitch> result = getCreatorPitchesUseCase.execute(
                 creatorId, status,
-                PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt")));
+                PageRequest.of(page, Math.min(size, 50), Sort.by(Sort.Direction.DESC, "createdAt")));
 
         return ResponseEntity.ok(toPageResponse(result));
     }
