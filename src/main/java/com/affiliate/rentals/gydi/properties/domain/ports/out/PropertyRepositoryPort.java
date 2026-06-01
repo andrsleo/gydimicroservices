@@ -94,6 +94,16 @@ public interface PropertyRepositoryPort {
     boolean existsByAirbnbListingId(String airbnbListingId);
 
     /**
+     * Finds published properties that accept creator collaborations.
+     *
+     * @param compensationType optional filter for accepted compensation type
+     * @param page             page index (0-based)
+     * @param size             page size
+     * @return paginated result of matching properties
+     */
+    PropertySearchResult findAcceptingCollaborations(String compensationType, int page, int size);
+
+    /**
      * Search specification for querying properties
      */
     record PropertySearchSpec(

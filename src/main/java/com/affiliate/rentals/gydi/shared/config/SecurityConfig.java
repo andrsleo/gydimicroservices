@@ -181,9 +181,10 @@ public class SecurityConfig {
 
                                                 // Static files (uploads) - RESTRICTED to specific subdirectories for
                                                 // security
-                                                // Only allow public access to property images and profile images
+                                                // Only allow public access to property images, profile images, and content media
                                                 .requestMatchers("/uploads/properties/**").permitAll()
                                                 .requestMatchers("/uploads/profile-images/**").permitAll()
+                                                .requestMatchers("/uploads/content/**").permitAll()
                                                 // Block everything else in /uploads/ for security
                                                 .requestMatchers("/uploads/**").denyAll()
 
@@ -213,6 +214,55 @@ public class SecurityConfig {
                                                 // Property endpoints - Public read access for browsing properties
                                                 .requestMatchers(HttpMethod.GET, "/api/properties/**").permitAll()
                                                 .requestMatchers(HttpMethod.GET, "/api/properties").permitAll()
+
+                                                // UGC Content endpoints - Public read
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/content/feed").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/content/{id}").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/content/property/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/content/*/booking-stats").permitAll()
+                                                // View registration - anonymous and authenticated users can register views
+                                                .requestMatchers(HttpMethod.POST, "/api/v1/content/*/view").permitAll()
+
+                                                // Phase 5 — Recommendation Engine
+                                                // Similar content: public (no auth required)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/content/*/similar").permitAll()
+                                                // Personalized and collaborative: require authentication
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/content/recommended").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/content/collaborative/**").authenticated()
+
+                                                // UGC Social endpoints - Public read
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/social/followers/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/social/following/**").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/social/comments/**").permitAll()
+
+                                                // UGC Creator endpoints - Public read
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/creators").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/creators/top").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/users/*/creator-profile").permitAll()
+
+                                                // Social Commerce — Property social proof (public)
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/properties/*/social-proof").permitAll()
+
+                                                // Collaboration Marketplace — public read
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/collaborations/marketplace").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/collaborations/marketplace/**").permitAll()
+
+                                                // Notifications — authenticated only (handled by @PreAuthorize in controller)
+                                                .requestMatchers("/api/v1/notifications/**").authenticated()
+
+                                                // Calendar endpoints - Public read, authenticated season config, write via @PreAuthorize
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/properties/*/calendar").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/properties/*/calendar/price-range").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/properties/*/season-pricing").authenticated()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/seasons").permitAll()
+                                                .requestMatchers(HttpMethod.GET, "/api/v1/seasons/regions").permitAll()
+
+                                                // Admin season definitions CRUD
+                                                .requestMatchers("/api/v1/admin/seasons/**").hasRole("ADMIN")
+                                                .requestMatchers("/api/v1/admin/seasons").hasRole("ADMIN")
+
+                                                // Admin analytics — Phase 5 Track B
+                                                .requestMatchers("/api/v1/admin/analytics/**").hasRole("ADMIN")
 
                                                 // Authenticated endpoints
                                                 .anyRequest().authenticated())
