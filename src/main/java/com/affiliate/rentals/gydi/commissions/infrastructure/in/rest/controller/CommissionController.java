@@ -63,7 +63,7 @@ public class CommissionController {
     // plan
 
     @GetMapping("/affiliate/earned")
-    @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get affiliate commissions earned", description = "Returns commissions earned by affiliate (platform PAYS affiliate)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Affiliate commissions retrieved"),
@@ -101,7 +101,7 @@ public class CommissionController {
     }
 
     @GetMapping("/affiliate/stats")
-    @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get affiliate commission statistics", description = "Returns stats for commissions earned by affiliate")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Stats retrieved"),
@@ -144,7 +144,7 @@ public class CommissionController {
     // ========================================
 
     @GetMapping("/host/paid")
-    @PreAuthorize("hasRole('USER') or hasRole('HOST') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get host commissions paid", description = "Returns commissions paid by host (platform CHARGES host)")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Host commissions retrieved"),
@@ -160,7 +160,7 @@ public class CommissionController {
     }
 
     @GetMapping("/host/stats")
-    @PreAuthorize("hasRole('USER') or hasRole('HOST') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get host commission statistics", description = "Returns stats for commissions paid by host")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Stats retrieved"),
