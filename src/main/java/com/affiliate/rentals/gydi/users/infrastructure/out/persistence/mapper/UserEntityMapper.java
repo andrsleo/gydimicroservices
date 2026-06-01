@@ -59,6 +59,7 @@ public class UserEntityMapper {
 
         // Map account verification
         entity.setAccountVerified(user.isAccountVerified());
+        entity.setIsVerifiedCreator(user.isVerifiedCreator());
 
         // Map roles
         if (user.roles() != null) {
@@ -114,6 +115,7 @@ public class UserEntityMapper {
                 .activePlan(activePlan)
                 .capabilities(capabilities)
                 .accountVerified(entity.getAccountVerified() != null ? entity.getAccountVerified() : false)
+                .verifiedCreator(entity.getIsVerifiedCreator() != null ? entity.getIsVerifiedCreator() : false)
                 .createdAt(entity.getCreatedAt())
                 .build();
     }
