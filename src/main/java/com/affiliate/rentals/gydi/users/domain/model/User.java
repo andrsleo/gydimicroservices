@@ -208,6 +208,26 @@ public final class User {
     }
 
     /**
+     * Returns a new User instance with the verifiedCreator flag set.
+     * Maintains immutability — does not mutate this instance.
+     */
+    public User withVerifiedCreator(boolean verified) {
+        return User.builder()
+                .id(this.id)
+                .name(this.name)
+                .email(this.email)
+                .passwordHash(this.passwordHash)
+                .phoneNumber(this.phoneNumber)
+                .roles(new java.util.HashSet<>(this.roles))
+                .activePlan(this.activePlan)
+                .capabilities(this.capabilities)
+                .accountVerified(this.accountVerified)
+                .verifiedCreator(verified)
+                .createdAt(this.createdAt)
+                .build();
+    }
+
+    /**
      * Creates a new User instance with a role removed.
      * This method maintains immutability by returning a new instance.
      *

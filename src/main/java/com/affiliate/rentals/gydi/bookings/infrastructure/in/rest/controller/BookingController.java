@@ -2,6 +2,8 @@ package com.affiliate.rentals.gydi.bookings.infrastructure.in.rest.controller;
 
 import com.affiliate.rentals.gydi.bookings.application.dto.*;
 import com.affiliate.rentals.gydi.bookings.application.usecase.*;
+import com.affiliate.rentals.gydi.bookings.application.usecase.CreateBookingPaymentUseCase.CreatePaymentCommand;
+import com.affiliate.rentals.gydi.bookings.application.usecase.CaptureDamageDepositUseCase.CaptureCommand;
 import com.affiliate.rentals.gydi.shared.exception.TooManyRequestsException;
 import com.affiliate.rentals.gydi.shared.security.CustomUserDetails;
 import com.affiliate.rentals.gydi.shared.security.RateLimitService;
@@ -44,6 +46,9 @@ public class BookingController {
     private final GetAffiliateBookingStatsUseCase getAffiliateBookingStatsUseCase;
     private final GetHostBookingsUseCase getHostBookingsUseCase;
     private final GetHostBookingStatsUseCase getHostBookingStatsUseCase;
+    private final RejectBookingUseCase rejectBookingUseCase;
+    private final CreateBookingPaymentUseCase createBookingPaymentUseCase;
+    private final CaptureDamageDepositUseCase captureDamageDepositUseCase;
     private final RateLimitService rateLimitService;
 
     public BookingController(
@@ -59,6 +64,9 @@ public class BookingController {
             GetAffiliateBookingStatsUseCase getAffiliateBookingStatsUseCase,
             GetHostBookingsUseCase getHostBookingsUseCase,
             GetHostBookingStatsUseCase getHostBookingStatsUseCase,
+            RejectBookingUseCase rejectBookingUseCase,
+            CreateBookingPaymentUseCase createBookingPaymentUseCase,
+            CaptureDamageDepositUseCase captureDamageDepositUseCase,
             RateLimitService rateLimitService) {
         this.createBookingUseCase = createBookingUseCase;
         this.reserveBookingUseCase = reserveBookingUseCase;
@@ -72,6 +80,9 @@ public class BookingController {
         this.getAffiliateBookingStatsUseCase = getAffiliateBookingStatsUseCase;
         this.getHostBookingsUseCase = getHostBookingsUseCase;
         this.getHostBookingStatsUseCase = getHostBookingStatsUseCase;
+        this.rejectBookingUseCase = rejectBookingUseCase;
+        this.createBookingPaymentUseCase = createBookingPaymentUseCase;
+        this.captureDamageDepositUseCase = captureDamageDepositUseCase;
         this.rateLimitService = rateLimitService;
     }
 
@@ -207,7 +218,7 @@ public class BookingController {
     // Proper implementation should assign ROLE_AFFILIATE when user subscribes to a plan
 
     @GetMapping("/affiliate")
-    @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get bookings for affiliate", description = "Returns all bookings generated through affiliate's referral links")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Bookings retrieved successfully"),
@@ -221,7 +232,7 @@ public class BookingController {
     }
 
     @GetMapping("/affiliate/stats")
-    @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get booking statistics for affiliate", description = "Returns statistics for bookings generated through affiliate's referral links")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Stats retrieved successfully"),
@@ -239,7 +250,7 @@ public class BookingController {
     // ========================================
 
     @GetMapping("/host")
-    @PreAuthorize("hasRole('USER') or hasRole('HOST') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get bookings for host", description = "Returns all bookings for properties owned by the host")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Bookings retrieved successfully"),
@@ -253,7 +264,7 @@ public class BookingController {
     }
 
     @GetMapping("/host/stats")
-    @PreAuthorize("hasRole('USER') or hasRole('HOST') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get booking statistics for host", description = "Returns statistics for bookings on properties owned by the host")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Stats retrieved successfully"),
@@ -271,7 +282,7 @@ public class BookingController {
     // ========================================
 
     @GetMapping("/{bookingId}")
-    @PreAuthorize("hasAnyRole('USER', 'ADMIN', 'HOST', 'AFFILIATE')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(summary = "Get booking by ID", description = "Returns booking if user owns it (as affiliate or host) or is ADMIN")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Booking found"),
@@ -286,6 +297,91 @@ public class BookingController {
 
         BookingDto booking = getBookingByIdUseCase.execute(bookingId, requestingUserId, isAdmin);
         return ResponseEntity.ok(booking);
+    }
+
+    // ========================================
+    // HOST CONFIRM / REJECT ENDPOINTS
+    // ========================================
+
+    @PutMapping("/{id}/confirm")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "HOST confirms a booking request (REQUEST → RESERVED)",
+               description = "The property host confirms the guest booking directly. Blocks dates in property calendar.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Booking confirmed successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid status transition"),
+            @ApiResponse(responseCode = "403", description = "Not authorized — HOST role required or not property owner"),
+            @ApiResponse(responseCode = "404", description = "Booking not found")
+    })
+    public ResponseEntity<BookingDto> confirmBooking(
+            @PathVariable Long id,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long hostId = userDetails.getUserId();
+        BookingDto result = reserveBookingUseCase.executeByHost(id, hostId);
+        return ResponseEntity.ok(result);
+    }
+
+    @PutMapping("/{id}/reject")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "HOST rejects a booking request (REQUEST → CANCELLED)",
+               description = "The property host rejects the guest booking request with a reason.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Booking rejected successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request or status transition"),
+            @ApiResponse(responseCode = "403", description = "Not authorized — HOST role required or not property owner"),
+            @ApiResponse(responseCode = "404", description = "Booking not found")
+    })
+    public ResponseEntity<BookingDto> rejectBooking(
+            @PathVariable Long id,
+            @RequestBody @Valid RejectBookingRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        Long hostId = userDetails.getUserId();
+        BookingDto result = rejectBookingUseCase.execute(id, request.reason(), hostId);
+        return ResponseEntity.ok(result);
+    }
+
+    // ========================================
+    // PHASE 2: PAYMENT ENDPOINTS
+    // ========================================
+
+    @PostMapping("/{id}/payment")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Initiate booking payment + security deposit hold (Phase 2)",
+               description = "Guest initiates payment after booking is confirmed. Creates Stripe PaymentIntent and deposit hold.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Payment initiated successfully"),
+            @ApiResponse(responseCode = "400", description = "Invalid request"),
+            @ApiResponse(responseCode = "403", description = "Not authorized"),
+            @ApiResponse(responseCode = "404", description = "Booking not found")
+    })
+    public ResponseEntity<Void> createPayment(
+            @PathVariable Long id,
+            @RequestBody @Valid CreateBookingPaymentRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        createBookingPaymentUseCase.execute(
+                new CreatePaymentCommand(id, request.stripePaymentMethodId(), userDetails.getUserId())
+        );
+        return ResponseEntity.noContent().build();
+    }
+
+    @PostMapping("/{id}/deposit/capture")
+    @PreAuthorize("isAuthenticated()")
+    @Operation(summary = "Capture security deposit for damage (Phase 2, HOST only)",
+               description = "Host captures the security deposit after check-out when damage is reported. 7-day window.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "204", description = "Deposit captured successfully"),
+            @ApiResponse(responseCode = "400", description = "Capture window expired or invalid state"),
+            @ApiResponse(responseCode = "403", description = "Not authorized — HOST role required"),
+            @ApiResponse(responseCode = "404", description = "Booking not found")
+    })
+    public ResponseEntity<Void> captureDamageDeposit(
+            @PathVariable Long id,
+            @RequestBody @Valid CaptureDamageDepositRequest request,
+            @AuthenticationPrincipal CustomUserDetails userDetails) {
+        captureDamageDepositUseCase.execute(
+                new CaptureCommand(id, request.damageAmountCents(), request.description(), userDetails.getUserId())
+        );
+        return ResponseEntity.noContent().build();
     }
 
     // TODO: Implement additional endpoints
