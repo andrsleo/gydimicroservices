@@ -68,7 +68,9 @@ public class PropertyJpaMapper {
                 .denialReason(entity.getDenialReason())
                 .submittedAt(entity.getSubmittedAt())
                 .approvedAt(entity.getApprovedAt())
-                .deniedAt(entity.getDeniedAt());
+                .deniedAt(entity.getDeniedAt())
+                .acceptCreatorCollaborations(entity.isAcceptCreatorCollaborations())
+                .acceptedCompensations(entity.getAcceptedCompensations());
 
         // Set sale price if available
         if (entity.getSalePriceAmount() != null) {
@@ -144,6 +146,8 @@ public class PropertyJpaMapper {
         entity.setSubmittedAt(domain.getSubmittedAt());
         entity.setApprovedAt(domain.getApprovedAt());
         entity.setDeniedAt(domain.getDeniedAt());
+        entity.setAcceptCreatorCollaborations(domain.isAcceptCreatorCollaborations());
+        entity.setAcceptedCompensations(domain.getAcceptedCompensations());
 
         List<PropertyImageJpaEntity> imageEntities = domain.getImages().stream()
                 .map(img -> toImageEntity(img, entity))
