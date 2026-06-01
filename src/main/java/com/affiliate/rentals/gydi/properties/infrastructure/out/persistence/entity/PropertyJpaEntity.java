@@ -151,6 +151,13 @@ public class PropertyJpaEntity {
     @Column(name = "ical_url_airbnb", length = 500)
     private String icalUrlAirbnb;
 
+    @Column(name = "accept_creator_collaborations", nullable = false)
+    private boolean acceptCreatorCollaborations = false;
+
+    @JdbcTypeCode(SqlTypes.ARRAY)
+    @Column(name = "accepted_compensations", columnDefinition = "text[]")
+    private List<String> acceptedCompensations = new ArrayList<>();
+
     @OneToMany(mappedBy = "property", cascade = CascadeType.ALL, orphanRemoval = true)
     @BatchSize(size = 10)
     @OrderBy("displayOrder ASC")
