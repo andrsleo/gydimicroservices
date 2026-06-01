@@ -41,7 +41,7 @@ public class CollaborationMarketplaceController {
             @RequestParam(defaultValue = "12") int size) {
 
         PropertyRepositoryPort.PropertySearchResult result =
-                getMarketplaceUseCase.execute(compensationType, page, size);
+                getMarketplaceUseCase.execute(compensationType, page, Math.min(size, 50));
 
         List<Map<String, Object>> properties = result.properties().stream()
                 .map(CollaborationMarketplaceController::toMarketplaceItem)
