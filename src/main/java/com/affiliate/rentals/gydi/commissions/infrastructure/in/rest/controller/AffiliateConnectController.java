@@ -47,7 +47,7 @@ public class AffiliateConnectController {
      * </p>
      */
     @PutMapping("/payout/paypal-email")
-    @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Register PayPal email for commission payouts",
         description = "Saves the affiliate's PayPal email. Commission payouts will be sent to this address via PayPal Payouts API."
@@ -87,7 +87,7 @@ public class AffiliateConnectController {
      * Returns the affiliate's payout account status including PayPal email configuration.
      */
     @GetMapping("/payout/status")
-    @PreAuthorize("hasRole('USER') or hasRole('AFFILIATE') or hasRole('ADMIN')")
+    @PreAuthorize("isAuthenticated()")
     @Operation(
         summary = "Get payout account status",
         description = "Returns the affiliate's payout configuration status including whether a PayPal email is registered."
