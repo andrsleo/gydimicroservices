@@ -130,6 +130,9 @@ public class UserEntity {
      * The timestamp when this user was created.
      * Automatically set on persist.
      */
+    @Column(name = "is_verified_creator", nullable = false)
+    private Boolean isVerifiedCreator = false;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 

@@ -39,6 +39,7 @@ public final class User {
     private final SubscriptionPlan activePlan;
     private final UserCapabilities capabilities;
     private final boolean accountVerified;
+    private final boolean verifiedCreator;
     private final LocalDateTime createdAt;
 
     /**
@@ -58,6 +59,7 @@ public final class User {
         this.activePlan = Objects.requireNonNullElse(builder.activePlan, SubscriptionPlan.FREE);
         this.capabilities = Objects.requireNonNullElse(builder.capabilities, UserCapabilities.defaultCapabilities());
         this.accountVerified = builder.accountVerified;
+        this.verifiedCreator = builder.verifiedCreator;
         this.createdAt = Objects.requireNonNullElseGet(builder.createdAt, LocalDateTime::now);
     }
 
@@ -152,6 +154,14 @@ public final class User {
     }
 
     /**
+     * Returns whether this user has passed creator verification (UGC Social Commerce).
+     * Required gate for submitting collaboration pitches.
+     */
+    public boolean isVerifiedCreator() {
+        return verifiedCreator;
+    }
+
+    /**
      * Checks if the user has a specific role.
      *
      * @param roleName the role name to check
@@ -192,6 +202,7 @@ public final class User {
                 .activePlan(this.activePlan)
                 .capabilities(this.capabilities)
                 .accountVerified(this.accountVerified)
+                .verifiedCreator(this.verifiedCreator)
                 .createdAt(this.createdAt)
                 .build();
     }
@@ -217,6 +228,7 @@ public final class User {
                 .activePlan(this.activePlan)
                 .capabilities(this.capabilities)
                 .accountVerified(this.accountVerified)
+                .verifiedCreator(this.verifiedCreator)
                 .createdAt(this.createdAt)
                 .build();
     }
@@ -266,6 +278,7 @@ public final class User {
         private SubscriptionPlan activePlan;
         private UserCapabilities capabilities;
         private boolean accountVerified;
+        private boolean verifiedCreator;
         private LocalDateTime createdAt;
 
         private Builder() {
@@ -391,6 +404,11 @@ public final class User {
          */
         public Builder accountVerified(boolean accountVerified) {
             this.accountVerified = accountVerified;
+            return this;
+        }
+
+        public Builder verifiedCreator(boolean verifiedCreator) {
+            this.verifiedCreator = verifiedCreator;
             return this;
         }
 
