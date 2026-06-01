@@ -111,6 +111,33 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
         return jpaRepository.existsByAirbnbListingId(airbnbListingId);
     }
 
+    @Override
+    public PropertySearchResult findAcceptingCollaborations(String compensationType, int page, int size) {
+        Specification<PropertyJpaEntity> spec = (root, query, cb) -> {
+            List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();
+            predicates.add(cb.equal(root.get("status"), "PUBLISHED"));
+            predicates.add(cb.equal(root.get("acceptCreatorCollaborations"), true));
+            if (compensationType != null && !compensationType.isBlank()) {
+                predicates.add(cb.isMember(compensationType, root.get("acceptedCompensations")));
+            }
+            return cb.and(predicates.toArray(new jakarta.persistence.criteria.Predicate[0]));
+        };
+
+        Pageable pageable = PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Page<PropertyJpaEntity> result = jpaRepository.findAll(spec, pageable);
+
+        List<Property> properties = result.getContent().stream()
+                .map(mapper::toDomain)
+                .collect(Collectors.toList());
+
+        return new PropertySearchResult(
+                properties,
+                result.getTotalElements(),
+                result.getTotalPages(),
+                result.getNumber(),
+                result.getSize());
+    }
+
     private Specification<PropertyJpaEntity> buildSpecification(PropertySearchSpec spec) {
         return (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
