@@ -1,7 +1,12 @@
 package com.affiliate.rentals.gydi.bookings.infrastructure.in.rest.exception;
 
+import com.affiliate.rentals.gydi.bookings.domain.exception.BookingAccessDeniedException;
 import com.affiliate.rentals.gydi.bookings.domain.exception.BookingNotFoundException;
+import com.affiliate.rentals.gydi.bookings.domain.exception.DateRangeNotAvailableException;
+import com.affiliate.rentals.gydi.bookings.domain.exception.InvalidBookingStateException;
 import com.affiliate.rentals.gydi.bookings.domain.exception.InvalidBookingStatusTransitionException;
+import com.affiliate.rentals.gydi.bookings.domain.exception.InvalidCalendarOperationException;
+import com.affiliate.rentals.gydi.bookings.domain.exception.UnauthorizedPropertyAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
@@ -56,6 +61,71 @@ public class BookingExceptionHandler {
             ex.getMessage()
         );
         problem.setTitle("Invalid Request");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(BookingAccessDeniedException.class)
+    public ProblemDetail handleBookingAccessDenied(BookingAccessDeniedException ex) {
+        log.warn("Booking access denied: {}", ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.FORBIDDEN,
+            "Access denied to this booking"
+        );
+        problem.setTitle("Booking Access Denied");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(UnauthorizedPropertyAccessException.class)
+    public ProblemDetail handleUnauthorizedPropertyAccess(UnauthorizedPropertyAccessException ex) {
+        log.warn("Unauthorized property access: {}", ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.FORBIDDEN,
+            "You do not have permission to manage this property"
+        );
+        problem.setTitle("Unauthorized Property Access");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidCalendarOperationException.class)
+    public ProblemDetail handleInvalidCalendarOperation(InvalidCalendarOperationException ex) {
+        log.warn("Invalid calendar operation: {}", ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            ex.getMessage()
+        );
+        problem.setTitle("Invalid Calendar Operation");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(DateRangeNotAvailableException.class)
+    public ProblemDetail handleDateRangeNotAvailable(DateRangeNotAvailableException ex) {
+        log.warn("Date range not available: {}", ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            ex.getMessage()
+        );
+        problem.setTitle("Dates Not Available");
+        problem.setProperty("timestamp", Instant.now());
+        return problem;
+    }
+
+    @ExceptionHandler(InvalidBookingStateException.class)
+    public ProblemDetail handleInvalidBookingState(InvalidBookingStateException ex) {
+        log.warn("Invalid booking state for operation: {}", ex.getMessage());
+
+        ProblemDetail problem = ProblemDetail.forStatusAndDetail(
+            HttpStatus.CONFLICT,
+            ex.getMessage()
+        );
+        problem.setTitle("Invalid Booking State");
         problem.setProperty("timestamp", Instant.now());
         return problem;
     }

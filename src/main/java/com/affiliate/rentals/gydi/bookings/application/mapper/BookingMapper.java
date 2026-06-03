@@ -33,6 +33,16 @@ public interface BookingMapper {
     @Mapping(target = "totalAmount", source = "totalAmount.amount")
     @Mapping(target = "currency", source = "totalAmount.currency")
     @Mapping(target = "statusHistory", source = "statusHistory")
+    // Fase 1
+    @Mapping(target = "rejectionReason", source = "rejectionReason")
+    // Fase 2 — Stripe
+    @Mapping(target = "stripeBookingIntentId", source = "stripeBookingIntentId")
+    @Mapping(target = "stripeDepositIntentId", source = "stripeDepositIntentId")
+    @Mapping(target = "depositAmount", source = "depositAmount.amount")
+    @Mapping(target = "depositCurrency", source = "depositAmount.currency")
+    @Mapping(target = "depositCapturedAt", source = "depositCapturedAt")
+    @Mapping(target = "depositCaptureAmount", source = "depositCaptureAmount")
+    @Mapping(target = "paymentReleasedAt", source = "paymentReleasedAt")
     BookingDto toDto(Booking booking);
 
     /**

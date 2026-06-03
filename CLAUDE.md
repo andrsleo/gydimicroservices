@@ -108,3 +108,140 @@ common/                    # Shared utilities (exceptions, web handlers)
 - Hibernate DDL auto is disabled (`ddl-auto: none`) - use Flyway for schema changes
 - API documentation available at `/swagger-ui.html` when running
 - Virtual threads are enabled for improved concurrency
+
+---
+
+## Cómo Usar Claude Code (Skills)
+
+Los Agent Skills se activan **automáticamente** — no requieren invocación manual con `/nombre`. Basta con describir lo que necesitas en lenguaje natural.
+
+| Skill | Se activa cuando... |
+|-------|---------------------|
+| `superpowers` | Feature compleja — propone plan completo antes de escribir código |
+| `test-driven-development` | Implementar domain service, use case, o cualquier lógica nueva |
+| `systematic-debugging` | Test fallido, excepción, compilación rota, comportamiento inesperado |
+| `software-architecture` | Validar diseño contra Hexagonal Architecture + SOLID |
+| `bounded-context` | Crear nuevo dominio, servicio, o bounded context backend |
+| `db-migrate` | Cambio de schema, nueva tabla, columna, constraint |
+| `api-types` | Sincronizar tipos TypeScript desde DTOs Java |
+| `test-feature` | Generar tests para un bounded context sin cobertura |
+| `arch-check` | Antes de PR, validar arquitectura hexagonal |
+| `stack-review` | Revisión de salud del proyecto backend |
+| `find-skills` | "¿hay un skill para X?", descubrir capacidades disponibles |
+
+---
+
+## TDD en Spring Boot (JUnit 5 + Mockito)
+
+**Regla:** `SIN CÓDIGO DE PRODUCCIÓN SIN UN TEST FALLANDO PRIMERO`
+
+### Ciclo para Domain Service
+
+```bash
+# 1. Crear el test (debe FALLAR)
+# src/test/java/.../domain/service/NombreServiceTest.java
+
+# 2. Verificar que falla
+./mvnw test -Dtest=NombreServiceTest
+
+# 3. Implementar (mínimo para pasar)
+# src/main/java/.../domain/service/NombreService.java
+
+# 4. Verificar que pasa
+./mvnw test -Dtest=NombreServiceTest
+
+# 5. Refactorizar manteniendo verde
+./mvnw test
+```
+
+### Estructura de Test Obligatoria
+
+```java
+@ExtendWith(MockitoExtension.class)
+class NombreServiceTest {
+
+    @Mock
+    private NombreRepositoryPort repositoryPort; // Mock del port, nunca de JPA
+
+    @InjectMocks
+    private NombreService service;
+
+    @Test
+    @DisplayName("debe [comportamiento] cuando [condición]")
+    void debe_comportamiento_cuando_condicion() {
+        // Arrange — preparar datos
+        // Act — ejecutar el método
+        // Assert — verificar resultado
+        verify(repositoryPort).metodoEsperado(any());
+    }
+}
+```
+
+**Reglas:**
+- Tests de domain service: JUnit 5 puro (sin Spring, `@ExtendWith(MockitoExtension.class)`)
+- Tests de use case: Mockito para todos los ports y el domain service
+- Tests de controller: `@WebMvcTest` solo cuando sea necesario
+- **NUNCA** mockear JPA directamente — usar el port como abstracción
+
+El skill `test-driven-development` se activa automáticamente al pedir implementar algo.
+
+---
+
+## Debugging Sistemático
+
+Ante cualquier fallo, el skill `systematic-debugging` se activa automáticamente. Protocolo:
+
+```bash
+# 1. Leer el error completo (nunca saltarse el stack trace)
+./mvnw test 2>&1 | grep -A 20 "FAILED\|ERROR\|Exception"
+
+# 2. Reproducir de forma confiable
+./mvnw test -Dtest=ClaseTest#testMetodo
+
+# 3. Revisar cambios recientes
+git diff HEAD~3 -- src/main/java/
+
+# 4. Recopilar evidencia (logging temporal)
+log.debug("[Input] {}", request);
+log.debug("[Domain result] {}", domainResult);
+log.debug("[Mapped] {}", dto);
+
+# 5. Formar UNA hipótesis y probarla con UN solo cambio mínimo
+```
+
+**Nunca:** Hacer múltiples cambios a la vez ni proponer fixes sin haber entendido la causa raíz.
+
+---
+
+## Reglas de Arquitectura Hexagonal (Verificación Rápida)
+
+Antes de hacer commit, verificar:
+
+```bash
+# ¿El dominio importa Spring o JPA?
+grep -r "import org.springframework" src/main/java/*/domain/ 2>/dev/null && echo "⚠️ VIOLACIÓN"
+grep -r "import jakarta.persistence" src/main/java/*/domain/ 2>/dev/null && echo "⚠️ VIOLACIÓN"
+
+# ¿Lógica de negocio en adapters?
+# Revisar manualmente: los controllers deben solo delegar al use case
+
+# ¿Use cases acceden a JPA directamente?
+grep -r "JpaRepository\|EntityManager" src/main/java/*/application/ 2>/dev/null && echo "⚠️ VIOLACIÓN"
+```
+
+Mencionar "revisar arquitectura" o "auditar" activa el skill `arch-check` para un reporte completo.
+
+---
+
+## Patrones Obligatorios
+
+| Componente | Regla |
+|------------|-------|
+| Domain model | Java puro — sin `@Entity`, sin `@Component`, sin Lombok en campos |
+| DTOs | Java records con `@Valid` y Bean Validation |
+| Mappers | Interfaces MapStruct — `@Mapper(componentModel = "spring")` |
+| Use cases | Una responsabilidad — implementan el input port |
+| Controllers | Solo delegan — sin lógica de negocio |
+| Repository adapters | Implementan el output port usando JpaRepository |
+| Excepciones de dominio | Extienden `RuntimeException` — en `domain/exception/` |
+| Migraciones Flyway | Nomenclatura `V{n}__{descripcion_snake_case}.sql` — nunca modificar aplicadas |

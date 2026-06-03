@@ -45,7 +45,8 @@ public class PropertyMapper {
                 property.getIcalUrlAirbnb(),
                 property.getDenialReason(),
                 property.getSubmittedAt(),
-                property.getApprovedAt());
+                property.getApprovedAt(),
+                property.isAcceptCreatorCollaborations());
     }
 
     public PropertyDetailResponse toPropertyDetailResponse(Property property) {
@@ -82,7 +83,9 @@ public class PropertyMapper {
                 property.getPublishedAt(),
                 property.getDenialReason(),
                 property.getSubmittedAt(),
-                property.getApprovedAt());
+                property.getApprovedAt(),
+                property.isAcceptCreatorCollaborations(),
+                property.getAcceptedCompensations());
     }
 
     public List<PropertyResponse> toPropertyResponseList(List<Property> properties) {

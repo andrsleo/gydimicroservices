@@ -45,6 +45,18 @@ public record BookingDto(
 
     // Audit
     LocalDateTime createdAt,
-    LocalDateTime updatedAt
+    LocalDateTime updatedAt,
+
+    // Fase 1 — Host direct confirmation
+    String rejectionReason,
+
+    // Fase 2 — Stripe payment fields
+    String stripeBookingIntentId,
+    String stripeDepositIntentId,
+    BigDecimal depositAmount,
+    String depositCurrency,
+    LocalDateTime depositCapturedAt,
+    BigDecimal depositCaptureAmount,
+    LocalDateTime paymentReleasedAt
 ) {
 }

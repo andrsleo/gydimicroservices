@@ -8,6 +8,15 @@ import com.affiliate.rentals.gydi.subscriptions.domain.ports.PaymentMethodReposi
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * Re-submits a DENY property for admin review after the host has corrected the issues.
+ *
+ * <p>First-time submission from DRAFT is handled automatically via
+ * {@link UpdatePropertyUseCaseImpl#updateProperty} and
+ * {@link SaveUploadedMediaUseCaseImpl#saveUploadedImages} — no explicit host action needed.</p>
+ *
+ * <p>A valid payment method is required before re-submission.</p>
+ */
 @Service
 @Transactional
 public class SubmitForApprovalUseCaseImpl implements SubmitForApprovalUseCase {
@@ -37,6 +46,7 @@ public class SubmitForApprovalUseCaseImpl implements SubmitForApprovalUseCase {
                     "Debes agregar un método de pago antes de enviar tu propiedad a revisión");
         }
 
+        // Domain method validates status == DENY and content minimums
         property.submitForApproval();
 
         return propertyRepository.save(property);

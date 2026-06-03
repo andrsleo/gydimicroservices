@@ -38,5 +38,7 @@ public record PropertyDetailResponse(
         LocalDateTime publishedAt,
         String denialReason,
         LocalDateTime submittedAt,
-        LocalDateTime approvedAt) {
+        LocalDateTime approvedAt,
+        boolean acceptCreatorCollaborations,
+        java.util.List<String> acceptedCompensations) {
 }

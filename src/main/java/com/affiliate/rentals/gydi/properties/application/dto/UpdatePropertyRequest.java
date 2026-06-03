@@ -40,7 +40,7 @@ public record UpdatePropertyRequest(
 
                 @Pattern(regexp = "SHORT_TERM_RENTAL|SALE|BOTH", message = "Invalid listing type. Must be SHORT_TERM_RENTAL, SALE, or BOTH") String listingType,
 
-                @NotBlank(message = "Airbnb URL is required") String airbnbUrl,
+                String airbnbUrl,
 
                 String icalUrlAirbnb) {
 }

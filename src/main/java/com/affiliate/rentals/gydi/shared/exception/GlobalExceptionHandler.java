@@ -13,6 +13,11 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+import com.affiliate.rentals.gydi.bookings.domain.exception.UnauthorizedPropertyAccessException;
+import com.affiliate.rentals.gydi.calendar.domain.exception.CalendarDayBlockedException;
+import com.affiliate.rentals.gydi.calendar.domain.exception.CannotUnblockReservedDateException;
+import com.affiliate.rentals.gydi.calendar.domain.exception.DateNotBlockedException;
+import com.affiliate.rentals.gydi.calendar.domain.exception.InvalidCustomPriceException;
 import com.affiliate.rentals.gydi.properties.domain.exception.PropertyCannotBePublishedException;
 import com.affiliate.rentals.gydi.properties.domain.exception.PropertyDomainException;
 import com.affiliate.rentals.gydi.properties.domain.exception.PropertyTransitionNotAllowedException;
@@ -549,6 +554,111 @@ public class GlobalExceptionHandler {
                                 request.getMethod(), request.getRequestURI());
 
                 // No response needed - client already closed the connection
+        }
+
+        /**
+         * Handles calendar day already blocked exceptions.
+         *
+         * <p>Thrown when a host attempts to block a date that is already blocked.</p>
+         *
+         * @param ex      the calendar day blocked exception
+         * @param request the HTTP request
+         * @return a CONFLICT response
+         */
+        @ExceptionHandler(CalendarDayBlockedException.class)
+        public ResponseEntity<ErrorResponse> handleCalendarDayBlocked(
+                        CalendarDayBlockedException ex,
+                        HttpServletRequest request) {
+                log.warn("Calendar day already blocked: {}", ex.getMessage());
+                return buildResponse(
+                                HttpStatus.CONFLICT,
+                                "CALENDAR_DAY_BLOCKED",
+                                ex.getMessage(),
+                                request.getRequestURI());
+        }
+
+        /**
+         * Handles date not blocked exceptions.
+         *
+         * <p>Thrown when a host attempts to unblock a date that was never blocked.</p>
+         *
+         * @param ex      the date not blocked exception
+         * @param request the HTTP request
+         * @return a NOT_FOUND response
+         */
+        @ExceptionHandler(DateNotBlockedException.class)
+        public ResponseEntity<ErrorResponse> handleDateNotBlocked(
+                        DateNotBlockedException ex,
+                        HttpServletRequest request) {
+                log.warn("Date is not blocked: {}", ex.getMessage());
+                return buildResponse(
+                                HttpStatus.NOT_FOUND,
+                                "DATE_NOT_BLOCKED",
+                                ex.getMessage(),
+                                request.getRequestURI());
+        }
+
+        /**
+         * Handles invalid custom price exceptions.
+         *
+         * <p>Thrown when a host provides an invalid price amount or unsupported currency.</p>
+         *
+         * @param ex      the invalid custom price exception
+         * @param request the HTTP request
+         * @return a BAD_REQUEST response
+         */
+        @ExceptionHandler(InvalidCustomPriceException.class)
+        public ResponseEntity<ErrorResponse> handleInvalidCustomPrice(
+                        InvalidCustomPriceException ex,
+                        HttpServletRequest request) {
+                log.warn("Invalid custom price: {}", ex.getMessage());
+                return buildResponse(
+                                HttpStatus.BAD_REQUEST,
+                                "INVALID_PRICE",
+                                ex.getMessage(),
+                                request.getRequestURI());
+        }
+
+        /**
+         * Handles cannot unblock reserved date exceptions.
+         *
+         * <p>Thrown when a host attempts to unblock a date that has an active reservation.</p>
+         *
+         * @param ex      the cannot unblock reserved date exception
+         * @param request the HTTP request
+         * @return a CONFLICT response
+         */
+        @ExceptionHandler(CannotUnblockReservedDateException.class)
+        public ResponseEntity<ErrorResponse> handleCannotUnblockReserved(
+                        CannotUnblockReservedDateException ex,
+                        HttpServletRequest request) {
+                log.warn("Cannot unblock reserved date: {}", ex.getMessage());
+                return buildResponse(
+                                HttpStatus.CONFLICT,
+                                "CANNOT_UNBLOCK_RESERVED",
+                                ex.getMessage(),
+                                request.getRequestURI());
+        }
+
+        /**
+         * Handles unauthorized property access exceptions (IDOR prevention).
+         *
+         * <p>Thrown when a host attempts to modify a property they do not own.</p>
+         *
+         * @param ex      the unauthorized property access exception
+         * @param request the HTTP request
+         * @return a FORBIDDEN response
+         */
+        @ExceptionHandler(UnauthorizedPropertyAccessException.class)
+        public ResponseEntity<ErrorResponse> handleUnauthorizedPropertyAccess(
+                        UnauthorizedPropertyAccessException ex,
+                        HttpServletRequest request) {
+                log.warn("SECURITY: Unauthorized property access - {}", ex.getMessage());
+                return buildResponse(
+                                HttpStatus.FORBIDDEN,
+                                "Access Denied",
+                                ex.getMessage(),
+                                request.getRequestURI());
         }
 
         /**
