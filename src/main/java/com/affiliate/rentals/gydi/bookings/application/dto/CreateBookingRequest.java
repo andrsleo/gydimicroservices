@@ -42,7 +42,11 @@ public record CreateBookingRequest(
     @NotNull(message = "Guests count is required")
     @Min(value = 1, message = "At least 1 guest is required")
     @Max(value = 50, message = "Maximum 50 guests allowed")
-    Integer guestsCount
+    Integer guestsCount,
+
+    // Phase 4 — Social Commerce: optional reference to content post that led to this booking
+    @Positive(message = "Content post ID must be positive")
+    Long contentPostId
 ) {
     /**
      * Validates that check-out is after check-in.

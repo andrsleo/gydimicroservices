@@ -12,7 +12,9 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Implementation of {@link SaveUploadedMediaUseCase}.
  *
- * <p>Saves media URLs after the frontend has uploaded files directly to Cloudinary.</p>
+ * <p>Saves media URLs after the frontend has uploaded files directly to Cloudinary.
+ * After saving images, triggers an auto-transition check: a DRAFT property with
+ * enough images and all required fields will automatically move to PENDING_APPROVAL.</p>
  */
 @Slf4j
 @Service
@@ -31,7 +33,6 @@ public class SaveUploadedMediaUseCaseImpl implements SaveUploadedMediaUseCase {
             Long userId,
             SaveUploadedMediaCommand command) {
 
-        // 1. Verify property exists and user has permission
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new IllegalArgumentException("Property not found"));
 
@@ -39,22 +40,23 @@ public class SaveUploadedMediaUseCaseImpl implements SaveUploadedMediaUseCase {
             throw new SecurityException("User is not authorized to modify this property");
         }
 
-        // 2. Validate URLs are from Cloudinary
         for (SaveUploadedMediaCommand.MediaUrl mediaUrl : command.mediaUrls()) {
             if (!isValidCloudinaryUrl(mediaUrl.url())) {
                 throw new IllegalArgumentException("Invalid media URL: " + mediaUrl.url());
             }
         }
 
-        // 3. Add images to property
         for (SaveUploadedMediaCommand.MediaUrl mediaUrl : command.mediaUrls()) {
             property.addImage(mediaUrl.url(), mediaUrl.displayOrder());
         }
 
-        // 4. Save and return
+        // After adding images, check if the DRAFT property now qualifies for PENDING_APPROVAL
+        property.autoTransitionIfReady();
+
         Property saved = propertyRepository.save(property);
 
-        log.info("Saved {} uploaded images for property {}", command.mediaUrls().size(), propertyId);
+        log.info("Saved {} uploaded images for property {}. Status: {}",
+                command.mediaUrls().size(), propertyId, saved.getStatus());
 
         return saved;
     }
@@ -65,7 +67,6 @@ public class SaveUploadedMediaUseCaseImpl implements SaveUploadedMediaUseCase {
             Long userId,
             SaveUploadedMediaCommand command) {
 
-        // 1. Verify property exists and user has permission
         Property property = propertyRepository.findById(propertyId)
                 .orElseThrow(() -> new IllegalArgumentException("Property not found"));
 
@@ -73,23 +74,17 @@ public class SaveUploadedMediaUseCaseImpl implements SaveUploadedMediaUseCase {
             throw new SecurityException("User is not authorized to modify this property");
         }
 
-        // 2. Validate URLs are from Cloudinary
         for (SaveUploadedMediaCommand.MediaUrl mediaUrl : command.mediaUrls()) {
             if (!isValidCloudinaryUrl(mediaUrl.url())) {
                 throw new IllegalArgumentException("Invalid media URL: " + mediaUrl.url());
             }
         }
 
-        // 3. Add videos to property (with auto-generated thumbnails)
         for (SaveUploadedMediaCommand.MediaUrl mediaUrl : command.mediaUrls()) {
-            // Cloudinary automatically generates thumbnails for videos
-            // Format: .../video/upload/v123/folder/filename.mp4
-            // Thumbnail: .../video/upload/v123/folder/filename.jpg (same public_id, .jpg extension)
             String thumbnailUrl = generateVideoThumbnailUrl(mediaUrl.url());
             property.addVideo(mediaUrl.url(), thumbnailUrl, mediaUrl.displayOrder(), mediaUrl.durationSeconds());
         }
 
-        // 4. Save and return
         Property saved = propertyRepository.save(property);
 
         log.info("Saved {} uploaded videos for property {}", command.mediaUrls().size(), propertyId);
@@ -97,29 +92,13 @@ public class SaveUploadedMediaUseCaseImpl implements SaveUploadedMediaUseCase {
         return saved;
     }
 
-    /**
-     * Validate that URL is from Cloudinary.
-     */
     private boolean isValidCloudinaryUrl(String url) {
         return url != null
                 && url.startsWith("https://res.cloudinary.com/")
                 && (url.contains("/image/upload/") || url.contains("/video/upload/"));
     }
 
-    /**
-     * Generate Cloudinary video thumbnail URL.
-     *
-     * <p>Cloudinary automatically generates a thumbnail for videos.
-     * We just need to change the resource type to 'image' and extension to '.jpg'.</p>
-     *
-     * <p>Example:</p>
-     * <ul>
-     *   <li>Video: https://res.cloudinary.com/cloud/video/upload/v123/folder/uuid.mp4</li>
-     *   <li>Thumbnail: https://res.cloudinary.com/cloud/video/upload/v123/folder/uuid.jpg</li>
-     * </ul>
-     */
     private String generateVideoThumbnailUrl(String videoUrl) {
-        // Insert so_0 transformation and replace extension with .jpg
         return videoUrl
                 .replace("/video/upload/", "/video/upload/so_0/")
                 .replaceFirst("\\.(mp4|mov|webm|avi|MOV)$", ".jpg");

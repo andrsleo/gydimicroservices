@@ -33,5 +33,6 @@ public record PropertyResponse(
         String icalUrlAirbnb,
         String denialReason,
         LocalDateTime submittedAt,
-        LocalDateTime approvedAt) {
+        LocalDateTime approvedAt,
+        boolean acceptCreatorCollaborations) {
 }

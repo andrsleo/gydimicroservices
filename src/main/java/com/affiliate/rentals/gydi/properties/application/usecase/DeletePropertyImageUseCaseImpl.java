@@ -11,6 +11,10 @@ import org.springframework.transaction.annotation.Transactional;
 /**
  * Implementation of DeletePropertyImageUseCase.
  * Deletes image from both database and storage (S3/local filesystem).
+ *
+ * After deletion, triggers a status demotion check: if the property was in
+ * PENDING_APPROVAL and now has fewer than the minimum required images, it is
+ * reverted to DRAFT so the host can upload more images before re-submission.
  */
 @Service
 @Transactional
@@ -45,7 +49,6 @@ public class DeletePropertyImageUseCaseImpl implements DeletePropertyImageUseCas
         try {
             storagePort.deleteFileByUrl(imageToDelete.getUrl());
         } catch (Exception e) {
-            // Log error but continue - we still want to remove DB record
             System.err.println("Failed to delete file from storage: " + e.getMessage());
         }
 
@@ -57,7 +60,10 @@ public class DeletePropertyImageUseCaseImpl implements DeletePropertyImageUseCas
             property.setCoverImage(null);
         }
 
-        // 7. Save updated property
+        // 7. Demote PENDING_APPROVAL -> DRAFT if image count dropped below minimum
+        property.demoteToDraftIfMinimumsBroken();
+
+        // 8. Save updated property
         propertyRepository.save(property);
     }
 }

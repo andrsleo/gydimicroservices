@@ -29,7 +29,7 @@ public interface BookingEntityMapper {
             return null;
         }
 
-        return Booking.reconstitute(
+        Booking booking = Booking.reconstitute(
                 entity.getId(),
                 entity.getReferralLinkId(),
                 entity.getPropertyId(),
@@ -47,6 +47,25 @@ public interface BookingEntityMapper {
                 entity.getCancelledAt(),
                 entity.getCreatedAt(),
                 entity.getUpdatedAt());
+
+        // Restore Fase 1 fields
+        booking.setRejectionReason(entity.getRejectionReason());
+
+        // Restore Phase 4 — Social Commerce
+        booking.setContentPostId(entity.getContentPostId());
+
+        // Restore Fase 2 Stripe fields
+        booking.setStripeBookingIntentId(entity.getStripeBookingIntentId());
+        booking.setStripeDepositIntentId(entity.getStripeDepositIntentId());
+        if (entity.getDepositAmount() != null) {
+            String currency = entity.getDepositCurrency() != null ? entity.getDepositCurrency() : "USD";
+            booking.setDepositAmount(mapMoney(entity.getDepositAmount(), currency));
+        }
+        booking.setDepositCapturedAt(entity.getDepositCapturedAt());
+        booking.setDepositCaptureAmount(entity.getDepositCaptureAmount());
+        booking.setPaymentReleasedAt(entity.getPaymentReleasedAt());
+
+        return booking;
     }
 
     /**
@@ -61,6 +80,18 @@ public interface BookingEntityMapper {
     @Mapping(target = "totalAmount", expression = "java(domain.getTotalAmount() != null ? domain.getTotalAmount().getAmount() : null)")
     @Mapping(target = "currency", expression = "java(domain.getTotalAmount() != null ? domain.getTotalAmount().getCurrency() : \"USD\")")
     @Mapping(target = "statusHistory", ignore = true) // Handled separately
+    // Fase 1 — Rejection
+    @Mapping(target = "rejectionReason", source = "rejectionReason")
+    // Fase 2 — Stripe
+    @Mapping(target = "stripeBookingIntentId", source = "stripeBookingIntentId")
+    @Mapping(target = "stripeDepositIntentId", source = "stripeDepositIntentId")
+    @Mapping(target = "depositAmount", expression = "java(domain.getDepositAmount() != null ? domain.getDepositAmount().getAmount() : null)")
+    @Mapping(target = "depositCurrency", expression = "java(domain.getDepositAmount() != null ? domain.getDepositAmount().getCurrency() : null)")
+    @Mapping(target = "depositCapturedAt", source = "depositCapturedAt")
+    @Mapping(target = "depositCaptureAmount", source = "depositCaptureAmount")
+    @Mapping(target = "paymentReleasedAt", source = "paymentReleasedAt")
+    // Phase 4 — Social Commerce
+    @Mapping(target = "contentPostId", source = "contentPostId")
     BookingJpaEntity toEntity(Booking domain);
 
     /**

@@ -50,7 +50,6 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
         }
 
         // Handle Airbnb URL update
-        boolean airbnbUrlChanging = false;
         if (command.airbnbUrl() != null && !command.airbnbUrl().isBlank()) {
             String resolvedUrl = urlResolver.resolve(command.airbnbUrl());
             AirbnbUrlValidator.AirbnbUrlValidationResult validationResult = urlValidator.validate(resolvedUrl);
@@ -61,17 +60,12 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
 
             String listingId = validationResult.getListingId();
 
-            // Check if listing ID changed and if the new one already exists on another property
             if (!listingId.equals(property.getAirbnbListingId()) &&
                     propertyRepository.existsByAirbnbListingId(listingId)) {
                 throw new IllegalStateException(
                         "Property with Airbnb listing ID " + listingId + " already exists");
             }
 
-            // Track whether the Airbnb URL actually changed
-            airbnbUrlChanging = !validationResult.getNormalizedUrl().equals(property.getAirbnbUrl());
-
-            // Update Airbnb fields using setter (avoids data loss from builder rebuild)
             property.updateAirbnbUrl(validationResult.getNormalizedUrl(), listingId);
         }
 
@@ -83,7 +77,6 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
         if (command.title() != null || command.description() != null ||
                 command.priceAmount() != null || command.salePrice() != null) {
 
-            // SECURITY: XSS Prevention - Sanitize user-provided text fields
             String sanitizedTitle = command.title() != null
                     ? htmlSanitizer.sanitizeToPlainText(command.title())
                     : null;
@@ -96,10 +89,9 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
                     : property.getPricePerNight();
             Money newSalePrice = command.salePrice() != null && command.priceCurrency() != null
                     ? Money.of(command.salePrice(), command.priceCurrency())
-                    : property.getSalePrice(); // Preserve current value if not provided
+                    : property.getSalePrice();
             property.updateDetails(sanitizedTitle, sanitizedDescription, newPrice, newSalePrice);
 
-            // Regenerate slug if title changed
             if (sanitizedTitle != null && !sanitizedTitle.equals(property.getTitle())) {
                 String shortId = generateShortId(property.getId().getValue());
                 String newSlug = slugGenerator.generateUniqueSlug(sanitizedTitle, shortId);
@@ -122,66 +114,39 @@ public class UpdatePropertyUseCaseImpl implements UpdatePropertyUseCase {
                     command.maxGuests()));
         }
 
-        // Update property type if provided
         if (command.propertyType() != null && !command.propertyType().isBlank()) {
             property.updatePropertyType(PropertyType.valueOf(command.propertyType()));
         }
 
-        // Update amenities - replace all existing amenities with new ones
         if (command.amenities() != null) {
-            // Clear existing amenities
             property.clearAmenities();
-            // Add new amenities
             command.amenities().forEach(property::addAmenity);
         }
 
-        boolean icalUrlChanging = false;
         if (command.icalUrlAirbnb() != null) {
-            // Validate iCal URL by fetching and verifying content
             if (!command.icalUrlAirbnb().isBlank()) {
-                // Use validateWithFetch to ensure the URL actually contains valid iCal data
-                com.affiliate.rentals.gydi.properties.application.service.ICalUrlValidator.ICalValidationResult icalResult = iCalUrlValidator
-                        .validateWithFetch(command.icalUrlAirbnb());
+                com.affiliate.rentals.gydi.properties.application.service.ICalUrlValidator.ICalValidationResult icalResult =
+                        iCalUrlValidator.validateWithFetch(command.icalUrlAirbnb());
 
                 if (!icalResult.isValid()) {
                     throw new IllegalArgumentException("Invalid iCal URL: " + icalResult.getMessage());
                 }
 
-                // Track whether the iCal URL actually changed
-                String currentIcalUrl = property.getIcalUrlAirbnb();
-                icalUrlChanging = !command.icalUrlAirbnb().equals(currentIcalUrl);
-
-                // Set the validated URL
                 property.updateIcalUrlAirbnb(command.icalUrlAirbnb());
             } else {
-                // Clear the URL if empty/blank
                 property.updateIcalUrlAirbnb(null);
             }
         }
 
-        // If the Airbnb URL or iCal URL changed on a published/inactive property, require
-        // the host to re-add GYDI as co-host on the new Airbnb listing before re-submitting.
-        if ((airbnbUrlChanging || icalUrlChanging) &&
-                (property.getStatus() == com.affiliate.rentals.gydi.properties.domain.model.PropertyStatus.PUBLISHED
-                        || property.getStatus() == com.affiliate.rentals.gydi.properties.domain.model.PropertyStatus.INACTIVE)) {
-            property.transitionToSendGydiCohost();
-        }
-
-        // Auto-transition DRAFT → SEND_GYDI_COHOST when minimum content requirements are met.
-        // This allows the host to proceed with adding GYDI as co-host on Airbnb before submitting.
-        if (property.getStatus() == com.affiliate.rentals.gydi.properties.domain.model.PropertyStatus.DRAFT
-                && property.meetsSubmitConditions()) {
-            property.transitionToSendGydiCohost();
-        }
+        // Auto-transition: DRAFT -> PENDING_APPROVAL when all minimums are met.
+        // Also demotes PENDING_APPROVAL back to DRAFT if an edit breaks minimums.
+        property.autoTransitionIfReady();
+        property.demoteToDraftIfMinimumsBroken();
 
         return propertyRepository.save(property);
     }
 
-    /**
-     * Generates a short ID from Long ID using Hashids.
-     */
     private String generateShortId(Long id) {
-        // Hashids requires positive numbers
         return hashids.encode(Math.abs(id));
     }
 }

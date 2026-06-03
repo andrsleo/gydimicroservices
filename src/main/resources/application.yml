@@ -48,7 +48,7 @@ spring:
     enabled: true
     baseline-on-migrate: true
     locations: classpath:db/migration
-    schemas: users,properties,audit,referrals,payment,subscriptions
+    schemas: users,properties,audit,referrals,payment,subscriptions,content,social
     validate-on-migrate: false
     out-of-order: true
 
@@ -302,3 +302,14 @@ paypal:
 # cors:
 #   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
 
+
+
+# ============================================
+# UGC Content Configuration
+# ============================================
+content:
+  max-video-size-mb: 100
+  max-image-size-mb: 10
+  allowed-video-types: video/mp4,video/quicktime,video/webm
+  allowed-image-types: image/jpeg,image/png,image/webp
+  feed-page-size: 12

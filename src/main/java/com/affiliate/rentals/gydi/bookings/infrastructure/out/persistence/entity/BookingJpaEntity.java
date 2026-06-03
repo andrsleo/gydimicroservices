@@ -97,6 +97,32 @@ public class BookingJpaEntity {
     @Column(name = "cancelled_at")
     private LocalDateTime cancelledAt;
 
+    // Fase 1 — Host rejection fields (V99)
+    @Column(name = "rejection_reason", length = 500)
+    private String rejectionReason;
+
+    // Fase 2 — Stripe payment fields (V99)
+    @Column(name = "stripe_booking_intent_id", length = 100)
+    private String stripeBookingIntentId;
+
+    @Column(name = "stripe_deposit_intent_id", length = 100)
+    private String stripeDepositIntentId;
+
+    @Column(name = "deposit_amount", precision = 12, scale = 2)
+    private BigDecimal depositAmount;
+
+    @Column(name = "deposit_currency", length = 3)
+    private String depositCurrency;
+
+    @Column(name = "deposit_captured_at")
+    private LocalDateTime depositCapturedAt;
+
+    @Column(name = "deposit_capture_amount", precision = 12, scale = 2)
+    private BigDecimal depositCaptureAmount;
+
+    @Column(name = "payment_released_at")
+    private LocalDateTime paymentReleasedAt;
+
     // Audit
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -275,6 +301,37 @@ public class BookingJpaEntity {
     public void setCancelledAt(LocalDateTime cancelledAt) {
         this.cancelledAt = cancelledAt;
     }
+
+    public String getRejectionReason() { return rejectionReason; }
+    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
+
+    public String getStripeBookingIntentId() { return stripeBookingIntentId; }
+    public void setStripeBookingIntentId(String stripeBookingIntentId) { this.stripeBookingIntentId = stripeBookingIntentId; }
+
+    public String getStripeDepositIntentId() { return stripeDepositIntentId; }
+    public void setStripeDepositIntentId(String stripeDepositIntentId) { this.stripeDepositIntentId = stripeDepositIntentId; }
+
+    public BigDecimal getDepositAmount() { return depositAmount; }
+    public void setDepositAmount(BigDecimal depositAmount) { this.depositAmount = depositAmount; }
+
+    public String getDepositCurrency() { return depositCurrency; }
+    public void setDepositCurrency(String depositCurrency) { this.depositCurrency = depositCurrency; }
+
+    public LocalDateTime getDepositCapturedAt() { return depositCapturedAt; }
+    public void setDepositCapturedAt(LocalDateTime depositCapturedAt) { this.depositCapturedAt = depositCapturedAt; }
+
+    public BigDecimal getDepositCaptureAmount() { return depositCaptureAmount; }
+    public void setDepositCaptureAmount(BigDecimal depositCaptureAmount) { this.depositCaptureAmount = depositCaptureAmount; }
+
+    public LocalDateTime getPaymentReleasedAt() { return paymentReleasedAt; }
+    public void setPaymentReleasedAt(LocalDateTime paymentReleasedAt) { this.paymentReleasedAt = paymentReleasedAt; }
+
+    // Phase 4 — Social Commerce
+    @Column(name = "content_post_id")
+    private Long contentPostId;
+
+    public Long getContentPostId() { return contentPostId; }
+    public void setContentPostId(Long contentPostId) { this.contentPostId = contentPostId; }
 
     public LocalDateTime getCreatedAt() {
         return createdAt;

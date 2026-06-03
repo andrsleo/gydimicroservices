@@ -10,9 +10,18 @@
 -- This mirrors the pattern used in V7 for OWNER and GUEST deprecation.
 
 -- 1. Migrate any existing CREATOR role assignments back to USER
+--    Step 1a: Delete CREATOR row for users who already have USER role (avoids PK duplicate)
+DELETE FROM users.user_roles
+WHERE role_id = (SELECT id FROM users.roles WHERE name = 'CREATOR')
+  AND user_id IN (
+      SELECT user_id FROM users.user_roles
+      WHERE role_id = (SELECT id FROM users.roles WHERE name = 'USER')
+  );
+
+--    Step 1b: Migrate remaining CREATOR-only users to USER
 UPDATE users.user_roles
 SET role_id = (SELECT id FROM users.roles WHERE name = 'USER')
-WHERE role_id IN (SELECT id FROM users.roles WHERE name = 'CREATOR');
+WHERE role_id = (SELECT id FROM users.roles WHERE name = 'CREATOR');
 
 -- 2. Deprecate CREATOR role (keep row for audit trail, same as OWNER/GUEST in V7)
 UPDATE users.roles

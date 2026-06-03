@@ -10,7 +10,8 @@ import io.github.bucket4j.Bandwidth;
 import io.github.bucket4j.Bucket;
 import io.github.bucket4j.Refill;
 import jakarta.servlet.http.HttpServletRequest;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 /**
  * Service for rate limiting API endpoints using Bucket4j token bucket algorithm.
@@ -34,9 +35,10 @@ import lombok.extern.slf4j.Slf4j;
  * @version 1.0
  * @since 2025-11-07
  */
-@Slf4j
 @Service
 public class RateLimitService {
+
+    private static final Logger log = LoggerFactory.getLogger(RateLimitService.class);
 
     /**
      * Cache of rate limit buckets per client IP address.
@@ -47,6 +49,10 @@ public class RateLimitService {
     private final Map<String, Bucket> passwordResetBucketCache = new ConcurrentHashMap<>();
     private final Map<String, Bucket> generalApiBucketCache = new ConcurrentHashMap<>();
     private final Map<String, Bucket> bookingCreationBucketCache = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> contentUploadBucketCache = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> likesBucketCache = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> commentsBucketCache = new ConcurrentHashMap<>();
+    private final Map<String, Bucket> followsBucketCache = new ConcurrentHashMap<>();
 
     /**
      * Authentication endpoints rate limit: 10 attempts per 15 minutes.
@@ -110,6 +116,46 @@ public class RateLimitService {
         return Bucket.builder()
             .addLimit(limit)
             .build();
+    }
+
+    /** Content upload rate limit: 10 uploads per hour. */
+    private Bucket createContentUploadBucket() {
+        Bandwidth limit = Bandwidth.classic(10, Refill.intervally(10, Duration.ofHours(1)));
+        return Bucket.builder().addLimit(limit).build();
+    }
+
+    /** Likes rate limit: 60 per minute. */
+    private Bucket createLikesBucket() {
+        Bandwidth limit = Bandwidth.classic(60, Refill.intervally(60, Duration.ofMinutes(1)));
+        return Bucket.builder().addLimit(limit).build();
+    }
+
+    /** Comments rate limit: 30 per minute. */
+    private Bucket createCommentsBucket() {
+        Bandwidth limit = Bandwidth.classic(30, Refill.intervally(30, Duration.ofMinutes(1)));
+        return Bucket.builder().addLimit(limit).build();
+    }
+
+    /** Follows rate limit: 30 per minute. */
+    private Bucket createFollowsBucket() {
+        Bandwidth limit = Bandwidth.classic(30, Refill.intervally(30, Duration.ofMinutes(1)));
+        return Bucket.builder().addLimit(limit).build();
+    }
+
+    private Bucket resolveContentUploadBucket(String clientIp) {
+        return contentUploadBucketCache.computeIfAbsent(clientIp, k -> createContentUploadBucket());
+    }
+
+    private Bucket resolveLikesBucket(String clientIp) {
+        return likesBucketCache.computeIfAbsent(clientIp, k -> createLikesBucket());
+    }
+
+    private Bucket resolveCommentsBucket(String clientIp) {
+        return commentsBucketCache.computeIfAbsent(clientIp, k -> createCommentsBucket());
+    }
+
+    private Bucket resolveFollowsBucket(String clientIp) {
+        return followsBucketCache.computeIfAbsent(clientIp, k -> createFollowsBucket());
     }
 
     /**
@@ -236,6 +282,38 @@ public class RateLimitService {
         return consumed;
     }
 
+    public boolean tryConsumeContentUpload(HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        Bucket bucket = resolveContentUploadBucket(clientIp);
+        boolean consumed = bucket.tryConsume(1);
+        if (!consumed) log.warn("Rate limit exceeded for content upload. IP: {}", clientIp);
+        return consumed;
+    }
+
+    public boolean tryConsumeLike(HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        Bucket bucket = resolveLikesBucket(clientIp);
+        boolean consumed = bucket.tryConsume(1);
+        if (!consumed) log.warn("Rate limit exceeded for likes. IP: {}", clientIp);
+        return consumed;
+    }
+
+    public boolean tryConsumeComment(HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        Bucket bucket = resolveCommentsBucket(clientIp);
+        boolean consumed = bucket.tryConsume(1);
+        if (!consumed) log.warn("Rate limit exceeded for comments. IP: {}", clientIp);
+        return consumed;
+    }
+
+    public boolean tryConsumeFollow(HttpServletRequest request) {
+        String clientIp = getClientIp(request);
+        Bucket bucket = resolveFollowsBucket(clientIp);
+        boolean consumed = bucket.tryConsume(1);
+        if (!consumed) log.warn("Rate limit exceeded for follows. IP: {}", clientIp);
+        return consumed;
+    }
+
     /**
      * Extracts the client's IP address from the request.
      * Checks X-Forwarded-For header first (for proxies/load balancers).
@@ -281,6 +359,10 @@ public class RateLimitService {
         passwordResetBucketCache.remove(ipAddress);
         generalApiBucketCache.remove(ipAddress);
         bookingCreationBucketCache.remove(ipAddress);
+        contentUploadBucketCache.remove(ipAddress);
+        likesBucketCache.remove(ipAddress);
+        commentsBucketCache.remove(ipAddress);
+        followsBucketCache.remove(ipAddress);
         log.info("Cleared rate limit cache for IP: {}", ipAddress);
     }
 
@@ -293,6 +375,10 @@ public class RateLimitService {
         passwordResetBucketCache.clear();
         generalApiBucketCache.clear();
         bookingCreationBucketCache.clear();
+        contentUploadBucketCache.clear();
+        likesBucketCache.clear();
+        commentsBucketCache.clear();
+        followsBucketCache.clear();
         log.warn("Cleared all rate limit caches");
     }
 }

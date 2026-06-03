@@ -6,6 +6,7 @@ import com.affiliate.rentals.gydi.bookings.application.mapper.BookingMapper;
 import com.affiliate.rentals.gydi.bookings.domain.model.Booking;
 import com.affiliate.rentals.gydi.bookings.domain.model.BookingStatus;
 import com.affiliate.rentals.gydi.bookings.domain.ports.BookingRepositoryPort;
+import com.affiliate.rentals.gydi.bookings.domain.ports.PropertyCalendarRepositoryPort;
 import com.affiliate.rentals.gydi.commissions.domain.ports.UserSubscriptionPort;
 import com.affiliate.rentals.gydi.properties.domain.ports.out.PropertyRepositoryPort;
 import com.affiliate.rentals.gydi.shared.domain.port.EmailServicePort;
@@ -40,6 +41,8 @@ class ReserveBookingUseCaseTest {
     @Mock
     private PropertyRepositoryPort propertyRepository;
     @Mock
+    private PropertyCalendarRepositoryPort calendarRepository;
+    @Mock
     private EmailServicePort emailService;
     @Mock
     private EmailTemplateService emailTemplateService;
@@ -50,7 +53,8 @@ class ReserveBookingUseCaseTest {
     void setUp() {
         useCase = new ReserveBookingUseCase(
                 bookingRepository, bookingMapper, userSubscriptionPort,
-                userRepository, propertyRepository, emailService, emailTemplateService);
+                userRepository, propertyRepository, calendarRepository,
+                emailService, emailTemplateService);
     }
 
     @Test

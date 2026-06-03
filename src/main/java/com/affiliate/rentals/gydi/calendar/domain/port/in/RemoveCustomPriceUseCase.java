@@ -1,0 +1,7 @@
+package com.affiliate.rentals.gydi.calendar.domain.port.in;
+
+import java.time.LocalDate;
+
+public interface RemoveCustomPriceUseCase {
+    void execute(Long propertyId, LocalDate date, Long requestingHostId);
+}

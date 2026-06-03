@@ -44,6 +44,20 @@ public class Booking {
     private BigDecimal hostCommissionRate; // Snapshot at reservation
     private BigDecimal affiliateCommissionRate; // Snapshot at reservation
 
+    // Stripe Payment — Phase 2 (nullable until payment is initiated)
+    private String stripeBookingIntentId;
+    private String stripeDepositIntentId;
+    private Money depositAmount;
+    private LocalDateTime depositCapturedAt;
+    private BigDecimal depositCaptureAmount;
+    private LocalDateTime paymentReleasedAt;
+
+    // Fase 1 — Rejection reason (set when host rejects a booking request)
+    private String rejectionReason;
+
+    // Phase 4 — Social Commerce: content post that originated this booking (nullable)
+    private Long contentPostId;
+
     // State
     private BookingStatus status;
 
@@ -90,6 +104,12 @@ public class Booking {
         this.totalAmount = totalAmount;
         this.hostCommissionRate = hostCommissionRate;
         this.affiliateCommissionRate = affiliateCommissionRate;
+        // Phase 2 Stripe fields — initialized to null (set via setters after construction)
+        this.stripeBookingIntentId = null;
+        this.stripeDepositIntentId = null;
+        this.depositAmount = null;
+        this.depositCapturedAt = null;
+        this.depositCaptureAmount = null;
         this.status = Objects.requireNonNull(status, "Status cannot be null");
         this.statusHistory = new ArrayList<>(statusHistory != null ? statusHistory : List.of());
         this.reservedAt = reservedAt;
@@ -519,6 +539,109 @@ public class Booking {
 
     public LocalDateTime getUpdatedAt() {
         return updatedAt;
+    }
+
+    // ========== CONVENIENCE ACCESSORS ==========
+
+    /**
+     * Convenience method: returns check-in date from BookingDates.
+     */
+    public LocalDate getCheckInDate() {
+        return bookingDates.getCheckInDate();
+    }
+
+    /**
+     * Convenience method: returns check-out date from BookingDates.
+     */
+    public LocalDate getCheckOutDate() {
+        return bookingDates.getCheckOutDate();
+    }
+
+    /**
+     * Convenience method: returns price per night (total / nights).
+     * Returns totalAmount if the booking spans a single night or totalAmount is null.
+     */
+    public Money getPricePerNight() {
+        if (totalAmount == null) {
+            return null;
+        }
+        long nights = java.time.temporal.ChronoUnit.DAYS.between(
+                bookingDates.getCheckInDate(), bookingDates.getCheckOutDate());
+        if (nights <= 0) {
+            return totalAmount;
+        }
+        return totalAmount.multiply(java.math.BigDecimal.ONE.divide(
+                java.math.BigDecimal.valueOf(nights), 2, java.math.RoundingMode.HALF_UP));
+    }
+
+    // ========== PHASE 2: STRIPE PAYMENT FIELDS ==========
+
+    public String getStripeBookingIntentId() { return stripeBookingIntentId; }
+    public void setStripeBookingIntentId(String stripeBookingIntentId) {
+        this.stripeBookingIntentId = stripeBookingIntentId;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public String getStripeDepositIntentId() { return stripeDepositIntentId; }
+    public void setStripeDepositIntentId(String stripeDepositIntentId) {
+        this.stripeDepositIntentId = stripeDepositIntentId;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public Money getDepositAmount() { return depositAmount; }
+    public void setDepositAmount(Money depositAmount) {
+        this.depositAmount = depositAmount;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public LocalDateTime getDepositCapturedAt() { return depositCapturedAt; }
+    public BigDecimal getDepositCaptureAmount() { return depositCaptureAmount; }
+
+    /** For reconstitution from persistence only. */
+    public void setDepositCapturedAt(LocalDateTime depositCapturedAt) {
+        this.depositCapturedAt = depositCapturedAt;
+    }
+
+    /** For reconstitution from persistence only. */
+    public void setDepositCaptureAmount(BigDecimal depositCaptureAmount) {
+        this.depositCaptureAmount = depositCaptureAmount;
+    }
+
+    public LocalDateTime getPaymentReleasedAt() { return paymentReleasedAt; }
+    public void setPaymentReleasedAt(LocalDateTime paymentReleasedAt) {
+        this.paymentReleasedAt = paymentReleasedAt;
+        this.updatedAt = LocalDateTime.now();
+    }
+
+    public String getRejectionReason() { return rejectionReason; }
+    public void setRejectionReason(String rejectionReason) { this.rejectionReason = rejectionReason; }
+
+    // Phase 4 — Social Commerce
+    public Long getContentPostId() { return contentPostId; }
+    public void setContentPostId(Long contentPostId) { this.contentPostId = contentPostId; }
+
+    /**
+     * Records a security deposit capture event (damage reported by host).
+     *
+     * @param capturedAmountCents amount captured in cents (null = full amount)
+     * @param damageDescription   description of damage
+     */
+    public void recordDepositCapture(Long capturedAmountCents, String damageDescription) {
+        this.depositCapturedAt = LocalDateTime.now();
+        if (capturedAmountCents != null && depositAmount != null) {
+            this.depositCaptureAmount = java.math.BigDecimal.valueOf(capturedAmountCents)
+                    .divide(java.math.BigDecimal.valueOf(100), 2, java.math.RoundingMode.HALF_UP);
+        } else if (depositAmount != null) {
+            this.depositCaptureAmount = depositAmount.getAmount();
+        }
+        this.updatedAt = LocalDateTime.now();
+
+        addStatusHistory(
+                BookingStatusHistory.automatic(
+                        this.id,
+                        this.status,
+                        this.status,
+                        "Security deposit captured: " + (damageDescription != null ? damageDescription : "damage")));
     }
 
     @Override

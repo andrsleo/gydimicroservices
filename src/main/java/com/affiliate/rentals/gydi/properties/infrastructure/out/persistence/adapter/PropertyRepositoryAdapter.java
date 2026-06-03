@@ -11,6 +11,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Component;
+import org.springframework.transaction.annotation.Transactional;
 
 import com.affiliate.rentals.gydi.properties.domain.model.Property;
 import com.affiliate.rentals.gydi.properties.domain.model.PropertyId;
@@ -41,18 +42,21 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Property> findById(PropertyId id) {
         return jpaRepository.findById(id.getValue())
                 .map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public Optional<Property> findBySlug(String slug) {
         return jpaRepository.findBySlug(slug)
                 .map(mapper::toDomain);
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Property> findByHostId(Long hostId) {
         return jpaRepository.findByHostId(hostId).stream()
                 .map(mapper::toDomain)
@@ -60,6 +64,7 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Property> findAllWithIcalUrl() {
         return jpaRepository.findByIcalUrlAirbnbIsNotNull().stream()
                 .map(mapper::toDomain)
@@ -67,6 +72,7 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public List<Property> findByStatus(PropertyStatus status) {
         return jpaRepository.findByStatus(status.name()).stream()
                 .map(mapper::toDomain)
@@ -74,6 +80,7 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PropertySearchResult findAll(PropertySearchSpec spec) {
         Specification<PropertyJpaEntity> specification = buildSpecification(spec);
 
@@ -112,6 +119,7 @@ public class PropertyRepositoryAdapter implements PropertyRepositoryPort {
     }
 
     @Override
+    @Transactional(readOnly = true)
     public PropertySearchResult findAcceptingCollaborations(String compensationType, int page, int size) {
         Specification<PropertyJpaEntity> spec = (root, query, cb) -> {
             List<jakarta.persistence.criteria.Predicate> predicates = new ArrayList<>();

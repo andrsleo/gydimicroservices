@@ -1,5 +1,8 @@
 package com.affiliate.rentals.gydi.properties.application.usecase;
 
+import com.affiliate.rentals.gydi.calendar.domain.model.PropertySeasonPricing;
+import com.affiliate.rentals.gydi.calendar.domain.model.SeasonType;
+import com.affiliate.rentals.gydi.calendar.domain.port.out.PropertySeasonPricingRepositoryPort;
 import com.affiliate.rentals.gydi.properties.application.service.AirbnbUrlResolver;
 import com.affiliate.rentals.gydi.properties.application.service.AirbnbUrlValidator;
 import com.affiliate.rentals.gydi.properties.domain.model.*;
@@ -12,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
+import java.util.List;
 
 @Service
 @Transactional
@@ -24,6 +28,7 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
     private final AirbnbUrlResolver urlResolver;
     private final AirbnbUrlValidator urlValidator;
     private final com.affiliate.rentals.gydi.properties.application.service.ICalUrlValidator iCalUrlValidator;
+    private final PropertySeasonPricingRepositoryPort seasonPricingRepository;
 
     public CreatePropertyUseCaseImpl(
             PropertyRepositoryPort propertyRepository,
@@ -32,7 +37,8 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
             Hashids hashids,
             AirbnbUrlResolver urlResolver,
             AirbnbUrlValidator urlValidator,
-            com.affiliate.rentals.gydi.properties.application.service.ICalUrlValidator iCalUrlValidator) {
+            com.affiliate.rentals.gydi.properties.application.service.ICalUrlValidator iCalUrlValidator,
+            PropertySeasonPricingRepositoryPort seasonPricingRepository) {
         this.propertyRepository = propertyRepository;
         this.htmlSanitizer = htmlSanitizer;
         this.slugGenerator = slugGenerator;
@@ -40,19 +46,32 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
         this.urlResolver = urlResolver;
         this.urlValidator = urlValidator;
         this.iCalUrlValidator = iCalUrlValidator;
+        this.seasonPricingRepository = seasonPricingRepository;
     }
 
     @Override
     public Property createProperty(CreatePropertyCommand command) {
-        // 1. Resolve and validate Airbnb URL
-        String resolvedUrl = urlResolver.resolve(command.airbnbUrl());
-        AirbnbUrlValidator.AirbnbUrlValidationResult validationResult = urlValidator.validate(resolvedUrl);
+        // 1. Resolve and validate Airbnb URL (optional)
+        String normalizedAirbnbUrl = null;
+        String listingId = null;
 
-        if (!validationResult.isValid()) {
-            throw new IllegalArgumentException("Invalid Airbnb URL: " + validationResult.getErrorMessage());
+        if (command.airbnbUrl() != null && !command.airbnbUrl().isBlank()) {
+            String resolvedUrl = urlResolver.resolve(command.airbnbUrl());
+            AirbnbUrlValidator.AirbnbUrlValidationResult validationResult = urlValidator.validate(resolvedUrl);
+
+            if (!validationResult.isValid()) {
+                throw new IllegalArgumentException("Invalid Airbnb URL: " + validationResult.getErrorMessage());
+            }
+
+            normalizedAirbnbUrl = validationResult.getNormalizedUrl();
+            listingId = validationResult.getListingId();
+
+            // Check if listing ID already exists
+            if (propertyRepository.existsByAirbnbListingId(listingId)) {
+                throw new IllegalStateException(
+                        "Property with Airbnb listing ID " + listingId + " already exists");
+            }
         }
-
-        String listingId = validationResult.getListingId();
 
         // 2. Validate iCal URL if provided
         if (command.icalUrlAirbnb() != null && !command.icalUrlAirbnb().isBlank()) {
@@ -63,12 +82,6 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
             if (!icalResult.isValid()) {
                 throw new IllegalArgumentException("Invalid iCal URL: " + icalResult.getMessage());
             }
-        }
-
-        // 3. Check if listing ID already exists
-        if (propertyRepository.existsByAirbnbListingId(listingId)) {
-            throw new IllegalStateException(
-                    "Property with Airbnb listing ID " + listingId + " already exists");
         }
 
         // 3. Default to SHORT_TERM_RENTAL if listingType is not provided
@@ -114,9 +127,8 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
                 .propertyType(PropertyType.valueOf(command.propertyType()))
                 .listingType(listingType)
                 .status(PropertyStatus.DRAFT)
-                // Airbnb fields
-                .airbnbUrl(validationResult.getNormalizedUrl())
-                .airbnbUrl(validationResult.getNormalizedUrl())
+                // Airbnb fields (optional)
+                .airbnbUrl(normalizedAirbnbUrl)
                 .airbnbListingId(listingId)
                 .icalUrlAirbnb(command.icalUrlAirbnb());
         // Note: importMode and importedAt are left as NULL
@@ -136,7 +148,16 @@ public class CreatePropertyUseCaseImpl implements CreatePropertyUseCase {
         String finalSlug = slugGenerator.generateUniqueSlug(sanitizedTitle, finalShortId);
         savedProperty.setSlug(finalSlug);
 
-        return propertyRepository.save(savedProperty);
+        Property result = propertyRepository.save(savedProperty);
+
+        // Auto-create default season pricing for new property
+        seasonPricingRepository.saveAll(List.of(
+            PropertySeasonPricing.createDefault(result.getId().getValue(), SeasonType.HIGH),
+            PropertySeasonPricing.createDefault(result.getId().getValue(), SeasonType.MEDIUM),
+            PropertySeasonPricing.createDefault(result.getId().getValue(), SeasonType.LOW)
+        ));
+
+        return result;
     }
 
     /**
