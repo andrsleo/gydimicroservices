@@ -4,10 +4,10 @@
 version: 2
 
 secret:
-  ignored-paths:
+  ignored_paths:
     - "src/test/**"
 
-  ignored-matches:
+  ignored_matches:
     - name: "Javadoc example password - ChangePasswordRequest"
       match: 5f1ea60852b1db6e2949d065fc4f8a65dec5d430693f0176d8c250b3e40fc469
 
