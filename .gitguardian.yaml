@@ -1,0 +1,30 @@
+# Configuración de GitGuardian / ggshield
+# Silencia falsos positivos: contraseñas de ejemplo en Javadoc y fixtures de test.
+# Este archivo SÍ se commitea: contiene hashes, no secretos.
+version: 2
+
+secret:
+  ignored-paths:
+    - "src/test/**"
+
+  ignored-matches:
+    - name: "Javadoc example password - ChangePasswordRequest"
+      match: 5f1ea60852b1db6e2949d065fc4f8a65dec5d430693f0176d8c250b3e40fc469
+
+    - name: "Javadoc example password - ResetPasswordRequest"
+      match: fb4a58cb74ebb41800a2d832becaa7785ae6b10858c71147a789bc5421722e2b
+
+    - name: "Test fixture - passwerd typo case"
+      match: 5070394137dde2aa82df3f07aa43973b7b4c2689a8fae7a3fb6537d260a05ad6
+
+    - name: "Test fixture - special characters case"
+      match: 68c88a3f503be6ae7f02247cdae3142911c29ace24fe0b9f86423db7f07e1b93
+
+    - name: "Test fixture - password manager style"
+      match: 925fe9f7e03964628bd75541c44015150796d032c22e622ed58ebb16e45ec72b
+
+    - name: "Test fixture - passphrase style"
+      match: d7ca2586ae7b1ed541d563da1fd4f38ecd5d5373609a0053b791aaf221807af0
+
+    - name: "Documentation placeholder - AES key example a1b2c3d4..."
+      match: 52f6cad83ece8fdf416334a426a9a18f2f1795dcfadec7c469baef71f7c03de2
