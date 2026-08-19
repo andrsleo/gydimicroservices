@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, header, body)" lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title th:replace="${title}">GYDI</title>
+    <style>
+        body { font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+               background-color: #f4f4f4; margin: 0; padding: 20px; }
+        .container { max-width: 600px; margin: 0 auto; background: #ffffff;
+                     border-radius: 8px; overflow: hidden;
+                     box-shadow: 0 2px 8px rgba(0,0,0,0.1); }
+        .body-content { padding: 40px 30px; color: #333333; }
+        .body-content h2 { color: #333; margin-top: 0; }
+        .footer { background: #f8f9fa; padding: 24px 20px; text-align: center;
+                  border-top: 1px solid #e9ecef; }
+        .footer p { margin: 4px 0; font-size: 13px; color: #6c757d; }
+        .footer a { color: #667eea; text-decoration: none; }
+        .btn { display: inline-block; padding: 14px 36px; border-radius: 6px;
+               font-weight: 600; font-size: 15px; text-decoration: none; margin: 20px 0; }
+        .notice { border-left: 4px solid; padding: 14px 18px; margin: 16px 0; border-radius: 0 4px 4px 0; }
+        .notice-warning { background: #fff3cd; border-color: #ffc107; color: #856404; }
+        .notice-success { background: #d4edda; border-color: #28a745; color: #155724; }
+        .notice-danger  { background: #f8d7da; border-color: #dc3545; color: #721c24; }
+        .notice-info    { background: #e7f3ff; border-color: #0062cc; color: #004085; }
+        .data-table { width: 100%; border-collapse: collapse; margin: 16px 0; }
+        .data-table td { padding: 10px 14px; border-bottom: 1px solid #e9ecef; font-size: 14px; }
+        .data-table td:first-child { color: #6c757d; width: 40%; }
+        .data-table td:last-child { font-weight: 600; color: #333; }
+    </style>
+</head>
+<body>
+<div class="container">
+
+    <div th:replace="${header}"><!-- header slot --></div>
+
+    <div class="body-content" th:replace="${body}"><!-- body slot --></div>
+
+    <div class="footer">
+        <p>&copy; 2025 GYDI. Todos los derechos reservados.</p>
+        <p>
+            <a href="https://gydi.app">Sitio web</a> &nbsp;|&nbsp;
+            <a href="https://gydi.app/support">Soporte</a> &nbsp;|&nbsp;
+            <a href="https://gydi.app/privacy">Privacidad</a>
+        </p>
+        <p style="margin-top: 12px; font-size: 12px;">
+            Este es un correo automático. Por favor no respondas a este mensaje.
+        </p>
+    </div>
+</div>
+</body>
+</html>

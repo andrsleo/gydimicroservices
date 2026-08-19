@@ -1,0 +1,304 @@
+# ============================================
+# Application Configuration
+# ============================================
+
+spring:
+  application:
+    name: gydi-rentals
+
+  # Set default profile based on environment
+  # Override with: SPRING_PROFILES_ACTIVE environment variable
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:local}
+
+  # Disable MongoDB autoconfiguration
+  autoconfigure:
+    exclude:
+      - org.springframework.boot.autoconfigure.mongo.MongoAutoConfiguration
+      - org.springframework.boot.autoconfigure.data.mongo.MongoDataAutoConfiguration
+
+  # ============================================
+  # PostgreSQL Database Configuration
+  # ============================================
+  # SECURITY: Never hardcode credentials in configuration files
+  # Use environment variables for all sensitive data
+  datasource:
+    url: ${DATABASE_URL:jdbc:postgresql://localhost:5432/gydidb}
+    username: ${DB_USERNAME:postgres}
+    password: ${DB_PASSWORD}
+    driver-class-name: org.postgresql.Driver
+
+  # JPA/Hibernate Configuration
+  jpa:
+    database-platform: org.hibernate.dialect.PostgreSQLDialect
+    show-sql: false # Set to true in application-local.yml for debugging
+    properties:
+      hibernate:
+        format_sql: false # Set to true in application-local.yml for debugging
+        type:
+          preferred_jsonb_jdbc_type: 1111
+    hibernate:
+      ddl-auto: none
+    open-in-view: false
+
+  # ============================================
+  # Flyway Configuration
+  # ============================================
+  flyway:
+    enabled: true
+    baseline-on-migrate: true
+    locations: classpath:db/migration
+    schemas: users,properties,audit,referrals,payment,subscriptions
+    validate-on-migrate: false
+    out-of-order: true
+
+  # ============================================
+  # AWS Dummy Configuration (Fallback for dev/local)
+  # ============================================
+  # Prevents SqsAutoConfiguration context failure when AWS credentials are not present locally.
+  # These are overridden in application-prod.yml.
+  cloud:
+    aws:
+      region:
+        static: us-east-1
+      credentials:
+        access-key: local-dummy-key
+        secret-key: local-dummy-secret
+
+  # ============================================
+  # MongoDB Configuration (for future use)
+  # ============================================
+  data:
+    mongodb:
+      uri: mongodb://localhost:27017/gydi_rentals
+
+  # ============================================
+  # Spring Mail Configuration (Gmail SMTP for Development)
+  # ============================================
+  # Mail configuration is profile-specific (see application-dev.yml, application-prod.yml)
+
+  # ============================================
+  # File Upload Configuration
+  # ============================================
+  # SECURITY: Limits prevent DoS attacks via large file uploads
+  # These are Spring Boot limits (first layer of defense)
+  # FileValidator provides additional validation (second layer)
+  servlet:
+    multipart:
+      enabled: true
+      # Max single file: 100MB (for videos, images are limited to 10MB by FileValidator)
+      max-file-size: 100MB
+      # Max total request: 150MB (allows multiple files + metadata)
+      max-request-size: 150MB
+      # File size threshold for writing to disk (default: 0 = always disk)
+      file-size-threshold: 0
+
+# ============================================
+# Server Configuration
+# ============================================
+server:
+  port: 8080
+  servlet:
+    context-path: /
+
+# ============================================
+# JWT Configuration
+# ============================================
+# SECURITY: JWT secrets MUST be set via environment variables in production
+# Generate strong secret: openssl rand -base64 64
+# DO NOT commit actual production secrets to git
+#
+# For local development, set DB_PASSWORD environment variable:
+# export DB_PASSWORD="your_local_password"
+# export JWT_SECRET="$(openssl rand -base64 64)"
+# export JWT_REFERRAL_SECRET="$(openssl rand -base64 64)"
+jwt:
+  secret: ${JWT_SECRET}
+  expiration: ${JWT_EXPIRATION:3600000} # 1 hour in milliseconds (synchronized with inactivity timeout)
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800000} # 7 days in milliseconds
+  # JWT for referral tokens (can be overridden per-link, max 365 days)
+  referral:
+    secret: ${JWT_REFERRAL_SECRET}
+    expiration-ms: ${JWT_REFERRAL_EXPIRATION:31536000000} # 365 days in milliseconds (default max, actual expiration set per-link)
+
+# ============================================
+# Logging Configuration
+# ============================================
+# Base configuration for all environments
+# Override in profile-specific files (application-local.yml, etc.)
+logging:
+  level:
+    root: INFO
+    com.affiliate.rentals.gydi: INFO
+    org.springframework.security: INFO
+    org.springframework.web: INFO
+    org.hibernate.SQL: WARN
+    org.hibernate.type.descriptor.sql.BasicBinder: WARN
+    org.flywaydb: INFO
+
+# ============================================
+# OpenAPI/Swagger Configuration
+# ============================================
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    enabled: true
+    operations-sorter: method
+    tags-sorter: alpha
+
+# ============================================
+# Actuator Configuration
+# ============================================
+# SECURITY: Most endpoints are restricted to ADMIN role (see SecurityConfig)
+management:
+  endpoints:
+    web:
+      exposure:
+        # Only expose these endpoints (others are disabled)
+        include: health,info,metrics
+      base-path: /actuator
+  endpoint:
+    health:
+      # Show full details only when user is authenticated
+      show-details: when-authorized
+      # Cache health responses for 10 seconds to prevent abuse
+      cache:
+        time-to-live: 10s
+    info:
+      # Using 'access' instead of deprecated 'enabled'
+      access: unrestricted
+    metrics:
+      # Using 'access' instead of deprecated 'enabled'
+      access: unrestricted
+    # Disable dangerous endpoints using 'access: none'
+    shutdown:
+      access: none # Disabled - can shutdown the application
+    env:
+      # Environment endpoint requires ADMIN role (configured in SecurityConfig)
+      access: unrestricted
+      show-values: when-authorized # Hide values from unauthorized users
+    threaddump:
+      access: none # Disabled - can reveal sensitive data
+    heapdump:
+      access: none # Disabled - contains all application memory
+    logfile:
+      access: none # Disabled - can contain sensitive logs
+
+# ============================================
+# Cloud Services Configuration
+# ============================================
+# NOTE: AWS services are deprecated in favor of Cloudinary (storage) and Resend (email)
+# See: docs/setup/DEPLOYMENT_PLAN_VERCEL_FLYIO.md
+
+# Cloudinary for File Storage (replaces AWS S3)
+# Get your URL from: https://console.cloudinary.com/
+# Format: cloudinary://api_key:api_secret@cloud_name
+# Example: ***REMOVED***
+# NOTE: Only required when storage.provider=cloudinary (dev/prod)
+cloudinary:
+  url: ${CLOUDINARY_URL:} # Empty default for local development
+
+# Email Configuration
+# Uses LocalEmailService if provider is local, or Brevo in production.
+brevo:
+  api-key: ""
+  from-email: "no-reply@gydi.app"
+
+# Storage provider selection
+# Options:
+#   - local: Store files in ./uploads (ephemeral in Railway/Docker)
+#   - cloudinary: Store files in Cloudinary (persistent, CDN, optimizations)
+#
+# Override with STORAGE_PROVIDER environment variable in Railway
+storage:
+  provider: local # Default: local (override with STORAGE_PROVIDER=cloudinary in production)
+  local:
+    directory: ./uploads
+    base-url: http://localhost:8080/uploads
+
+# Email provider selection
+email:
+  provider: ${EMAIL_PROVIDER:local} # Options: local, resend
+
+# ============================================
+# Stripe Payment Gateway Configuration
+# ============================================
+# SECURITY: Stripe API keys MUST be set via environment variables
+# Get your keys from: https://dashboard.stripe.com/apikeys
+# Use test keys for development: sk_test_... and pk_test_...
+# NEVER commit production keys to git
+# NOTE: Only required when payment features are enabled
+stripe:
+  api-key: ${STRIPE_API_KEY} # Secret Key: sk_test_... or sk_live_...
+  publishable-key: ${STRIPE_PUBLISHABLE_KEY} # Publishable Key: pk_test_... or pk_live_...
+  webhook-secret: ${STRIPE_WEBHOOK_SECRET} # Webhook signing secret: whsec_...
+  currency: ${STRIPE_CURRENCY:USD}
+
+# ============================================
+# CORS Configuration
+# ============================================
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000,http://127.0.0.1:3000}
+
+# ============================================
+# Password Reset Configuration
+# ============================================
+app:
+  frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  password-reset:
+    token-expiration-minutes: 60
+    rate-limit-requests: 3
+    rate-limit-window-hours: 1
+    frontend-url: ${FRONTEND_URL:http://localhost:3000}
+  dev-email-recipient: ${DEV_EMAIL_RECIPIENT:dev@gydi.local}
+
+# ============================================
+# URL Encryption & Security Configuration
+# ============================================
+# SECURITY: All secrets MUST be set via environment variables
+# Generate AES secret: openssl rand -hex 32
+# Generate Hashids salt: openssl rand -base64 32
+security:
+  url:
+    # Hashids configuration for property ID obfuscation
+    hashids:
+      salt: ${URL_HASHIDS_SALT}
+      min-length: 10 # Minimum length of encoded property IDs
+    # AES-256 configuration for user ID encryption
+    aes:
+      # IMPORTANT: Must be exactly 64 hex characters (32 bytes = 256 bits)
+      # Generate with: openssl rand -hex 32
+      secret: ${AES_SECRET_KEY}
+
+# ============================================
+# Encryption Configuration
+# ============================================
+# SECURITY FIX (FIX-007): PII Encryption at Rest
+# Generate encryption key: openssl rand -hex 32
+# Production deployment: fly secrets set PII_ENCRYPTION_KEY="$(openssl rand -hex 32)"
+encryption:
+  pii:
+    secret: ${PII_ENCRYPTION_KEY:#{null}} # Optional: Will warn if not set
+
+# ============================================
+# PayPal Payouts Configuration
+# ============================================
+# Used for paying affiliate commissions via PayPal Payouts API.
+# No SDK — uses Spring RestClient directly.
+# Sandbox URL used as default for local/dev. Override in application-prod.yml.
+paypal:
+  client-id: ${PAYPAL_CLIENT_ID}
+  client-secret: ${PAYPAL_CLIENT_SECRET}
+  base-url: ${PAYPAL_BASE_URL:https://api-m.sandbox.paypal.com}
+
+# ============================================
+# CORS Configuration
+# ============================================
+# CORS is configured per environment in application-{profile}.yml
+# See SecurityConfig.java for implementation details
+# Example configuration:
+# cors:
+#   allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:3000}
+

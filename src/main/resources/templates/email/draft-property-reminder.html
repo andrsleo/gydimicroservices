@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{email/base-layout :: layout(~{::title}, ~{::email-header}, ~{::email-body})}">
+<head><title>Tu propiedad está esperando ser publicada - GYDI</title></head>
+<body>
+
+<th:block th:fragment="email-header">
+    <div style="background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%); padding: 36px 20px; text-align: center;">
+        <h1 style="color: #ffffff; margin: 0; font-size: 28px; font-weight: 700;">GYDI</h1>
+        <p style="color: rgba(255,255,255,0.85); margin: 8px 0 0; font-size: 14px;">Plataforma de alquileres vacacionales</p>
+    </div>
+</th:block>
+
+<th:block th:fragment="email-body">
+    <h2>¡Tu propiedad está esperando ser publicada!</h2>
+
+    <p>Hola <strong th:text="${hostName}">Anfitrión</strong>,</p>
+    <p>Notamos que tu propiedad <strong th:text="${propertyTitle}">"Nombre"</strong> aún está en borrador
+       y no es visible para los huéspedes.</p>
+
+    <div class="notice notice-warning">
+        <strong>Completa el proceso de publicación</strong> para que tu propiedad empiece a recibir reservas.
+    </div>
+
+    <p>Solo faltan unos pasos para que tu propiedad esté lista:</p>
+    <ul style="color: #555; line-height: 1.8;">
+        <li>Verifica que las fotos estén cargadas</li>
+        <li>Completa toda la información de la propiedad</li>
+        <li>Envía la propiedad para revisión del equipo GYDI</li>
+    </ul>
+
+    <div style="text-align: center;">
+        <a th:href="|https://gydi.app/dashboard/properties/${propertyId}/edit|" class="btn"
+           style="background: linear-gradient(135deg, #fd7e14 0%, #ffc107 100%); color: #ffffff;">
+            Continuar con mi propiedad
+        </a>
+    </div>
+
+    <p>El equipo de GYDI</p>
+</th:block>
+
+</body>
+</html>
