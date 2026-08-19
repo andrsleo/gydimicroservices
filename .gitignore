@@ -72,3 +72,22 @@ replay_pid*
 !.env.test
 !.env.production
 .env.*
+
+# --- Config local con secretos (NO se sube) ---
+src/main/resources/application-local.yml
+src/main/resources/application-secrets.yml
+# la plantilla SÍ se sube:
+!src/main/resources/application-local.yml.example
+ 
+# --- Basura de macOS / IDE ---
+.DS_Store
+**/.DS_Store
+.idea/
+*.iml
+.vscode/
+ 
+# --- Build ---
+target/
+!.mvn/wrapper/maven-wrapper.jar
+ 
+ 
